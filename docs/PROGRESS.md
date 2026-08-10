@@ -52,3 +52,6 @@ Add transactional SQLite migrations and constrained schemas for users, projects,
 
 ### 2026-08-10T13:35:54+03:30 · BACKEND · 0 · DONE
 Boot Fastify with automatic migrations; live `/api/health` returns `{ok:true,data:{version:"0.0.0"}}`.
+
+### 2026-08-10T13:56:55+03:30 · BACKEND · 0 · DONE
+Set tmux `window-size latest`; an isolated real tmux session loads and reports the option.
