@@ -13,11 +13,11 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 0
-**Working on:** SQLite migration runner and the Phase 0 database schema
-**Done so far:** pnpm workspace and strict Node 22 server package are implemented,
-  typechecked, logged, and ready to commit
-**Next concrete step:** add better-sqlite3, validate database configuration, and
-  implement and test ordered migrations for users, projects, sessions, and layouts
+**Working on:** Fastify bootstrap and the Phase 0 health endpoint
+**Done so far:** workspace/server foundation and transactional SQLite schema are
+  implemented, tested under Node 22, logged, and committed through the foundation unit
+**Next concrete step:** add Fastify, build an injectable app with the health route,
+  test the response envelope, and add the production listener entrypoint
 **Landmines:** this host runs Node 20.19.2 and has no pnpm shim; use
   `corepack pnpm` locally while keeping Node >=22 as the package engine
-**Uncommitted:** workspace/server scaffold, lockfile, Phase 0 checkbox, and progress entry
+**Uncommitted:** database/config implementation, tests, lockfile, checkbox, and progress entry

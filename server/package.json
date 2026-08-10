@@ -8,12 +8,18 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "db:migrate": "tsc -p tsconfig.build.json && node dist/database/migrate-cli.js",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "test": "pnpm run build && node --test dist/**/*.test.js",
+    "test": "tsc -p tsconfig.build.json && node --test dist/**/*.test.js",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
     "typescript": "^5.9.2"
+  },
+  "dependencies": {
+    "better-sqlite3": "^13.0.3",
+    "zod": "^4.4.3"
   }
 }
