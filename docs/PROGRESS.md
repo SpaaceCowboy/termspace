@@ -102,3 +102,6 @@ Add fixed-width session ids and an injectable tmux client; real detached create/
 
 ### 2026-08-10T16:13:11+03:30 · BACKEND · 1 · WIP
 Add shared-type SQLite session persistence and tmux-first create/delete orchestration with rollback tests.
+
+### 2026-08-10T16:18:41+03:30 · BACKEND · 1 · WIP
+Add per-viewer node-pty attachments and serialized headless restore buffers; live viewer close leaves tmux alive.
