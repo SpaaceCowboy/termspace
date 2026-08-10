@@ -13,12 +13,13 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** detached tmux session lifecycle behind a testable interface
+**Working on:** persisted session repository and create/list/delete orchestration
 **Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
-  login throttling, ticket state, frame codecs, and Origin validation are implemented and tested
-**Next concrete step:** commit the WebSocket boundary codecs, then implement 16-byte session-id
-  generation and detached tmux create/list/delete behavior behind an injectable command runner
+  auth/ticket state and WS boundaries are tested; fixed-width ids and the injectable tmux
+  client pass unit tests plus real detached create/cwd/targeted-kill verification
+**Next concrete step:** commit the tmux unit, then add a zod-validated SQLite session repository
+  and transactional orchestration that rolls tmux back when persistence fails
 **Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** frame/origin codecs and tests, progress, state
+**Uncommitted:** session-id and tmux client/runner code and tests, progress, state

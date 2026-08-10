@@ -96,3 +96,6 @@ Add tested hashed auth sessions, bounded login throttling, and single-use expiri
 
 ### 2026-08-10T16:03:12+03:30 · BACKEND · 1 · WIP
 Add strict ClientFrame decoding, exact 16-byte terminal output encoding, and configured WebSocket Origin validation.
+
+### 2026-08-10T16:10:32+03:30 · BACKEND · 1 · WIP
+Add fixed-width session ids and an injectable tmux client; real detached create/cwd/targeted-kill verification passes.
