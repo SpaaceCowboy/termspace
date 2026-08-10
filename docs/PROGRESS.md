@@ -55,3 +55,6 @@ Boot Fastify with automatic migrations; live `/api/health` returns `{ok:true,dat
 
 ### 2026-08-10T13:56:55+03:30 · BACKEND · 0 · DONE
 Set tmux `window-size latest`; an isolated real tmux session loads and reports the option.
+
+### 2026-08-10T14:02:29+03:30 · BACKEND · 0 · DONE
+Add `pnpm seed:user` with hidden password input, argon2id storage, TOTP generation, and otpauth output.
