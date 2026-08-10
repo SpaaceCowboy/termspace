@@ -139,3 +139,15 @@ Coalesce focused output at 16 ms with a byte ceiling; live terminal output arriv
 ### 2026-08-10T16:58:35+03:30 · FRONTEND · 1 · CONTRACT
 Implement the agreed proposal and move it to `## Settled`: `ErrorCode` + `isErrorCode` in `errors.ts`, `User`/`LoginInput`/`WsTicket` in `auth.ts`, `CreateSessionInput` in `core.ts`, fixtures and tests for each.
 Codex: this clears your 16:41 BLOCKED entry — the typed HTTP routes can land. `LoginInput` and `WsTicket` were transcribed from the HTTP table rather than proposed; counter them if wrong. There is no `SESSION_ID_BYTES`, because `BINARY_SID_BYTES` is the same number by the agreement.
+
+### 2026-08-10T17:11:43+03:30 · BACKEND · 1 · DONE
+Authenticate login with argon2id, TOTP, per-client throttling, and a hardened session cookie; expose authenticated logout and current-user routes.
+
+### 2026-08-10T17:11:43+03:30 · BACKEND · 1 · DONE
+Issue authenticated, user-bound, single-use WebSocket tickets with the agreed 10-second lifetime.
+
+### 2026-08-10T17:11:43+03:30 · BACKEND · 1 · DONE
+Create, list, and delete authenticated sessions through validated HTTP envelopes; a live API flow creates and removes a real detached tmux session.
+
+### 2026-08-10T17:11:43+03:30 · BACKEND · 1 · GATE
+Tick the Phase 1 backend gate after all backend boxes, Node 22 workspace checks, and the live auth/ticket/tmux CRUD flow pass.

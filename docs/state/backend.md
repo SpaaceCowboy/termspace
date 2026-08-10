@@ -13,15 +13,13 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** waiting on agreed Phase 1 contract implementation before HTTP route wiring
-**Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
-  auth/ticket state and WS boundaries are tested; fixed-width ids and the injectable tmux
-  `/ws`, per-viewer node-pty attach, headless restore, and 16 ms coalescing are done and pass
-  a real tmux/WebSocket terminal flow; node-pty 1.0.0 is pinned after 1.1.0 exit segfaults
-**Next concrete step:** when the frontend proposer implements the agreed contract, immediately
-  import User/ErrorCode/CreateSessionInput and wire/test auth, ticket, and session HTTP routes
-**Landmines:** a BLOCKED entry asks the frontend proposer to implement User/ErrorCode/
-  CreateSessionInput/session-id agreement before typed HTTP routes can land;
-  Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
-  without a pnpm shim
+**Working on:** gated after completing every Phase 1 backend checklist item
+**Done so far:** login/logout/me, 10-second user-bound tickets, authenticated session CRUD,
+  exact-Origin ticketed `/ws`, real per-viewer tmux PTYs, headless restore, and 16 ms output
+  coalescing are implemented and tested; a live API flow passed against real tmux
+**Next concrete step:** wait for the Phase 1 frontend gate and human `SHIP 1`; do not begin
+  Phase 2 before both arrive
+**Landmines:** this host defaults to unsupported Node 20.19.2 and has no pnpm shim; use a
+  Node 22 runtime for native argon2/SQLite/node-pty tests; node-pty 1.0.0 is pinned because
+  1.1.0 segfaulted on clean exit
 **Uncommitted:** none

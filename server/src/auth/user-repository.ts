@@ -1,5 +1,20 @@
+import type { User } from '@termspace/contracts'
 import type Database from 'better-sqlite3'
 import { z } from 'zod'
+
+const UserRowSchema = z
+  .object({
+    id: z.string(),
+    username: z.string(),
+    created_at: z.number().int(),
+  })
+  .transform(
+    (row): User => ({
+      id: row.id,
+      username: row.username,
+      createdAt: row.created_at,
+    }),
+  )
 
 const UserCredentialsRowSchema = z
   .object({
@@ -34,5 +49,12 @@ export class UserRepository {
       )
       .get(username)
     return row === undefined ? null : UserCredentialsRowSchema.parse(row)
+  }
+
+  findById(userId: string): User | null {
+    const row = this.#database
+      .prepare('SELECT id, username, created_at FROM users WHERE id = ?')
+      .get(userId)
+    return row === undefined ? null : UserRowSchema.parse(row)
   }
 }

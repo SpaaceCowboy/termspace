@@ -1,0 +1,315 @@
+import assert from 'node:assert/strict'
+import { afterEach, beforeEach, describe, it } from 'node:test'
+
+import type { Session, User, WsTicket } from '@termspace/contracts'
+import { sessionFixture, userFixture } from '@termspace/contracts'
+import Fastify, { type FastifyInstance } from 'fastify'
+
+import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
+import { registerPhase1Routes, type Phase1RouteServices } from './routes.js'
+
+const AUTH_TOKEN = 'a'.repeat(43)
+const SESSION_COOKIE = `termspace_session=${AUTH_TOKEN}`
+
+function requireHeader(value: string | string[] | undefined): string {
+  if (typeof value !== 'string') {
+    throw new Error('Expected a single response header value')
+  }
+  return value
+}
+
+class FakeAuth {
+  result: string | null = userFixture.id
+  readonly attempts: { username: string; password: string; totp: string }[] = []
+
+  async authenticate(username: string, password: string, totp: string): Promise<string | null> {
+    this.attempts.push({ username, password, totp })
+    return this.result
+  }
+}
+
+class FakeAuthSessions {
+  resolvedUserId: string | null = userFixture.id
+  readonly createdFor: string[] = []
+  readonly revoked: string[] = []
+
+  create(userId: string): { token: string } {
+    this.createdFor.push(userId)
+    return { token: AUTH_TOKEN }
+  }
+
+  resolve(): string | null {
+    return this.resolvedUserId
+  }
+
+  revoke(token: string): void {
+    this.revoked.push(token)
+  }
+}
+
+class FakeRateLimiter {
+  blocked = false
+  readonly failures: string[] = []
+  readonly resets: string[] = []
+
+  check(): { allowed: true } | { allowed: false; retryAfterMs: number } {
+    return this.blocked
+      ? { allowed: false, retryAfterMs: 1_500 }
+      : { allowed: true }
+  }
+
+  recordFailure(key: string): void {
+    this.failures.push(key)
+  }
+
+  reset(key: string): void {
+    this.resets.push(key)
+  }
+}
+
+class FakeSessions {
+  createdInput:
+    | { projectId: string; name: string; agent: 'claude' | 'codex' | 'shell'; cwd?: string }
+    | undefined
+  createError: Error | undefined
+  deleteResult = true
+  readonly deleted: string[] = []
+
+  async create(
+    projectId: string,
+    name: string,
+    agent: 'claude' | 'codex' | 'shell',
+    cwd?: string,
+  ): Promise<Session> {
+    this.createdInput = cwd === undefined
+      ? { projectId, name, agent }
+      : { projectId, name, agent, cwd }
+    if (this.createError !== undefined) {
+      throw this.createError
+    }
+    return sessionFixture
+  }
+
+  list(): readonly Session[] {
+    return [sessionFixture]
+  }
+
+  async delete(sessionId: string): Promise<boolean> {
+    this.deleted.push(sessionId)
+    return this.deleteResult
+  }
+}
+
+describe('Phase 1 HTTP routes', () => {
+  let app: FastifyInstance
+  let auth: FakeAuth
+  let authSessions: FakeAuthSessions
+  let limiter: FakeRateLimiter
+  let sessions: FakeSessions
+  let user: User | null
+  let issuedTicket: WsTicket
+
+  beforeEach(() => {
+    app = Fastify()
+    auth = new FakeAuth()
+    authSessions = new FakeAuthSessions()
+    limiter = new FakeRateLimiter()
+    sessions = new FakeSessions()
+    user = userFixture
+    issuedTicket = { ticket: 'b'.repeat(43), expiresAt: 10_000 }
+    const services: Phase1RouteServices = {
+      auth,
+      authSessionTtlMs: 60_000,
+      authSessions,
+      loginRateLimiter: limiter,
+      sessions,
+      tickets: { issue: () => issuedTicket },
+      users: { findById: () => user },
+    }
+    registerPhase1Routes(app, services)
+  })
+
+  afterEach(async () => {
+    await app.close()
+  })
+
+  it('logs in with validated credentials and sets the hardened cookie', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'operator', password: 'secret', totp: '123456' },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.deepEqual(response.json(), { ok: true, data: { user: userFixture } })
+    const setCookie = requireHeader(response.headers['set-cookie'])
+    assert.match(
+      setCookie,
+      /^termspace_session=a{43}; Path=\/; Max-Age=60; HttpOnly; Secure; SameSite=Strict$/,
+    )
+    assert.deepEqual(authSessions.createdFor, [userFixture.id])
+    assert.equal(limiter.resets.length, 1)
+  })
+
+  it('rejects invalid login input before authentication', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'operator', password: 'secret', totp: '123' },
+    })
+
+    assert.equal(response.statusCode, 400)
+    assert.equal(response.json().error.code, 'validation_failed')
+    assert.deepEqual(auth.attempts, [])
+  })
+
+  it('records invalid credentials and enforces rate limiting', async () => {
+    auth.result = null
+    const invalid = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'operator', password: 'wrong', totp: '123456' },
+    })
+    assert.equal(invalid.statusCode, 401)
+    assert.equal(invalid.json().error.code, 'invalid_credentials')
+    assert.equal(limiter.failures.length, 1)
+
+    limiter.blocked = true
+    const limited = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      payload: { username: 'operator', password: 'wrong', totp: '123456' },
+    })
+    assert.equal(limited.statusCode, 429)
+    assert.equal(limited.headers['retry-after'], '2')
+    assert.equal(limited.json().error.code, 'rate_limited')
+    assert.equal(auth.attempts.length, 1)
+  })
+
+  it('returns the current user, issues a ticket, and logs out', async () => {
+    const me = await app.inject({
+      method: 'GET',
+      url: '/api/auth/me',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(me.json(), { ok: true, data: { user: userFixture } })
+
+    const ticket = await app.inject({
+      method: 'POST',
+      url: '/api/ws-ticket',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(ticket.json(), { ok: true, data: issuedTicket })
+
+    const logout = await app.inject({
+      method: 'POST',
+      url: '/api/auth/logout',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(logout.json(), { ok: true, data: {} })
+    assert.deepEqual(authSessions.revoked, [AUTH_TOKEN])
+    const clearedCookie = requireHeader(logout.headers['set-cookie'])
+    assert.match(clearedCookie, /Max-Age=0/)
+  })
+
+  it('rejects protected routes without a valid auth session', async () => {
+    authSessions.resolvedUserId = null
+    for (const request of [
+      { method: 'GET' as const, url: '/api/auth/me' },
+      { method: 'POST' as const, url: '/api/ws-ticket' },
+      { method: 'GET' as const, url: '/api/sessions' },
+    ]) {
+      const response = await app.inject({
+        ...request,
+        headers: { cookie: SESSION_COOKIE },
+      })
+      assert.equal(response.statusCode, 401)
+      assert.equal(response.json().error.code, 'unauthorized')
+    }
+  })
+
+  it('lists, creates, and deletes sessions through the contract envelope', async () => {
+    const list = await app.inject({
+      method: 'GET',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(list.json(), { ok: true, data: [sessionFixture] })
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        projectId: 'project-1',
+        name: 'Terminal',
+        agent: 'shell',
+        cwd: '/tmp',
+      },
+    })
+    assert.equal(created.statusCode, 201)
+    assert.deepEqual(created.json(), { ok: true, data: sessionFixture })
+    assert.deepEqual(sessions.createdInput, {
+      projectId: 'project-1',
+      name: 'Terminal',
+      agent: 'shell',
+      cwd: '/tmp',
+    })
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${sessionFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(deleted.json(), { ok: true, data: {} })
+    assert.deepEqual(sessions.deleted, [sessionFixture.id])
+  })
+
+  it('maps session validation and missing records to contract errors', async () => {
+    sessions.createError = new SessionProjectNotFoundError('missing')
+    const create = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { projectId: 'missing', name: 'Terminal', agent: 'shell' },
+    })
+    assert.equal(create.statusCode, 400)
+    assert.deepEqual(create.json().error, {
+      code: 'validation_failed',
+      message: 'Project was not found.',
+      field: 'projectId',
+    })
+
+    sessions.deleteResult = false
+    const missing = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${sessionFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(missing.statusCode, 404)
+    assert.equal(missing.json().error.code, 'session_not_found')
+  })
+
+  it('rejects extra fields and malformed JSON at the HTTP boundary', async () => {
+    const extra = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { projectId: 'project-1', name: 'Terminal', agent: 'shell', extra: true },
+    })
+    assert.equal(extra.statusCode, 400)
+    assert.equal(extra.json().error.code, 'validation_failed')
+
+    const malformed = await app.inject({
+      method: 'POST',
+      url: '/api/auth/login',
+      headers: { 'content-type': 'application/json' },
+      payload: '{',
+    })
+    assert.equal(malformed.statusCode, 400)
+    assert.deepEqual(malformed.json(), {
+      ok: false,
+      error: { code: 'validation_failed', message: 'Invalid request.' },
+    })
+  })
+})

@@ -7,6 +7,7 @@ import { LoginRateLimiter } from './auth/login-rate-limiter.js'
 import { AuthSessionStore } from './auth/session-store.js'
 import { UserRepository } from './auth/user-repository.js'
 import type { Environment } from './config/env.js'
+import { registerPhase1Routes } from './http/routes.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
 import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
@@ -53,6 +54,15 @@ export function createServerRuntime(
   const sessionRepository = new SessionRepository(database)
   const tmux = new TmuxClient(new ExecFileProcessRunner())
   const sessions = new SessionManager(sessionRepository, tmux)
+  registerPhase1Routes(app, {
+    auth,
+    authSessionTtlMs: environment.TERMSPACE_AUTH_SESSION_TTL_MS,
+    authSessions,
+    loginRateLimiter,
+    sessions,
+    tickets,
+    users,
+  })
   const buffers = new HeadlessBufferRegistry()
   const attachments = new ViewerAttachmentFactory(new NodePtySpawner())
   const feeds = new SessionFeedCoordinator()

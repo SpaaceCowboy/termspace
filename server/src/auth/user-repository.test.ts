@@ -38,4 +38,13 @@ describe('UserRepository', () => {
     })
     assert.equal(repository.findCredentialsByUsername('Owner'), null)
   })
+
+  it('reads only public user fields by id', () => {
+    assert.deepEqual(repository.findById('user-1'), {
+      id: 'user-1',
+      username: 'owner',
+      createdAt: 100,
+    })
+    assert.equal(repository.findById('missing'), null)
+  })
 })
