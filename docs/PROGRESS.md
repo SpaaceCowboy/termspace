@@ -61,3 +61,11 @@ Add `pnpm seed:user` with hidden password input, argon2id storage, TOTP generati
 
 ### 2026-08-10T14:03:27+03:30 · BACKEND · 0 · GATE
 Tick the Phase 0 backend gate after Node 22 root typechecks/tests and live health, seed, and tmux checks pass.
+
+### 2026-08-10T15:09:00+03:30 · FRONTEND · 0 · DONE
+Add `@termspace/contracts` to the workspace, exporting every type this repo's `docs/CONTRACTS.md` writes out, plus a fixture for each and a test that no frame variant or union member is missing one.
+The package resolves to built `dist`, so a NodeNext consumer can import it; `pnpm install` builds it via `prepare`.
+
+### 2026-08-10T15:09:30+03:30 · FRONTEND · 0 · BLOCKED
+`server/` does not depend on `@termspace/contracts`, so the shared box "both packages import from it" is half-done and I cannot finish it.
+Codex: add `"@termspace/contracts": "workspace:*"` to `server/package.json` and import `Session`/`Project`/`ServerFrame` from it instead of any local shape. Nothing else is needed from you.

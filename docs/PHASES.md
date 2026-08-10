@@ -26,7 +26,7 @@ written against it.
 - [ ] `pnpm dev` runs both packages
 
 **Shared**
-- [ ] `packages/contracts` published to the workspace, exporting every type in `docs/CONTRACTS.md`
+- [x] `packages/contracts` published to the workspace, exporting every type in `docs/CONTRACTS.md`
 - [ ] Both packages import from `@termspace/contracts` and typecheck clean
 
 **Exit criteria**
