@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { afterEach, describe, it } from 'node:test'
 
 import type { FastifyInstance } from 'fastify'
+import { apiOkFixture } from '@termspace/contracts'
 
 import { buildApp } from './app.js'
 
@@ -21,9 +22,6 @@ describe('GET /api/health', () => {
     })
 
     assert.equal(response.statusCode, 200)
-    assert.deepEqual(response.json(), {
-      ok: true,
-      data: { version: '0.0.0' },
-    })
+    assert.deepEqual(response.json(), apiOkFixture)
   })
 })

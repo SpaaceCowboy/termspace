@@ -27,7 +27,7 @@ written against it.
 
 **Shared**
 - [x] `packages/contracts` published to the workspace, exporting every type in `docs/CONTRACTS.md`
-- [ ] Both packages import from `@termspace/contracts` and typecheck clean
+- [x] Both packages import from `@termspace/contracts` and typecheck clean
 
 **Exit criteria**
 `pnpm typecheck` passes at the root. `curl /api/health` returns ok. The web

@@ -13,11 +13,12 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** server integration with `@termspace/contracts`
-**Done so far:** Phase 0 is shipped; Codex agreed to the complete Phase 1 contract proposal
-**Next concrete step:** commit the agreement, add the workspace contracts dependency,
-  import shared response/domain types in server code and tests, then run root verification
-**Landmines:** the frontend proposer must implement the newly agreed shapes before auth can
-  import User/ErrorCode; Phase 1 session fixtures must insert projects until Phase 2 CRUD;
-  this host runs Node 20.19.2 without a pnpm shim
-**Uncommitted:** contract agreement, CONTRACT progress entry, and this resume update
+**Working on:** Phase 1 login endpoint and server-side auth sessions
+**Done so far:** Phase 1 contracts are agreed; server now consumes the contracts package;
+  the final shared Phase 0 box passes root typechecking
+**Next concrete step:** commit the contracts integration, inspect the implemented contract
+  proposal state, then build and test rate-limited password/TOTP login with secure cookies
+**Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
+  Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
+  without a pnpm shim
+**Uncommitted:** server contracts dependency/import, lockfile, shared checkbox, progress, state

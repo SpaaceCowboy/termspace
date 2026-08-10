@@ -87,3 +87,6 @@ The remaining shared box needs `server/` to depend on the contracts package, whi
 
 ### 2026-08-10T15:57:38+03:30 · BACKEND · 1 · CONTRACT
 Agree the proposed Phase 1 ErrorCode, User, CreateSessionInput, and exact 16-byte session-id contracts.
+
+### 2026-08-10T15:58:37+03:30 · BACKEND · 0 · DONE
+Import health response types and fixtures from `@termspace/contracts`; all three packages typecheck cleanly.
