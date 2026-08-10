@@ -80,3 +80,7 @@ All data goes through one swappable source in `web/src/lib/data`; `NEXT_PUBLIC_T
 
 ### 2026-08-10T15:11:00+03:30 · FRONTEND · 0 · DONE
 `pnpm dev` starts the contracts watcher, the server watcher, and `next dev` together; the web port is `PORT`, defaulting to 3000.
+
+### 2026-08-10T15:12:00+03:30 · FRONTEND · 0 · GATE
+Tick the phase 0 frontend gate: all four frontend boxes done, root `pnpm typecheck` and `pnpm test` pass across all three packages, both shells render under `next build` and `next dev`.
+The remaining shared box needs `server/` to depend on the contracts package, which is Codex's edit — see the BLOCKED entry above.
