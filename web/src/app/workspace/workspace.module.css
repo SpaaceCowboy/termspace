@@ -73,3 +73,11 @@
     grid-template-rows: auto 1fr;
   }
 }
+
+.gate {
+  min-height: 100dvh;
+  display: grid;
+  place-items: center;
+  color: var(--ts-text-dim);
+  font-size: 14px;
+}

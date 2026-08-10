@@ -1,8 +1,17 @@
 import { CLIENT_ERROR_PREFIX } from '@termspace/contracts'
-import type { ApiResponse, HealthData, Project, Session } from '@termspace/contracts'
+import type {
+  ApiResponse,
+  CreateSessionInput,
+  HealthData,
+  LoginInput,
+  Project,
+  Session,
+  User,
+  WsTicket,
+} from '@termspace/contracts'
 import { z } from 'zod'
 
-import type { DataSource } from './types'
+import type { DataSource, Empty } from './types.ts'
 
 /**
  * Minted by the client only, for failures where the server produced no valid
@@ -53,20 +62,41 @@ const SessionSchema = z.object({
   createdAt: z.number(),
 })
 
+const UserSchema = z.object({
+  id: z.string(),
+  username: z.string(),
+  createdAt: z.number(),
+})
+
 const HealthSchema = z.object({ version: z.string() })
+const UserEnvelopeSchema = z.object({ user: UserSchema })
+const WsTicketSchema = z.object({ ticket: z.string(), expiresAt: z.number() })
+const EmptySchema = z.object({}).strict()
 
 const apiBase = process.env.NEXT_PUBLIC_TERMSPACE_API_BASE ?? ''
+
+interface RequestOptions {
+  method?: 'GET' | 'POST' | 'DELETE'
+  json?: unknown
+  signal?: AbortSignal | undefined
+}
 
 async function request<T>(
   path: string,
   schema: z.ZodType<T>,
-  signal: AbortSignal | undefined,
+  options: RequestOptions = {},
 ): Promise<ApiResponse<T>> {
+  const { method = 'GET', json, signal } = options
   let body: unknown
   try {
     const response = await fetch(`${apiBase}${path}`, {
+      method,
       credentials: 'include',
-      headers: { accept: 'application/json' },
+      headers:
+        json === undefined
+          ? { accept: 'application/json' }
+          : { accept: 'application/json', 'content-type': 'application/json' },
+      ...(json === undefined ? {} : { body: JSON.stringify(json) }),
       ...(signal ? { signal } : {}),
     })
     body = await response.json()
@@ -99,12 +129,45 @@ async function request<T>(
 export const httpSource: DataSource = {
   kind: 'http',
   health(signal?: AbortSignal): Promise<ApiResponse<HealthData>> {
-    return request('/api/health', HealthSchema, signal)
+    return request('/api/health', HealthSchema, { signal })
   },
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>> {
-    return request('/api/projects', z.array(ProjectSchema), signal)
+    return request('/api/projects', z.array(ProjectSchema), { signal })
   },
   listSessions(signal?: AbortSignal): Promise<ApiResponse<Session[]>> {
-    return request('/api/sessions', z.array(SessionSchema), signal)
+    return request('/api/sessions', z.array(SessionSchema), { signal })
+  },
+  login(input: LoginInput, signal?: AbortSignal): Promise<ApiResponse<{ user: User }>> {
+    return request('/api/auth/login', UserEnvelopeSchema, {
+      method: 'POST',
+      json: input,
+      signal,
+    })
+  },
+  /** No body at all: the server requires these POSTs to be empty. */
+  logout(signal?: AbortSignal): Promise<ApiResponse<Empty>> {
+    return request('/api/auth/logout', EmptySchema, { method: 'POST', signal })
+  },
+  me(signal?: AbortSignal): Promise<ApiResponse<{ user: User }>> {
+    return request('/api/auth/me', UserEnvelopeSchema, { signal })
+  },
+  wsTicket(signal?: AbortSignal): Promise<ApiResponse<WsTicket>> {
+    return request('/api/ws-ticket', WsTicketSchema, { method: 'POST', signal })
+  },
+  createSession(
+    input: CreateSessionInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Session>> {
+    return request('/api/sessions', SessionSchema, {
+      method: 'POST',
+      json: input,
+      signal,
+    })
+  },
+  deleteSession(sessionId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>> {
+    return request(`/api/sessions/${encodeURIComponent(sessionId)}`, EmptySchema, {
+      method: 'DELETE',
+      signal,
+    })
   },
 }

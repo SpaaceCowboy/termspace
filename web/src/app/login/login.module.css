@@ -103,3 +103,9 @@
 .notice p {
   margin: 0;
 }
+
+.noticeError {
+  border-style: solid;
+  border-color: var(--ts-danger);
+  color: var(--ts-danger);
+}

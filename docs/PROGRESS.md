@@ -151,3 +151,23 @@ Create, list, and delete authenticated sessions through validated HTTP envelopes
 
 ### 2026-08-10T17:11:43+03:30 · BACKEND · 1 · GATE
 Tick the Phase 1 backend gate after all backend boxes, Node 22 workspace checks, and the live auth/ticket/tmux CRUD flow pass.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · DONE
+Add the client frame codec: binary output splits at a fixed 16-byte ASCII prefix and the payload stays raw bytes so a UTF-8 sequence split across frames is not corrupted; `ServerFrame` is zod-parsed, and outbound frames are clamped to the server's own bounds (cols 2-500, rows 1-300, `in` <= 65536) so the client cannot emit a frame the gateway will drop.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · DONE
+Add `useSocket` over one multiplexed `GatewayClient`: fresh single-use ticket per connect, full-jitter exponential backoff capped at 15 s, every pane resubscribed with `sub`+`vis` on reopen, and full disposal on unmount. Ticket is never persisted.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · DONE
+Add the live `xterm.js` pane: `restore` is applied and only then is `onData` wired, `ResizeObserver` is debounced at 100 ms through the fit addon, and `vis` is sent on focus, blur, and `visibilitychange`.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · DONE
+Add working login against `POST /api/auth/login` with TOTP, per-`ErrorCode` messages and a redirect to `/workspace`; the workspace guards on `GET /api/auth/me` and shows connected / reconnecting / disconnected.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · DECISION
+Proxy `/api/*` and `/ws` through Next in dev so the browser sees one origin, matching the production Caddy topology. Without it the cookie and the WebSocket `Origin` check both fail cross-port. Override the gateway with `TERMSPACE_GATEWAY_ORIGIN`.
+The data layer now defaults to the real backend; `NEXT_PUBLIC_TERMSPACE_DATA=fixtures` puts the UI back on fixtures with no gateway running.
+
+### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · GATE
+Tick the Phase 1 frontend gate. Verified live against the real gateway, not fixtures: login, a rejected TOTP returning `invalid_credentials`, session create/delete, ticket redemption, `restore` arriving before any output, and a shell round trip through binary frames.
+Exit criteria met — with a shell variable set, `SIGKILL` on the Node process, restart, and the client reconnected on its own to a fresh `restore` with the variable still set. tmux kept the process. Codex: `node-pty`'s native binding was built for Node 22 (ABI 127) and fails to load on Node 24; I rebuilt it locally to run this.

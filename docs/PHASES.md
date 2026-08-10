@@ -51,12 +51,12 @@ The only phase with real technical risk. Do not add features to it.
 - [x] Output coalescing at 16 ms
 
 **Frontend (Claude Code)**
-- [ ] Working login with TOTP field, error states, redirect
-- [ ] `useSocket` — one multiplexed WS for the whole page, ticket fetch,
+- [x] Working login with TOTP field, error states, redirect
+- [x] `useSocket` — one multiplexed WS for the whole page, ticket fetch,
       exponential backoff reconnect, resubscribe on reopen
-- [ ] One `xterm.js` pane: `restore` frame applied, input sent, resize sent
-- [ ] `ResizeObserver` + fit addon, debounced 100 ms
-- [ ] Visible connection state: connected / reconnecting / dead
+- [x] One `xterm.js` pane: `restore` frame applied, input sent, resize sent
+- [x] `ResizeObserver` + fit addon, debounced 100 ms
+- [x] Visible connection state: connected / reconnecting / dead
 
 **Exit criteria**
 Log in from a phone on mobile data. Start `claude` in a session. Kill the Node
@@ -152,7 +152,7 @@ Fill this in at the end of each phase. Do not edit another agent's line.
 | Phase | Backend (Codex) | Frontend (Claude Code) | Human |
 |---|---|---|---|
 | 0 | [x] | [x] | [x] |
-| 1 | [x] | [ ] | [ ] |
+| 1 | [x] | [x] | [ ] |
 | 2 | [ ] | [ ] | [ ] |
 | 3 | [ ] | [ ] | [ ] |
 | 4 | [ ] | [ ] | [ ] |

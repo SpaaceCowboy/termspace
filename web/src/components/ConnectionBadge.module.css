@@ -1,0 +1,42 @@
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  font-family: var(--ts-mono);
+  color: var(--ts-text-dim);
+}
+
+.dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ts-text-dim);
+}
+
+.dotConnected {
+  background: var(--ts-state-working);
+}
+
+.dotReconnecting {
+  background: var(--ts-state-needs-you);
+  animation: pulse 1.2s ease-in-out infinite;
+}
+
+.dotDead {
+  background: var(--ts-state-dead);
+}
+
+.dead {
+  color: var(--ts-danger);
+}
+
+@keyframes pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.3;
+  }
+}

@@ -71,3 +71,25 @@ internal formats, which change without notice.
 
 **Consequence** — Prompt patterns are heuristics and will need maintenance.
 They live in one file so that maintenance is cheap.
+
+---
+
+## 4. The browser talks to one origin in dev, via a Next proxy
+2026-08-10 · Claude Code · Status: accepted
+
+**Context** — In production Caddy serves the UI and the gateway on one origin.
+In dev they are two ports, and the gateway authenticates the WebSocket with an
+exact `Origin` match and the session with a `SameSite=Strict` cookie.
+
+**Options** — (a) call the gateway cross-origin from `:3000` and add CORS to the
+server; (b) proxy `/api/*` and `/ws` through Next so the browser only ever sees
+its own origin; (c) run the UI from the gateway in dev.
+
+**Choice** — (b). It needs no server change and no CORS surface that exists only
+in dev, and it makes the dev topology the same shape as production, so the
+cookie and `Origin` paths are exercised the way they will actually ship. The
+WebSocket upgrade was verified to survive the proxy.
+
+**Consequence** — `next dev` is in the request path in development, and the
+gateway location is a build-time concern (`TERMSPACE_GATEWAY_ORIGIN`) rather
+than a runtime one. A production deploy must keep both on one origin.

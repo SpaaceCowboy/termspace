@@ -1,0 +1,101 @@
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ts-bg-raised);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  overflow: hidden;
+}
+
+.pane:focus-within {
+  border-color: var(--ts-accent);
+}
+
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--ts-bg-sunken);
+  border-bottom: 1px solid var(--ts-border);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 400;
+  color: var(--ts-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.pill {
+  flex: none;
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--ts-border);
+  font-size: 10px;
+  font-family: var(--ts-mono);
+  color: var(--ts-text-dim);
+}
+
+.pillWorking {
+  color: var(--ts-state-working);
+  border-color: currentColor;
+}
+
+.pillNeedsYou {
+  color: var(--ts-state-needs-you);
+  border-color: currentColor;
+}
+
+.pillDead {
+  color: var(--ts-state-dead);
+  border-color: currentColor;
+}
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 8px;
+  background: var(--ts-bg-sunken);
+  overflow: hidden;
+}
+
+.screen :global(.xterm) {
+  height: 100%;
+}
+
+.notice {
+  padding: 5px 10px;
+  background: var(--ts-bg-sunken);
+  border-top: 1px solid var(--ts-border);
+  font-family: var(--ts-mono);
+  font-size: 11px;
+  color: var(--ts-state-needs-you);
+}
+
+.noticeDead {
+  color: var(--ts-state-dead);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  color: var(--ts-text-dim);
+  font-size: 13px;
+  text-align: center;
+  padding: 24px;
+}
