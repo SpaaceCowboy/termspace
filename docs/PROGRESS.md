@@ -108,3 +108,6 @@ Add per-viewer node-pty attachments and serialized headless restore buffers; liv
 
 ### 2026-08-10T16:20:48+03:30 · BACKEND · 1 · WIP
 Add bounded 16 ms focused-output coalescing with deterministic flush, truncation, and disposal tests.
+
+### 2026-08-10T16:22:56+03:30 · BACKEND · 1 · WIP
+Add constant-channel argon2id/TOTP authentication, strict cookie codec, and validated credential lookup.
