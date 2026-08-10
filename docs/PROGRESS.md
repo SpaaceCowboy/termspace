@@ -99,3 +99,6 @@ Add strict ClientFrame decoding, exact 16-byte terminal output encoding, and con
 
 ### 2026-08-10T16:10:32+03:30 · BACKEND · 1 · WIP
 Add fixed-width session ids and an injectable tmux client; real detached create/cwd/targeted-kill verification passes.
+
+### 2026-08-10T16:13:11+03:30 · BACKEND · 1 · WIP
+Add shared-type SQLite session persistence and tmux-first create/delete orchestration with rollback tests.

@@ -12,6 +12,8 @@ export interface TmuxAttachCommand {
   readonly command: 'tmux'
 }
 
+export type TmuxLaunchCommand = 'claude' | 'codex'
+
 export class TmuxClient {
   readonly #configPath: string
   readonly #runner: ProcessRunner
@@ -24,9 +26,13 @@ export class TmuxClient {
     this.#configPath = configPath
   }
 
-  async createDetached(untrustedId: unknown, cwd: string): Promise<void> {
+  async createDetached(
+    untrustedId: unknown,
+    cwd: string,
+    launchCommand?: TmuxLaunchCommand,
+  ): Promise<void> {
     const sessionName = toTmuxSessionName(untrustedId)
-    await this.#runner.run('tmux', [
+    const arguments_: string[] = [
       '-f',
       this.#configPath,
       'new-session',
@@ -39,7 +45,11 @@ export class TmuxClient {
       '200',
       '-y',
       '50',
-    ])
+    ]
+    if (launchCommand !== undefined) {
+      arguments_.push(launchCommand)
+    }
+    await this.#runner.run('tmux', arguments_)
   }
 
   async kill(untrustedId: unknown): Promise<void> {

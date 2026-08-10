@@ -51,6 +51,15 @@ describe('TmuxClient', () => {
     ])
   })
 
+  it('launches only a typed agent command when requested', async () => {
+    const runner = new RecordingRunner()
+    const tmux = new TmuxClient(runner, '/config/tmux.conf')
+
+    await tmux.createDetached(SID, '/srv/project', 'claude')
+
+    assert.equal(runner.calls[0]?.arguments_.at(-1), 'claude')
+  })
+
   it('kills only the named Termspace session', async () => {
     const runner = new RecordingRunner()
     const tmux = new TmuxClient(runner, '/config/tmux.conf')
