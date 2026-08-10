@@ -26,4 +26,11 @@ export interface Session {
   createdAt: number
 }
 
+export interface CreateSessionInput {
+  projectId: string
+  name: string
+  agent: AgentKind
+  cwd?: string
+}
+
 export const AGENT_KINDS = ['claude', 'codex', 'shell'] as const

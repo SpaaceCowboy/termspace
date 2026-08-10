@@ -1,3 +1,4 @@
+import { CLIENT_ERROR_PREFIX } from '@termspace/contracts'
 import type { ApiResponse, HealthData, Project, Session } from '@termspace/contracts'
 import { z } from 'zod'
 
@@ -9,8 +10,8 @@ import type { DataSource } from './types'
  * union in `@termspace/contracts`.
  */
 export const CLIENT_ERROR_CODES = {
-  unreachable: 'client_network_unreachable',
-  malformed: 'client_malformed_response',
+  unreachable: `${CLIENT_ERROR_PREFIX}network_unreachable`,
+  malformed: `${CLIENT_ERROR_PREFIX}malformed_response`,
 } as const
 
 const ApiErrorSchema = z.object({

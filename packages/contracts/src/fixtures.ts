@@ -1,4 +1,6 @@
-import type { AgentKind, Project, Session } from './core.js'
+import type { LoginInput, User, WsTicket } from './auth.js'
+import type { AgentKind, CreateSessionInput, Project, Session } from './core.js'
+import type { ErrorCode } from './errors.js'
 import type { ApiErr, ApiError, ApiOk, HealthData } from './http.js'
 import { BINARY_SID_BYTES } from './transport.js'
 import type {
@@ -124,6 +126,31 @@ export const serverFrameFixtures: Readonly<Record<ServerFrameKind, ServerFrame>>
   },
   pong: { t: 'pong' },
 }
+
+export const userFixture: User = {
+  id: 'usr_01HZX0OPERATOR00',
+  username: 'operator',
+  createdAt: FIXED_NOW - 604_800_000,
+}
+
+export const loginInputFixture: LoginInput = {
+  username: 'operator',
+  password: 'correct horse battery staple',
+  totp: '481920',
+}
+
+export const wsTicketFixture: WsTicket = {
+  ticket: 'tkt_01HZX0TICKET00000000000000000001',
+  expiresAt: FIXED_NOW + 10_000,
+}
+
+export const createSessionInputFixture: CreateSessionInput = {
+  projectId: projectFixture.id,
+  name: 'portal-ui',
+  agent: 'claude',
+}
+
+export const errorCodeFixture: ErrorCode = 'session_not_found'
 
 export const healthDataFixture: HealthData = { version: '0.0.0' }
 

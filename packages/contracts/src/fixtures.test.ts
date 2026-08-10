@@ -6,6 +6,7 @@ import {
   agentKindFixtures,
   binaryOutputFixture,
   clientFrameFixtures,
+  createSessionInputFixture,
   projectFixtures,
   serverFrameFixtures,
   sessionFixture,
@@ -69,4 +70,8 @@ test('the binary output fixture puts the session id in the first 16 bytes', () =
 
 test('the binary output fixture refuses a session id that is not 16 bytes', () => {
   assert.throws(() => binaryOutputFixture('ses_short'), /exactly 16 ASCII bytes/)
+})
+
+test('the create-session fixture omits cwd rather than sending undefined', () => {
+  assert.equal('cwd' in createSessionInputFixture, false)
 })
