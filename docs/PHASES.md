@@ -43,12 +43,12 @@ The only phase with real technical risk. Do not add features to it.
 - [ ] `POST /api/auth/login` — argon2id verify + TOTP, rate limited, sets cookie
 - [ ] `POST /api/auth/logout`, `GET /api/auth/me`
 - [ ] `POST /api/ws-ticket` — single-use, 10 s TTL, bound to user
-- [ ] `GET /ws` — validates ticket + `Origin`, upgrades, multiplexed frames
+- [x] `GET /ws` — validates ticket + `Origin`, upgrades, multiplexed frames
 - [ ] `POST /api/sessions` — creates a detached tmux session in a given cwd
 - [ ] `GET /api/sessions`, `DELETE /api/sessions/:id`
-- [ ] Attach: `node-pty` running `tmux attach`, per viewer
-- [ ] Headless `Terminal` per session + `restore` frame on attach
-- [ ] Output coalescing at 16 ms
+- [x] Attach: `node-pty` running `tmux attach`, per viewer
+- [x] Headless `Terminal` per session + `restore` frame on attach
+- [x] Output coalescing at 16 ms
 
 **Frontend (Claude Code)**
 - [ ] Working login with TOTP field, error states, redirect

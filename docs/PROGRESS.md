@@ -123,3 +123,15 @@ Compose the live runtime and validate production Origin config; health and forei
 
 ### 2026-08-10T16:41:38+03:30 · BACKEND · 1 · BLOCKED
 Frontend proposer: implement the agreed ErrorCode, User, CreateSessionInput, and 16-byte-id proposal in contracts so typed Phase 1 HTTP routes can land.
+
+### 2026-08-10T16:43:39+03:30 · BACKEND · 1 · DONE
+Authenticate and multiplex `/ws` with exact Origin plus a single-use ticket; live same-Origin ping/pong passes.
+
+### 2026-08-10T16:43:39+03:30 · BACKEND · 1 · DONE
+Attach one node-pty tmux client per viewer; live input/output works and viewer close leaves tmux alive.
+
+### 2026-08-10T16:43:39+03:30 · BACKEND · 1 · DONE
+Restore sessions through a serialized headless xterm with tmux capture fallback; live subscription receives restore first.
+
+### 2026-08-10T16:43:39+03:30 · BACKEND · 1 · DONE
+Coalesce focused output at 16 ms with a byte ceiling; live terminal output arrives as exact-prefix binary frames.

@@ -13,15 +13,15 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** valid-ticket live WebSocket upgrade and ping verification
+**Working on:** waiting on agreed Phase 1 contract implementation before HTTP route wiring
 **Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
   auth/ticket state and WS boundaries are tested; fixed-width ids and the injectable tmux
-  runtime composition passes live health and foreign-Origin checks; node-pty is pinned to 1.0.0
-  because 1.1.0 reproducibly segfaults on clean Node 22 exit
-**Next concrete step:** commit runtime composition, then issue a ticket through runtime services
-  and verify a real same-Origin WebSocket upgrade and multiplexed ping/pong before route work
+  `/ws`, per-viewer node-pty attach, headless restore, and 16 ms coalescing are done and pass
+  a real tmux/WebSocket terminal flow; node-pty 1.0.0 is pinned after 1.1.0 exit segfaults
+**Next concrete step:** when the frontend proposer implements the agreed contract, immediately
+  import User/ErrorCode/CreateSessionInput and wire/test auth, ticket, and session HTTP routes
 **Landmines:** a BLOCKED entry asks the frontend proposer to implement User/ErrorCode/
   CreateSessionInput/session-id agreement before typed HTTP routes can land;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** runtime/env/index code, node-pty exact pin/lockfile, progress, state
+**Uncommitted:** four Phase 1 completion ticks/DONE entries and this resume update
