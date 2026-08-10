@@ -151,7 +151,7 @@ Fill this in at the end of each phase. Do not edit another agent's line.
 
 | Phase | Backend (Codex) | Frontend (Claude Code) | Human |
 |---|---|---|---|
-| 0 | [ ] | [ ] | [ ] |
+| 0 | [x] | [ ] | [ ] |
 | 1 | [ ] | [ ] | [ ] |
 | 2 | [ ] | [ ] | [ ] |
 | 3 | [ ] | [ ] | [ ] |

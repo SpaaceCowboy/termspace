@@ -13,11 +13,12 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 0
-**Working on:** Phase 0 backend gate verification
+**Working on:** gated after Phase 0 backend completion
 **Done so far:** workspace/server foundation, SQLite migrations, and the Fastify
-  health server, tmux configuration, and seeded-user CLI are implemented and verified
-**Next concrete step:** run the root typecheck and test suites under Node 22, recheck
-  the live health route, then append the Phase 0 GATE entry and tick only the backend gate
+  health server, tmux configuration, and seeded-user CLI are implemented, tested,
+  committed, and the backend Phase 0 gate is ready to commit
+**Next concrete step:** wait for the frontend and shared Phase 0 work plus human `SHIP 0`;
+  after that signal, reread coordination docs before taking the first Phase 1 backend item
 **Landmines:** this host runs Node 20.19.2 and has no pnpm shim; use
   `corepack pnpm` locally while keeping Node >=22 as the package engine
-**Uncommitted:** seed CLI/core/parser/tests, package metadata, lockfile, checkbox, and progress entry
+**Uncommitted:** backend Phase 0 gate checkbox, GATE entry, and this resume update

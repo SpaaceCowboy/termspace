@@ -58,3 +58,6 @@ Set tmux `window-size latest`; an isolated real tmux session loads and reports t
 
 ### 2026-08-10T14:02:29+03:30 · BACKEND · 0 · DONE
 Add `pnpm seed:user` with hidden password input, argon2id storage, TOTP generation, and otpauth output.
+
+### 2026-08-10T14:03:27+03:30 · BACKEND · 0 · GATE
+Tick the Phase 0 backend gate after Node 22 root typechecks/tests and live health, seed, and tmux checks pass.
