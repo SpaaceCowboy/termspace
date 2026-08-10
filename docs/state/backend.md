@@ -13,14 +13,14 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** ticket-and-Origin authenticated WebSocket upgrade server
+**Working on:** Phase 1 runtime configuration and dependency composition
 **Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
   auth/ticket state and WS boundaries are tested; fixed-width ids and the injectable tmux
-  auth core passes; the multiplexed connection hub composes restore, one buffer writer,
-  per-viewer PTYs, input/resize, binary output, exit, truncation resync, and cleanup
-**Next concrete step:** commit the connection hub, then implement no-server WebSocket upgrade
-  authorization that validates Origin before single-use ticket redemption and ignores cookies
+  connection hub passes; WebSocket upgrades validate exact Origin before consuming a single-use
+  ticket, ignore cookies, sequence text frames, and reject binary client frames
+**Next concrete step:** commit upgrade handling, validate production Origin/auth TTL env, and
+  compose database, auth/ticket stores, tmux, PTY, buffers, gateway, and lifecycle cleanup
 **Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** gateway connection/feed coordinator and tests, progress, state
+**Uncommitted:** WebSocket upgrade/auth code/tests, ws typings/lockfile, progress, state
