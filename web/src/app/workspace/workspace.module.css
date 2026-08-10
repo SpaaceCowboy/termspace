@@ -1,0 +1,75 @@
+.shell {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  grid-template-rows: 100dvh;
+  background: var(--ts-bg);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: var(--ts-gap);
+  gap: var(--ts-gap);
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ts-gap);
+  min-height: 28px;
+}
+
+.crumbs {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ts-text-dim);
+}
+
+.crumbCurrent {
+  color: var(--ts-text);
+  font-weight: 500;
+}
+
+.connection {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ts-text-dim);
+  font-family: var(--ts-mono);
+}
+
+.connectionDot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ts-text-dim);
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--ts-gap);
+}
+
+.empty {
+  display: grid;
+  place-items: center;
+  height: 100%;
+  border: 1px dashed var(--ts-border);
+  border-radius: var(--ts-radius);
+  color: var(--ts-text-dim);
+  text-align: center;
+  padding: 24px;
+}
+
+@media (max-width: 720px) {
+  .shell {
+    grid-template-columns: 1fr;
+    grid-template-rows: auto 1fr;
+  }
+}

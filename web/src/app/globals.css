@@ -1,0 +1,108 @@
+:root {
+  --ts-bg: #f6f6f4;
+  --ts-bg-raised: #ffffff;
+  --ts-bg-sunken: #ecebe7;
+  --ts-border: #d7d5cf;
+  --ts-text: #1c1b19;
+  --ts-text-dim: #6a675f;
+  --ts-accent: #1f6f5c;
+  --ts-accent-text: #ffffff;
+  --ts-danger: #a3342a;
+  --ts-focus: #1f6f5c;
+
+  --ts-state-working: #1f6f5c;
+  --ts-state-idle: #6a675f;
+  --ts-state-needs-you: #b4741a;
+  --ts-state-dead: #a3342a;
+
+  --ts-radius: 6px;
+  --ts-gap: 12px;
+  --ts-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+  --ts-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ts-bg: #14161a;
+    --ts-bg-raised: #1c1f25;
+    --ts-bg-sunken: #0e1013;
+    --ts-border: #2c313a;
+    --ts-text: #e6e6e3;
+    --ts-text-dim: #969ba6;
+    --ts-accent: #4fd1a5;
+    --ts-accent-text: #0e1013;
+    --ts-danger: #f2827a;
+    --ts-focus: #4fd1a5;
+
+    --ts-state-working: #4fd1a5;
+    --ts-state-idle: #969ba6;
+    --ts-state-needs-you: #e8b04b;
+    --ts-state-dead: #f2827a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--ts-bg);
+  color: var(--ts-text);
+  font-family: var(--ts-sans);
+  font-size: 15px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+:focus-visible {
+  outline: 2px solid var(--ts-focus);
+  outline-offset: 2px;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--ts-accent);
+}
+
+.ts-skip-link {
+  position: absolute;
+  left: -9999px;
+  top: 0;
+  z-index: 100;
+  padding: 8px 12px;
+  background: var(--ts-bg-raised);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+}
+
+.ts-skip-link:focus {
+  left: 8px;
+  top: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}

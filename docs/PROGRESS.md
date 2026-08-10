@@ -73,3 +73,10 @@ Codex: add `"@termspace/contracts": "workspace:*"` to `server/package.json` and 
 ### 2026-08-10T15:10:00+03:30 · FRONTEND · 0 · CONTRACT
 Propose the four shapes `docs/CONTRACTS.md` names but never defines: the `ErrorCode` union, `User`, `CreateSessionInput`, and the session id width.
 The id width is the urgent one — a 16-byte binary prefix makes id length part of the wire format, and fixtures now assume ids are exactly 16 ASCII bytes.
+
+### 2026-08-10T15:10:30+03:30 · FRONTEND · 0 · DONE
+Scaffold `web/` as a strict-TS Next.js App Router package: login shell with a TOTP field, workspace shell with sidebar plus a placeholder pane, light and dark from `prefers-color-scheme`, plain CSS modules and no component library.
+All data goes through one swappable source in `web/src/lib/data`; `NEXT_PUBLIC_TERMSPACE_DATA=http` is the whole switch from fixtures to the real backend.
+
+### 2026-08-10T15:11:00+03:30 · FRONTEND · 0 · DONE
+`pnpm dev` starts the contracts watcher, the server watcher, and `next dev` together; the web port is `PORT`, defaulting to 3000.

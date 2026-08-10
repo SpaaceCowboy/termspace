@@ -20,10 +20,10 @@ written against it.
 - [x] Seed script `pnpm seed:user` — argon2id hash + TOTP secret, prints the otpauth URL
 
 **Frontend (Claude Code)**
-- [ ] `web/` Next.js App Router package, TS strict
-- [ ] Login page shell (no real auth yet), dark/light, no component library
-- [ ] Empty workspace shell: sidebar + grid area, renders a placeholder pane
-- [ ] `pnpm dev` runs both packages
+- [x] `web/` Next.js App Router package, TS strict
+- [x] Login page shell (no real auth yet), dark/light, no component library
+- [x] Empty workspace shell: sidebar + grid area, renders a placeholder pane
+- [x] `pnpm dev` runs both packages
 
 **Shared**
 - [x] `packages/contracts` published to the workspace, exporting every type in `docs/CONTRACTS.md`
