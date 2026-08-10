@@ -105,3 +105,6 @@ Add shared-type SQLite session persistence and tmux-first create/delete orchestr
 
 ### 2026-08-10T16:18:41+03:30 · BACKEND · 1 · WIP
 Add per-viewer node-pty attachments and serialized headless restore buffers; live viewer close leaves tmux alive.
+
+### 2026-08-10T16:20:48+03:30 · BACKEND · 1 · WIP
+Add bounded 16 ms focused-output coalescing with deterministic flush, truncation, and disposal tests.

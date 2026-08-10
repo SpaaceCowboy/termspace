@@ -13,14 +13,13 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** focused-session 16 ms output coalescing
+**Working on:** password/TOTP authentication core and secure cookie codec
 **Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
   auth/ticket state and WS boundaries are tested; fixed-width ids and the injectable tmux
-  session persistence/orchestration, per-viewer node-pty, and serialized headless restore fallback
-  pass unit tests; live PTY input/output works and closing a viewer leaves tmux alive
-**Next concrete step:** commit PTY/restore support, then implement a bounded 16 ms output coalescer
-  with deterministic scheduler tests and integrate it with viewer output callbacks
+  PTY/restore support passes live checks; bounded 16 ms output coalescing passes scheduler tests
+**Next concrete step:** commit the coalescer, then implement zod-validated user lookup,
+  password/TOTP verification, cookie parsing/serialization, and auth route dependencies
 **Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** PTY/headless code/tests, dependencies, build approval config, lockfile, progress, state
+**Uncommitted:** output coalescer/tests, progress, state
