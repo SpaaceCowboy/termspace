@@ -24,4 +24,4 @@ the task and do not rewrite what is already there.
   CreateSessionInput/session-id agreement before typed HTTP routes can land;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** four Phase 1 completion ticks/DONE entries and this resume update
+**Uncommitted:** none
