@@ -12,13 +12,12 @@ the task and do not rewrite what is already there.
 
 ---
 
-**Phase:** 0
-**Working on:** gated after Phase 0 backend completion
-**Done so far:** workspace/server foundation, SQLite migrations, and the Fastify
-  health server, tmux configuration, and seeded-user CLI are implemented, tested,
-  committed, and the backend Phase 0 gate is ticked and logged
-**Next concrete step:** wait for the frontend and shared Phase 0 work plus human `SHIP 0`;
-  after that signal, reread coordination docs before taking the first Phase 1 backend item
-**Landmines:** this host runs Node 20.19.2 and has no pnpm shim; use
-  `corepack pnpm` locally while keeping Node >=22 as the package engine
+**Phase:** 1
+**Working on:** Phase 1 plan prepared; waiting for the human to say `go`
+**Done so far:** Phase 0 is shipped and all nine Phase 1 backend boxes have been reviewed
+**Next concrete step:** after `go`, agree or counter the open Phase 1 contract proposal,
+  add the required server contracts dependency/import, then implement the auth endpoints
+**Landmines:** the contract proposal for ErrorCode, User, CreateSessionInput, and 16-byte
+  session ids is open; this host runs Node 20.19.2 without a pnpm shim; `web/package.json`
+  has an unrelated uncommitted frontend change that must remain untouched
 **Uncommitted:** none
