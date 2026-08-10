@@ -8,8 +8,8 @@
   },
   "scripts": {
     "build": "next build",
-    "dev": "next dev --port ${PORT:-3000}",
-    "start": "next start --port ${PORT:-3000}",
+    "dev": "next dev --port ${PORT:-3002}",
+    "start": "next start --port ${PORT:-3002}",
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },
