@@ -43,3 +43,6 @@ same commit that does it.
 ### 2026-01-01T00:00:00Z · HUMAN · 0 · DECISION
 Initialise the repository from the scaffold; Codex owns `server/`, Claude Code owns `web/`.
 Start at phase 0. Do not begin phase 1 until both gate boxes are ticked.
+
+### 2026-08-10T13:29:23+03:30 · BACKEND · 0 · DONE
+Add the pnpm workspace and strict Node 22 server package; recursive backend typechecking passes.

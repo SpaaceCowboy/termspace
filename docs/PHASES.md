@@ -13,7 +13,7 @@ Nothing runs yet. This phase exists so the seam is defined before any code is
 written against it.
 
 **Backend (Codex)**
-- [ ] pnpm workspace, `server/` package, TS strict, Node 22
+- [x] pnpm workspace, `server/` package, TS strict, Node 22
 - [ ] `better-sqlite3` + migration runner, schema for `users`, `projects`, `sessions`, `layouts`
 - [ ] Fastify boots, `GET /api/health` returns `{ok:true, version}`
 - [ ] `server/tmux.conf` with `window-size latest`, committed

@@ -13,9 +13,11 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 0
-**Working on:** nothing yet — first session
-**Done so far:** nothing
-**Next concrete step:** read the docs listed in AGENTS.md, then set up the pnpm
-  workspace and the `server/` package
-**Landmines:** none known
-**Uncommitted:** none
+**Working on:** SQLite migration runner and the Phase 0 database schema
+**Done so far:** pnpm workspace and strict Node 22 server package are implemented,
+  typechecked, logged, and ready to commit
+**Next concrete step:** add better-sqlite3, validate database configuration, and
+  implement and test ordered migrations for users, projects, sessions, and layouts
+**Landmines:** this host runs Node 20.19.2 and has no pnpm shim; use
+  `corepack pnpm` locally while keeping Node >=22 as the package engine
+**Uncommitted:** workspace/server scaffold, lockfile, Phase 0 checkbox, and progress entry
