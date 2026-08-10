@@ -111,3 +111,6 @@ Add bounded 16 ms focused-output coalescing with deterministic flush, truncation
 
 ### 2026-08-10T16:22:56+03:30 · BACKEND · 1 · WIP
 Add constant-channel argon2id/TOTP authentication, strict cookie codec, and validated credential lookup.
+
+### 2026-08-10T16:26:17+03:30 · BACKEND · 1 · WIP
+Compose multiplexed subscription ownership, single-writer headless buffering, restore, PTY routing, and binary output.
