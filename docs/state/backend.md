@@ -13,11 +13,11 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 0
-**Working on:** Fastify bootstrap and the Phase 0 health endpoint
-**Done so far:** workspace/server foundation and transactional SQLite schema are
-  implemented, tested under Node 22, logged, and committed through the foundation unit
-**Next concrete step:** add Fastify, build an injectable app with the health route,
-  test the response envelope, and add the production listener entrypoint
+**Working on:** tmux baseline configuration
+**Done so far:** workspace/server foundation, SQLite migrations, and the Fastify
+  health server are implemented and verified under Node 22, including a live curl
+**Next concrete step:** add `server/tmux.conf` with latest-client window sizing and
+  verify tmux accepts the file on this machine
 **Landmines:** this host runs Node 20.19.2 and has no pnpm shim; use
   `corepack pnpm` locally while keeping Node >=22 as the package engine
-**Uncommitted:** database/config implementation, tests, lockfile, checkbox, and progress entry
+**Uncommitted:** Fastify app/listener/test, dependency lockfile, checkbox, and progress entry

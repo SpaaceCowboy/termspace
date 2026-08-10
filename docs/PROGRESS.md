@@ -49,3 +49,6 @@ Add the pnpm workspace and strict Node 22 server package; recursive backend type
 
 ### 2026-08-10T13:33:10+03:30 · BACKEND · 0 · DONE
 Add transactional SQLite migrations and constrained schemas for users, projects, sessions, and layouts.
+
+### 2026-08-10T13:35:54+03:30 · BACKEND · 0 · DONE
+Boot Fastify with automatic migrations; live `/api/health` returns `{ok:true,data:{version:"0.0.0"}}`.

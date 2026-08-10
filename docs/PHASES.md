@@ -15,7 +15,7 @@ written against it.
 **Backend (Codex)**
 - [x] pnpm workspace, `server/` package, TS strict, Node 22
 - [x] `better-sqlite3` + migration runner, schema for `users`, `projects`, `sessions`, `layouts`
-- [ ] Fastify boots, `GET /api/health` returns `{ok:true, version}`
+- [x] Fastify boots, `GET /api/health` returns `{ok:true, version}`
 - [ ] `server/tmux.conf` with `window-size latest`, committed
 - [ ] Seed script `pnpm seed:user` — argon2id hash + TOTP secret, prints the otpauth URL
 
