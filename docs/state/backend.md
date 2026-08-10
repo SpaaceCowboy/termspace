@@ -14,10 +14,10 @@ the task and do not rewrite what is already there.
 
 **Phase:** 1
 **Working on:** Phase 1 plan prepared; waiting for the human to say `go`
-**Done so far:** Phase 0 is shipped and all nine Phase 1 backend boxes have been reviewed
+**Done so far:** Phase 0 is shipped, all nine Phase 1 backend boxes have been reviewed,
+  and the complete repository is published to `git@github.com:SpaaceCowboy/termspace.git`
 **Next concrete step:** after `go`, agree or counter the open Phase 1 contract proposal,
   add the required server contracts dependency/import, then implement the auth endpoints
 **Landmines:** the contract proposal for ErrorCode, User, CreateSessionInput, and 16-byte
-  session ids is open; this host runs Node 20.19.2 without a pnpm shim; `web/package.json`
-  has an unrelated uncommitted frontend change that must remain untouched
+  session ids is open; this host runs Node 20.19.2 without a pnpm shim
 **Uncommitted:** none
