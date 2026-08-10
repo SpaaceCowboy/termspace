@@ -93,3 +93,6 @@ Import health response types and fixtures from `@termspace/contracts`; all three
 
 ### 2026-08-10T16:01:26+03:30 · BACKEND · 1 · WIP
 Add tested hashed auth sessions, bounded login throttling, and single-use expiring WebSocket tickets for route wiring.
+
+### 2026-08-10T16:03:12+03:30 · BACKEND · 1 · WIP
+Add strict ClientFrame decoding, exact 16-byte terminal output encoding, and configured WebSocket Origin validation.

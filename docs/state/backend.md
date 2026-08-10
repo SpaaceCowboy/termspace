@@ -13,12 +13,12 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** WebSocket inbound frame and Origin boundary validation
+**Working on:** detached tmux session lifecycle behind a testable interface
 **Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
-  login throttling, and single-use 10-second ticket state machines are implemented and tested
-**Next concrete step:** commit the security stores, then implement zod-validated ClientFrame
-  decoding, exact 16-byte binary output framing, and Origin validation with parser tests
+  login throttling, ticket state, frame codecs, and Origin validation are implemented and tested
+**Next concrete step:** commit the WebSocket boundary codecs, then implement 16-byte session-id
+  generation and detached tmux create/list/delete behavior behind an injectable command runner
 **Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** auth session/rate limiter/ticket stores and tests, progress, state
+**Uncommitted:** frame/origin codecs and tests, progress, state
