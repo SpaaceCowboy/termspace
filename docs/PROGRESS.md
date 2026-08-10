@@ -117,3 +117,9 @@ Compose multiplexed subscription ownership, single-writer headless buffering, re
 
 ### 2026-08-10T16:28:53+03:30 · BACKEND · 1 · WIP
 Add no-cookie WebSocket upgrade handling that checks exact Origin before redeeming one single-use ticket.
+
+### 2026-08-10T16:41:38+03:30 · BACKEND · 1 · WIP
+Compose the live runtime and validate production Origin config; health and foreign-Origin rejection pass live.
+
+### 2026-08-10T16:41:38+03:30 · BACKEND · 1 · BLOCKED
+Frontend proposer: implement the agreed ErrorCode, User, CreateSessionInput, and 16-byte-id proposal in contracts so typed Phase 1 HTTP routes can land.

@@ -1,7 +1,7 @@
-import { buildApp } from './app.js'
 import { readEnvironment } from './config/env.js'
 import { openDatabase } from './database/connection.js'
 import { migrateDatabase } from './database/migrations.js'
+import { createServerRuntime } from './runtime.js'
 
 async function start(): Promise<void> {
   const environment = readEnvironment()
@@ -9,16 +9,15 @@ async function start(): Promise<void> {
 
   try {
     migrateDatabase(database)
-    const app = buildApp({ logger: true })
-    app.addHook('onClose', async () => {
-      database.close()
-    })
-    await app.listen({
+    const runtime = createServerRuntime(database, environment, { logger: true })
+    await runtime.app.listen({
       host: environment.TERMSPACE_HOST,
       port: environment.TERMSPACE_PORT,
     })
   } catch (error) {
-    database.close()
+    if (database.open) {
+      database.close()
+    }
     throw error
   }
 }
