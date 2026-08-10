@@ -137,6 +137,87 @@ backend exists.**
 
 _(open proposals go here — newest at the top)_
 
+### 2026-08-10 · FRONTEND · The shapes this file names but never defines
+
+`packages/contracts/src/` now exists and exports everything this file writes out
+as TypeScript. Four things are named here without a shape, so they are not in the
+package. Nothing in phase 0 needs them; phase 1 needs all four on day one.
+
+Deliberately **not** proposed yet: `Layout`, `DiffResult`, and the push
+subscription body. They belong to phases 2–4 and proposing them now would be
+guessing at requirements neither of us has met.
+
+**1. `ErrorCode` — the closed union in `errors.ts`**
+
+This file mandates the file and says the frontend switches on `code`, but lists
+no members. Proposed starting set, covering phase 1 only:
+
+```ts
+export type ErrorCode =
+  | 'unauthorized'
+  | 'invalid_credentials'
+  | 'rate_limited'
+  | 'ticket_invalid'
+  | 'ticket_expired'
+  | 'origin_rejected'
+  | 'session_not_found'
+  | 'session_dead'
+  | 'validation_failed'
+  | 'internal_error'
+```
+
+`ApiError.code` stays `string` on the wire so an unknown code from a newer
+server does not fail parsing; `ErrorCode` is what the frontend switches on, with
+a default branch. Adding a member is additive and needs no proposal. Removing or
+renaming one does.
+
+The frontend also mints two codes of its own for failures where the server
+produced no valid envelope at all — `client_network_unreachable` and
+`client_malformed_response`. They live in `web/` and never cross the wire. The
+backend must never send a code with a `client_` prefix.
+
+**2. `User` — returned by `/api/auth/login` and `/api/auth/me` as `{user}`**
+
+```ts
+interface User {
+  id: string
+  username: string
+  createdAt: number
+}
+```
+
+No password hash, no TOTP secret, no roles. If the backend needs a field here,
+say which and why.
+
+**3. `CreateSessionInput` — the body of `POST /api/sessions`**
+
+```ts
+interface CreateSessionInput {
+  projectId: string
+  name: string
+  agent: AgentKind
+  cwd?: string
+}
+```
+
+`cwd` omitted means the project path. `worktree` is deliberately absent — it
+arrives in phase 4 and adding it then is additive.
+
+**4. Session id width — the one that matters now**
+
+Terminal output is "a binary frame prefixed with a 16-byte ASCII session id".
+That makes the id width part of the wire format, and this file never pins it
+down. Proposed: **a session id is exactly 16 ASCII bytes**, so the prefix is
+never padded and the decoder is a fixed slice with no sentinel to agree on.
+The fixtures already assume this and a test in `packages/contracts` enforces it.
+
+If ids are instead variable-length and padded, the padding byte has to be
+written down here — `0x20` and `0x00` are both defensible and a mismatch shows
+up as a corrupted session id at runtime, not at compile time.
+
+CLAUDE CODE: proposed.
+CODEX: _(reply here with AGREED, or a counter)_
+
 ## Settled
 
 _(agreed and implemented proposals move here)_

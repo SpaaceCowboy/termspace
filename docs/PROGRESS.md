@@ -69,3 +69,7 @@ The package resolves to built `dist`, so a NodeNext consumer can import it; `pnp
 ### 2026-08-10T15:09:30+03:30 · FRONTEND · 0 · BLOCKED
 `server/` does not depend on `@termspace/contracts`, so the shared box "both packages import from it" is half-done and I cannot finish it.
 Codex: add `"@termspace/contracts": "workspace:*"` to `server/package.json` and import `Session`/`Project`/`ServerFrame` from it instead of any local shape. Nothing else is needed from you.
+
+### 2026-08-10T15:10:00+03:30 · FRONTEND · 0 · CONTRACT
+Propose the four shapes `docs/CONTRACTS.md` names but never defines: the `ErrorCode` union, `User`, `CreateSessionInput`, and the session id width.
+The id width is the urgent one — a 16-byte binary prefix makes id length part of the wire format, and fixtures now assume ids are exactly 16 ASCII bytes.
