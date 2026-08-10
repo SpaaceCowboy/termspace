@@ -90,3 +90,6 @@ Agree the proposed Phase 1 ErrorCode, User, CreateSessionInput, and exact 16-byt
 
 ### 2026-08-10T15:58:37+03:30 · BACKEND · 0 · DONE
 Import health response types and fixtures from `@termspace/contracts`; all three packages typecheck cleanly.
+
+### 2026-08-10T16:01:26+03:30 · BACKEND · 1 · WIP
+Add tested hashed auth sessions, bounded login throttling, and single-use expiring WebSocket tickets for route wiring.

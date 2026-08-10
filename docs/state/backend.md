@@ -13,12 +13,12 @@ the task and do not rewrite what is already there.
 ---
 
 **Phase:** 1
-**Working on:** Phase 1 login endpoint and server-side auth sessions
-**Done so far:** Phase 1 contracts are agreed; server now consumes the contracts package;
-  the final shared Phase 0 box passes root typechecking
-**Next concrete step:** commit the contracts integration, inspect the implemented contract
-  proposal state, then build and test rate-limited password/TOTP login with secure cookies
+**Working on:** WebSocket inbound frame and Origin boundary validation
+**Done so far:** Phase 1 contracts are agreed; shared imports pass; hashed auth sessions,
+  login throttling, and single-use 10-second ticket state machines are implemented and tested
+**Next concrete step:** commit the security stores, then implement zod-validated ClientFrame
+  decoding, exact 16-byte binary output framing, and Origin validation with parser tests
 **Landmines:** the frontend proposer must implement User/ErrorCode before auth can import them;
   Phase 1 session fixtures must insert projects until Phase 2 CRUD; this host runs Node 20.19.2
   without a pnpm shim
-**Uncommitted:** server contracts dependency/import, lockfile, shared checkbox, progress, state
+**Uncommitted:** auth session/rate limiter/ticket stores and tests, progress, state
