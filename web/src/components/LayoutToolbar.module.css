@@ -1,0 +1,35 @@
+.toolbar {
+  display: inline-flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--ts-bg-sunken);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+}
+
+.mode {
+  min-width: 34px;
+  padding: 3px 8px;
+  border: 1px solid transparent;
+  border-radius: calc(var(--ts-radius) - 2px);
+  background: transparent;
+  color: var(--ts-text-dim);
+  font-family: var(--ts-mono);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.mode:hover:not(:disabled) {
+  color: var(--ts-text);
+}
+
+.mode:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+.modeActive {
+  background: var(--ts-bg-raised);
+  border-color: var(--ts-border);
+  color: var(--ts-text);
+}

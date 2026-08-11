@@ -32,6 +32,12 @@
   font-weight: 500;
 }
 
+.topbarRight {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-gap);
+}
+
 .connection {
   display: inline-flex;
   align-items: center;

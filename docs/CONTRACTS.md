@@ -91,7 +91,29 @@ interface Session {
   lastActivityAt: number
   createdAt: number
 }
+
+type LayoutMode = 'single' | 'split' | 'grid' | 'tabs'
+
+interface Layout {
+  mode: LayoutMode
+  slots: readonly (string | null)[]
+  focusedSlot: number
+  updatedAt: number
+}
+
+type LayoutInput = Omit<Layout, 'updatedAt'>
 ```
+
+`slots` is always `LAYOUT_MAX_SLOTS` long whatever the mode, so switching from
+`grid` to `single` and back does not throw away what was in slots 2-4. The mode
+decides how many slots are *live* (`LAYOUT_SLOT_CAPACITY`), not how many exist;
+`tabs` keeps all of them and paints `focusedSlot`. A session id appears at most
+once — two panes on one tmux session would fight over its size.
+
+`normalizeLayout` in `layout.ts` is the single definition of well-formed, shared
+by both sides: the server runs it before storing and the client after every
+local edit. It is total and idempotent, because the failure mode of a rejected
+layout is a workspace that will not render.
 
 ## HTTP surface
 
@@ -113,7 +135,7 @@ Never a bare array, never a bare string. `ApiError` is
 | POST | `/api/projects` | `CreateProjectInput` | `Project` | 2 |
 | DELETE | `/api/projects/:id` | — | `{}` | 2 |
 | GET | `/api/layouts` | — | `Layout` | 2 |
-| PUT | `/api/layouts` | `Layout` | `Layout` | 2 |
+| PUT | `/api/layouts` | `LayoutInput` | `Layout` | 2 |
 | POST | `/api/push/subscribe` | `PushSubscription` | `{}` | 3 |
 | GET | `/api/sessions/:id/diff` | — | `DiffResult` | 4 |
 

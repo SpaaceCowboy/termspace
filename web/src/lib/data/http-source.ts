@@ -1,10 +1,12 @@
-import { CLIENT_ERROR_PREFIX } from '@termspace/contracts'
+import { CLIENT_ERROR_PREFIX, LAYOUT_MODES } from '@termspace/contracts'
 import type {
   ApiResponse,
   AppConfig,
   CreateProjectInput,
   CreateSessionInput,
   HealthData,
+  Layout,
+  LayoutInput,
   LoginInput,
   Project,
   Session,
@@ -70,6 +72,13 @@ const UserSchema = z.object({
   createdAt: z.number(),
 })
 
+const LayoutSchema = z.object({
+  mode: z.enum(LAYOUT_MODES),
+  slots: z.array(z.string().nullable()),
+  focusedSlot: z.number(),
+  updatedAt: z.number(),
+})
+
 const HealthSchema = z.object({ version: z.string() })
 const AppConfigSchema = z.object({ projectRoot: z.string() })
 const UserEnvelopeSchema = z.object({ user: UserSchema })
@@ -79,7 +88,7 @@ const EmptySchema = z.object({}).strict()
 const apiBase = process.env.NEXT_PUBLIC_TERMSPACE_API_BASE ?? ''
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
   json?: unknown
   signal?: AbortSignal | undefined
 }
@@ -158,6 +167,12 @@ export const httpSource: DataSource = {
   },
   listSessions(signal?: AbortSignal): Promise<ApiResponse<Session[]>> {
     return request('/api/sessions', z.array(SessionSchema), { signal })
+  },
+  layout(signal?: AbortSignal): Promise<ApiResponse<Layout>> {
+    return request('/api/layouts', LayoutSchema, { signal })
+  },
+  saveLayout(input: LayoutInput, signal?: AbortSignal): Promise<ApiResponse<Layout>> {
+    return request('/api/layouts', LayoutSchema, { method: 'PUT', json: input, signal })
   },
   login(input: LoginInput, signal?: AbortSignal): Promise<ApiResponse<{ user: User }>> {
     return request('/api/auth/login', UserEnvelopeSchema, {

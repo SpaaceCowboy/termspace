@@ -7,6 +7,8 @@ import {
   binaryOutputFixture,
   clientFrameFixtures,
   createSessionInputFixture,
+  layoutFixture,
+  layoutModeFixtures,
   projectFixtures,
   serverFrameFixtures,
   sessionFixture,
@@ -14,6 +16,7 @@ import {
   sessionStateFixtures,
   visibilityLevelFixtures,
 } from './fixtures.js'
+import { LAYOUT_MODES, normalizeLayout } from './layout.js'
 import { BINARY_SID_BYTES, SESSION_STATES, VISIBILITY_LEVELS } from './transport.js'
 
 const CLIENT_FRAME_KINDS = ['sub', 'unsub', 'in', 'resize', 'vis', 'ping'] as const
@@ -45,6 +48,16 @@ test('every member of a string union has a fixture', () => {
   assert.deepEqual(Object.keys(sessionStateFixtures).sort(), [...SESSION_STATES].sort())
   assert.deepEqual(Object.keys(visibilityLevelFixtures).sort(), [...VISIBILITY_LEVELS].sort())
   assert.deepEqual(Object.keys(agentKindFixtures).sort(), [...AGENT_KINDS].sort())
+  assert.deepEqual(Object.keys(layoutModeFixtures).sort(), [...LAYOUT_MODES].sort())
+})
+
+test('the layout fixture is itself a normal layout of real sessions', () => {
+  const { updatedAt: _ignored, ...input } = layoutFixture
+  assert.deepEqual(normalizeLayout(input), input)
+  const sessionIds = new Set(sessionFixtures.map((session) => session.id))
+  for (const sid of layoutFixture.slots) {
+    assert.ok(sid === null || sessionIds.has(sid), `layout slot holds a ghost session: ${sid}`)
+  }
 })
 
 test('session fixtures reference a project fixture', () => {

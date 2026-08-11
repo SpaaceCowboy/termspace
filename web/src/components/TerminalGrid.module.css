@@ -1,0 +1,224 @@
+.wrap {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-gap);
+}
+
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.tabsEmpty {
+  font-size: 12px;
+  color: var(--ts-text-dim);
+}
+
+.tab {
+  padding: 4px 10px;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-bg-sunken);
+  color: var(--ts-text-dim);
+  font-size: 12px;
+  cursor: pointer;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.tabActive {
+  background: var(--ts-bg-raised);
+  border-color: var(--ts-accent);
+  color: var(--ts-text);
+}
+
+.grid {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  gap: var(--ts-gap);
+  grid-template-columns: 1fr;
+  grid-template-rows: 1fr;
+}
+
+/* `single` and `tabs` paint one pane, so the base grid already fits them. */
+
+.modeSplit {
+  grid-template-columns: 1fr 1fr;
+}
+
+.modeGrid {
+  grid-template-columns: 1fr 1fr;
+  grid-template-rows: 1fr 1fr;
+}
+
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  min-width: 0;
+  background: var(--ts-bg-raised);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  overflow: hidden;
+}
+
+.paneFocused {
+  border-color: var(--ts-accent);
+}
+
+.paneEmpty {
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-style: dashed;
+  background: transparent;
+  padding: 20px;
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  font-size: 13px;
+  color: var(--ts-text-dim);
+}
+
+.emptyActions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.emptyButton {
+  padding: 5px 10px;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-bg-raised);
+  color: var(--ts-text);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.emptyButton:hover {
+  border-color: var(--ts-accent);
+}
+
+.chrome {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--ts-bg-sunken);
+  border-bottom: 1px solid var(--ts-border);
+}
+
+.name {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  font-weight: 600;
+  min-width: 0;
+}
+
+.title {
+  font-weight: 400;
+  color: var(--ts-text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.chromeRight {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex: none;
+}
+
+.pill {
+  padding: 1px 7px;
+  border-radius: 999px;
+  border: 1px solid var(--ts-border);
+  font-size: 10px;
+  font-family: var(--ts-mono);
+  color: var(--ts-text-dim);
+}
+
+.pillWorking {
+  color: var(--ts-state-working);
+  border-color: currentColor;
+}
+
+.pillNeedsYou {
+  color: var(--ts-state-needs-you);
+  border-color: currentColor;
+}
+
+.pillDead {
+  color: var(--ts-state-dead);
+  border-color: currentColor;
+}
+
+.close {
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--ts-radius);
+  background: transparent;
+  color: var(--ts-text-dim);
+  font-size: 15px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.close:hover {
+  color: var(--ts-danger);
+  border-color: var(--ts-border);
+}
+
+.screen {
+  flex: 1;
+  min-height: 0;
+  padding: 6px 8px;
+  background: var(--ts-bg-sunken);
+  overflow: hidden;
+}
+
+.screen :global(.xterm) {
+  height: 100%;
+}
+
+.notice {
+  margin: 0;
+  padding: 5px 10px;
+  background: var(--ts-bg-sunken);
+  border-top: 1px solid var(--ts-border);
+  font-family: var(--ts-mono);
+  font-size: 11px;
+  color: var(--ts-state-needs-you);
+}
+
+.noticeDead {
+  color: var(--ts-state-dead);
+}
+
+@media (max-width: 720px) {
+  .modeSplit,
+  .modeGrid {
+    grid-template-columns: 1fr;
+    grid-template-rows: none;
+    grid-auto-rows: minmax(220px, 1fr);
+    overflow-y: auto;
+  }
+}

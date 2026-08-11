@@ -25,6 +25,8 @@ export interface SidebarProps {
   projects: readonly Project[]
   sessions: readonly Session[]
   selectedId: string | null
+  /** Sessions the layout currently paints, so the sidebar can say where they are. */
+  onScreenIds?: ReadonlySet<string>
   onSelect: (sessionId: string) => void
   onNewSession?: (projectId: string | null) => void
   onNewProject?: () => void
@@ -37,6 +39,7 @@ export function Sidebar({
   projects,
   sessions,
   selectedId,
+  onScreenIds,
   onSelect,
   onNewSession,
   onNewProject,
@@ -64,6 +67,7 @@ export function Sidebar({
           projects={projects}
           sessions={sessions}
           selectedId={selectedId}
+          {...(onScreenIds === undefined ? {} : { onScreenIds })}
           onSelect={onSelect}
           {...(onNewSession === undefined ? {} : { onNewSession })}
           {...(onNewProject === undefined ? {} : { onNewProject })}
@@ -84,6 +88,7 @@ function SidebarBody({
   projects,
   sessions,
   selectedId,
+  onScreenIds,
   onSelect,
   onNewSession,
   loading,
@@ -139,7 +144,10 @@ function SidebarBody({
                 <li key={session.id}>
                   <button
                     type="button"
-                    className={styles.item}
+                    className={cx(
+                      styles.item,
+                      onScreenIds?.has(session.id) === true && styles.itemOnScreen,
+                    )}
                     aria-current={session.id === selectedId}
                     onClick={() => {
                       onSelect(session.id)
@@ -153,6 +161,7 @@ function SidebarBody({
                       <span className={styles.itemName}>{session.name}</span>
                       <span className={styles.itemMeta}>
                         {session.agent} · {STATE_LABEL[session.state]}
+                        {onScreenIds?.has(session.id) === true ? ' · on screen' : ''}
                       </span>
                     </span>
                   </button>

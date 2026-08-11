@@ -3,12 +3,17 @@ import { afterEach, beforeEach, describe, it } from 'node:test'
 
 import type {
   CreateProjectInput,
+  Layout,
+  LayoutInput,
   Project,
   Session,
   User,
   WsTicket,
 } from '@termspace/contracts'
 import {
+  EMPTY_LAYOUT,
+  LAYOUT_MAX_SLOTS,
+  layoutFixture,
   projectFixture,
   projectFixtures,
   sessionFixture,
@@ -152,10 +157,28 @@ class FakeProjects {
   }
 }
 
+/** Stores what it is given, so the route's own normalization is what is tested. */
+class FakeLayouts {
+  readonly stored = new Map<string, Layout>()
+  readonly readFor: string[] = []
+
+  find(userId: string): Layout {
+    this.readFor.push(userId)
+    return this.stored.get(userId) ?? EMPTY_LAYOUT
+  }
+
+  save(userId: string, input: LayoutInput, updatedAt: number): Layout {
+    const layout: Layout = { ...input, updatedAt }
+    this.stored.set(userId, layout)
+    return layout
+  }
+}
+
 describe('Phase 1 HTTP routes', () => {
   let app: FastifyInstance
   let auth: FakeAuth
   let authSessions: FakeAuthSessions
+  let layouts: FakeLayouts
   let limiter: FakeRateLimiter
   let projects: FakeProjects
   let sessions: FakeSessions
@@ -166,6 +189,7 @@ describe('Phase 1 HTTP routes', () => {
     app = Fastify()
     auth = new FakeAuth()
     authSessions = new FakeAuthSessions()
+    layouts = new FakeLayouts()
     limiter = new FakeRateLimiter()
     projects = new FakeProjects()
     sessions = new FakeSessions()
@@ -175,6 +199,7 @@ describe('Phase 1 HTTP routes', () => {
       auth,
       authSessionTtlMs: 60_000,
       authSessions,
+      layouts,
       loginRateLimiter: limiter,
       projects,
       sessions,
@@ -518,13 +543,83 @@ describe('Phase 1 HTTP routes', () => {
     assert.equal(busy.json().error.code, 'validation_failed')
   })
 
-  it('requires authentication for every project route', async () => {
+  it('returns the stored layout for the caller, not for anyone else', async () => {
+    layouts.stored.set(userFixture.id, layoutFixture)
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/layouts',
+      headers: { cookie: SESSION_COOKIE },
+    })
+
+    assert.equal(response.statusCode, 200)
+    assert.deepEqual(response.json(), { ok: true, data: layoutFixture })
+    assert.deepEqual(layouts.readFor, [userFixture.id])
+  })
+
+  it('saves a layout, stamping the time itself and echoing it back', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/layouts',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { mode: 'split', slots: [sessionFixture.id], focusedSlot: 0 },
+    })
+
+    assert.equal(response.statusCode, 200)
+    const body = response.json()
+    assert.equal(body.ok, true)
+    assert.equal(body.data.mode, 'split')
+    assert.equal(body.data.slots.length, LAYOUT_MAX_SLOTS)
+    assert.ok(body.data.updatedAt > 0, 'the server stamps updatedAt')
+  })
+
+  it('empties a slot naming a session that no longer exists, keeping the rest', async () => {
+    const response = await app.inject({
+      method: 'PUT',
+      url: '/api/layouts',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        mode: 'grid',
+        slots: ['ses_deleted00001', sessionFixture.id],
+        focusedSlot: 0,
+      },
+    })
+
+    assert.equal(response.statusCode, 200)
+    const saved = response.json().data
+    assert.deepEqual(saved.slots.slice(0, 2), [null, sessionFixture.id])
+    // Focus followed the surviving session rather than sitting on a dead slot.
+    assert.equal(saved.focusedSlot, 1)
+  })
+
+  it('refuses a malformed layout instead of storing it', async () => {
+    for (const payload of [
+      { mode: 'mosaic', slots: [], focusedSlot: 0 },
+      { mode: 'grid', slots: ['too-short'], focusedSlot: 0 },
+      { mode: 'grid', slots: [], focusedSlot: -1 },
+      { mode: 'grid', slots: new Array(LAYOUT_MAX_SLOTS + 1).fill(null), focusedSlot: 0 },
+      { mode: 'grid', slots: [], focusedSlot: 0, extra: true },
+    ]) {
+      const response = await app.inject({
+        method: 'PUT',
+        url: '/api/layouts',
+        headers: { cookie: SESSION_COOKIE },
+        payload,
+      })
+      assert.equal(response.statusCode, 400, JSON.stringify(payload))
+      assert.equal(response.json().error.code, 'validation_failed')
+    }
+    assert.equal(layouts.stored.size, 0)
+  })
+
+  it('requires authentication for every project and layout route', async () => {
     user = null
     for (const [method, url] of [
       ['GET', '/api/config'],
       ['GET', '/api/projects'],
       ['POST', '/api/projects'],
       ['DELETE', `/api/projects/${projectFixture.id}`],
+      ['GET', '/api/layouts'],
+      ['PUT', '/api/layouts'],
     ] as const) {
       const response = await app.inject({ method, url, headers: { cookie: SESSION_COOKIE } })
       assert.equal(response.statusCode, 401, `${method} ${url}`)
@@ -532,5 +627,6 @@ describe('Phase 1 HTTP routes', () => {
     }
     assert.equal(projects.createdInput, undefined)
     assert.deepEqual(projects.deleted, [])
+    assert.equal(layouts.stored.size, 0)
   })
 })

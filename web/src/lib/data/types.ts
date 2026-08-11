@@ -4,6 +4,8 @@ import type {
   CreateProjectInput,
   CreateSessionInput,
   HealthData,
+  Layout,
+  LayoutInput,
   LoginInput,
   Project,
   Session,
@@ -24,6 +26,8 @@ export interface DataSource {
   ): Promise<ApiResponse<Project>>
   deleteProject(projectId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>>
   listSessions(signal?: AbortSignal): Promise<ApiResponse<Session[]>>
+  layout(signal?: AbortSignal): Promise<ApiResponse<Layout>>
+  saveLayout(input: LayoutInput, signal?: AbortSignal): Promise<ApiResponse<Layout>>
   login(input: LoginInput, signal?: AbortSignal): Promise<ApiResponse<{ user: User }>>
   logout(signal?: AbortSignal): Promise<ApiResponse<Empty>>
   me(signal?: AbortSignal): Promise<ApiResponse<{ user: User }>>

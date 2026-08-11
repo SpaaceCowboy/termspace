@@ -1,6 +1,8 @@
 import {
   appConfigFixture,
   healthDataFixture,
+  layoutFixture,
+  normalizeLayout,
   projectFixtures,
   sessionFixtures,
   userFixture,
@@ -9,6 +11,8 @@ import {
   type CreateProjectInput,
   type CreateSessionInput,
   type HealthData,
+  type Layout,
+  type LayoutInput,
   type LoginInput,
   type Project,
   type Session,
@@ -31,6 +35,13 @@ function fail<T>(code: string, message: string): Promise<ApiResponse<T>> {
 
 const liveSessions: Session[] = [...sessionFixtures]
 const liveProjects: Project[] = [...projectFixtures]
+let liveLayout: Layout = layoutFixture
+
+/** The same pruning the server does, so the fixture cannot show a ghost pane. */
+function pruneLayout(layout: Layout): Layout {
+  const knownSessionIds = new Set(liveSessions.map((session) => session.id))
+  return { ...normalizeLayout(layout, { knownSessionIds }), updatedAt: layout.updatedAt }
+}
 
 export const fixtureSource: DataSource = {
   kind: 'fixtures',
@@ -74,6 +85,14 @@ export const fixtureSource: DataSource = {
   },
   listSessions(): Promise<ApiResponse<Session[]>> {
     return ok([...liveSessions])
+  },
+  layout(): Promise<ApiResponse<Layout>> {
+    liveLayout = pruneLayout(liveLayout)
+    return ok(liveLayout)
+  },
+  saveLayout(input: LayoutInput): Promise<ApiResponse<Layout>> {
+    liveLayout = pruneLayout({ ...input, updatedAt: Date.now() })
+    return ok(liveLayout)
   },
   login(input: LoginInput): Promise<ApiResponse<{ user: User }>> {
     if (input.totp === REJECTED_TOTP) {

@@ -5,13 +5,21 @@ import type {
   CreateProjectInput,
   CreateSessionInput,
   ErrorCode,
+  Layout,
+  LayoutInput,
   LoginInput,
   Project,
   Session,
   User,
   WsTicket,
 } from '@termspace/contracts'
-import { AGENT_KINDS, BINARY_SID_BYTES } from '@termspace/contracts'
+import {
+  AGENT_KINDS,
+  BINARY_SID_BYTES,
+  LAYOUT_MAX_SLOTS,
+  LAYOUT_MODES,
+  normalizeLayout,
+} from '@termspace/contracts'
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
@@ -83,11 +91,19 @@ const CreateProjectInputSchema = z
   })
   .strict()
 
+const SessionIdSchema = z.string().length(BINARY_SID_BYTES).regex(/^[A-Za-z0-9_-]+$/)
+
+const LayoutInputSchema = z
+  .object({
+    mode: z.enum(LAYOUT_MODES),
+    slots: z.array(SessionIdSchema.nullable()).max(LAYOUT_MAX_SLOTS),
+    focusedSlot: z.number().int().min(0).max(LAYOUT_MAX_SLOTS - 1),
+  })
+  .strict()
+
 const ProjectParamsSchema = z.object({ id: z.string().min(1).max(128) })
 
-const SessionParamsSchema = z.object({
-  id: z.string().length(BINARY_SID_BYTES).regex(/^[A-Za-z0-9_-]+$/),
-})
+const SessionParamsSchema = z.object({ id: SessionIdSchema })
 const EmptyBodySchema = z.undefined()
 
 interface UserReader {
@@ -130,6 +146,11 @@ interface ProjectOperations {
   list(): readonly Project[]
 }
 
+interface LayoutOperations {
+  find(userId: string, knownSessionIds: ReadonlySet<string>): Layout
+  save(userId: string, input: LayoutInput, updatedAt: number): Layout
+}
+
 interface Tickets {
   issue(userId: string): WsTicket
 }
@@ -138,6 +159,7 @@ export interface Phase1RouteServices {
   readonly auth: Authenticator
   readonly authSessionTtlMs: number
   readonly authSessions: AuthSessions
+  readonly layouts: LayoutOperations
   readonly loginRateLimiter: RateLimiter
   readonly projects: ProjectOperations
   readonly sessions: SessionOperations
@@ -354,6 +376,37 @@ export function registerPhase1Routes(
     }
   })
 
+  app.get('/api/layouts', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    return ok<Layout>(services.layouts.find(user.id, liveSessionIds(services)))
+  })
+
+  app.put('/api/layouts', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    const parsed = LayoutInputSchema.safeParse(request.body)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return sendError(
+        reply,
+        400,
+        'validation_failed',
+        'Invalid layout.',
+        issue?.path[0] === undefined ? undefined : String(issue.path[0]),
+      )
+    }
+    // A slot naming a session that has since been deleted is emptied rather
+    // than refused: the client is describing what it wants on screen, and one
+    // stale id is no reason to lose the rest of the arrangement.
+    const layout = normalizeLayout(parsed.data, { knownSessionIds: liveSessionIds(services) })
+    return ok<Layout>(services.layouts.save(user.id, layout, Date.now()))
+  })
+
   app.get('/api/sessions', async (request, reply) => {
     if (resolveAuthenticatedUser(request, services) === null) {
       return sendError(reply, 401, 'unauthorized', 'Authentication required.')
@@ -459,6 +512,10 @@ function resolveAuthenticatedUser(
   }
   const userId = services.authSessions.resolve(token)
   return userId === null ? null : services.users.findById(userId)
+}
+
+function liveSessionIds(services: Phase1RouteServices): ReadonlySet<string> {
+  return new Set(services.sessions.list().map((session) => session.id))
 }
 
 function ok<T>(data: T): ApiOk<T> {

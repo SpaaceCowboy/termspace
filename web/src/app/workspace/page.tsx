@@ -1,16 +1,26 @@
 'use client'
 
-import type { Project, ServerFrame, Session } from '@termspace/contracts'
+import type { LayoutMode, Project, ServerFrame, Session } from '@termspace/contracts'
+import { normalizeLayout } from '@termspace/contracts'
 import { useRouter } from 'next/navigation'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionBadge } from '@/components/ConnectionBadge'
+import { LayoutToolbar } from '@/components/LayoutToolbar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
-import { PanePlaceholder } from '@/components/PanePlaceholder'
 import { Sidebar } from '@/components/Sidebar'
-import { TerminalPane, type PaneHandle } from '@/components/TerminalPane'
+import { TerminalGrid } from '@/components/TerminalGrid'
 import { dataSource } from '@/lib/data'
+import {
+  clearSlot,
+  focusSlot,
+  liveSessionIds,
+  setMode,
+  showSession,
+} from '@/lib/layout/layout-actions.ts'
+import { useLayout } from '@/lib/layout/useLayout.ts'
+import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
 import { useSocket } from '@/lib/socket/useSocket.ts'
 
 import styles from './workspace.module.css'
@@ -22,7 +32,6 @@ export default function WorkspacePage() {
   const [auth, setAuth] = useState<AuthState>('checking')
   const [projects, setProjects] = useState<readonly Project[]>([])
   const [sessions, setSessions] = useState<readonly Session[]>([])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
@@ -32,61 +41,63 @@ export default function WorkspacePage() {
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
 
-  const panesRef = useRef(new Map<string, PaneHandle>())
+  const live = dataSource.kind === 'http'
+  const authenticated = auth === 'authenticated'
+  const { layout, saveError, apply } = useLayout(authenticated)
 
-  const registerPane = useCallback((sid: string, handle: PaneHandle | null) => {
-    if (handle === null) {
-      panesRef.current.delete(sid)
-      return
-    }
-    panesRef.current.set(sid, handle)
-  }, [])
+  // The socket handlers and the pane store need each other: frames feed the
+  // store, and the store sends on the socket. The ref is what breaks the knot.
+  const panesRef = useRef<PanesApi | null>(null)
 
-  const onFrame = useCallback((frame: ServerFrame) => {
-    switch (frame.t) {
-      case 'restore':
-        panesRef.current.get(frame.sid)?.restore(frame.data)
-        setNotice(null)
-        return
-      case 'truncated':
-        setNotice('Output was truncated to keep up. The screen was resynced.')
-        return
-      case 'exit':
-        setDeadSessions((current) => new Set(current).add(frame.sid))
-        setNotice(
-          frame.code === null
-            ? 'The session ended.'
-            : `The session exited with code ${String(frame.code)}.`,
-        )
-        return
-      case 'status':
-        setSessions((current) =>
-          current.map((session) =>
-            session.id === frame.sid ? { ...session, state: frame.state } : session,
-          ),
-        )
-        return
-      case 'title':
-        setSessions((current) =>
-          current.map((session) =>
-            session.id === frame.sid ? { ...session, title: frame.title } : session,
-          ),
-        )
-        return
-      case 'error':
-        setNotice(frame.message)
-        return
-      case 'pong':
-        return
-    }
-  }, [])
+  const onFrame = useCallback(
+    (frame: ServerFrame) => {
+      switch (frame.t) {
+        case 'restore':
+          panesRef.current?.restore(frame.sid, frame.data)
+          setNotice(null)
+          return
+        case 'truncated':
+          setNotice('Output was truncated to keep up. The screen was resynced.')
+          return
+        case 'exit':
+          setDeadSessions((current) => new Set(current).add(frame.sid))
+          setNotice(
+            frame.code === null
+              ? 'The session ended.'
+              : `The session exited with code ${String(frame.code)}.`,
+          )
+          return
+        case 'status':
+          setSessions((current) =>
+            current.map((session) =>
+              session.id === frame.sid ? { ...session, state: frame.state } : session,
+            ),
+          )
+          return
+        case 'title':
+          setSessions((current) =>
+            current.map((session) =>
+              session.id === frame.sid ? { ...session, title: frame.title } : session,
+            ),
+          )
+          return
+        case 'error':
+          setNotice(frame.message)
+          return
+        case 'pong':
+          return
+      }
+    },
+    [],
+  )
 
   const onOutput = useCallback((sid: string, bytes: Uint8Array) => {
-    panesRef.current.get(sid)?.write(bytes)
+    panesRef.current?.write(sid, bytes)
   }, [])
 
-  const live = dataSource.kind === 'http'
-  const socket = useSocket({ onFrame, onOutput }, live && auth === 'authenticated')
+  const socket = useSocket({ onFrame, onOutput }, live && authenticated)
+  const panes = usePanes(socket, live && authenticated)
+  panesRef.current = panes
 
   useEffect(() => {
     const controller = new AbortController()
@@ -114,7 +125,7 @@ export default function WorkspacePage() {
   }, [router])
 
   useEffect(() => {
-    if (auth !== 'authenticated') {
+    if (!authenticated) {
       return
     }
     const controller = new AbortController()
@@ -140,7 +151,17 @@ export default function WorkspacePage() {
         setError(projectResponse.ok ? null : projectResponse.error.message)
         setProjects(projectResponse.ok ? projectResponse.data : [])
         setSessions(sessionResponse.data)
-        setSelectedId((current) => current ?? sessionResponse.data[0]?.id ?? null)
+
+        const known = new Set(sessionResponse.data.map((session) => session.id))
+        apply((current) => {
+          const pruned = normalizeLayout(current, { knownSessionIds: known })
+          // A layout with nothing in it is not a layout anyone chose; put the
+          // first session on screen rather than opening on an empty grid.
+          const first = sessionResponse.data[0]
+          return liveSessionIds(pruned).length === 0 && first !== undefined
+            ? showSession(pruned, first.id)
+            : pruned
+        })
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) {
@@ -155,18 +176,21 @@ export default function WorkspacePage() {
     return () => {
       controller.abort()
     }
-  }, [auth])
+  }, [apply, authenticated])
 
   const openSessionDialog = useCallback((forProjectId: string | null) => {
     setSessionDialogFor(forProjectId)
     setSessionDialogOpen(true)
   }, [])
 
-  const onSessionCreated = useCallback((session: Session) => {
-    setSessions((current) => [...current, session])
-    setSelectedId(session.id)
-    setSessionDialogOpen(false)
-  }, [])
+  const onSessionCreated = useCallback(
+    (session: Session) => {
+      setSessions((current) => [...current, session])
+      apply((current) => showSession(current, session.id))
+      setSessionDialogOpen(false)
+    },
+    [apply],
+  )
 
   const onProjectCreated = useCallback((project: Project) => {
     setProjects((current) => [...current, project])
@@ -177,9 +201,45 @@ export default function WorkspacePage() {
     setSessionDialogOpen(true)
   }, [])
 
-  const selected = sessions.find((session) => session.id === selectedId) ?? null
+  const onSelectSession = useCallback(
+    (sid: string) => {
+      apply((current) => showSession(current, sid))
+    },
+    [apply],
+  )
 
-  if (auth !== 'authenticated') {
+  const onFocusSlot = useCallback(
+    (index: number) => {
+      apply((current) => focusSlot(current, index))
+    },
+    [apply],
+  )
+
+  const onClearSlot = useCallback(
+    (index: number) => {
+      apply((current) => clearSlot(current, index))
+    },
+    [apply],
+  )
+
+  const onModeChange = useCallback(
+    (mode: LayoutMode) => {
+      apply((current) => setMode(current, mode))
+    },
+    [apply],
+  )
+
+  const focusedSessionId = layout.slots[layout.focusedSlot] ?? null
+  const onScreenIds = useMemo(() => new Set(liveSessionIds(layout)), [layout])
+  const focusedSession =
+    sessions.find((session) => session.id === focusedSessionId) ?? null
+
+  const banner =
+    socket.state === 'dead'
+      ? 'Disconnected. Reload to reconnect.'
+      : (saveError ?? notice)
+
+  if (!authenticated) {
     return (
       <main className={styles.gate}>
         <p role="status">
@@ -197,8 +257,9 @@ export default function WorkspacePage() {
       <Sidebar
         projects={projects}
         sessions={sessions}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
+        selectedId={focusedSessionId}
+        onScreenIds={onScreenIds}
+        onSelect={onSelectSession}
         onNewSession={openSessionDialog}
         onNewProject={() => {
           setProjectDialogOpen(true)
@@ -210,23 +271,26 @@ export default function WorkspacePage() {
       <main className={styles.main} id="workspace-main">
         <div className={styles.topbar}>
           <p className={styles.crumbs}>
-            workspace / <span className={styles.crumbCurrent}>{selected?.name ?? 'no session'}</span>
+            workspace /{' '}
+            <span className={styles.crumbCurrent}>{focusedSession?.name ?? 'no session'}</span>
           </p>
-          <ConnectionBadge state={socket.state} />
+          <div className={styles.topbarRight}>
+            <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
+            <ConnectionBadge state={socket.state} />
+          </div>
         </div>
-        <div className={styles.grid}>
-          {selected === null ? (
+
+        {sessions.length === 0 ? (
+          <div className={styles.grid}>
             <div className={styles.empty}>
               {loading ? (
                 <p>Loading sessions…</p>
               ) : (
                 <>
                   <p>
-                    {sessions.length === 0
-                      ? projects.length === 0
-                        ? 'No projects yet. Add one, then start a session in it.'
-                        : 'No sessions yet.'
-                      : 'No session selected.'}
+                    {projects.length === 0
+                      ? 'No projects yet. Add one, then start a session in it.'
+                      : 'No sessions yet.'}
                   </p>
                   <button
                     type="button"
@@ -244,19 +308,22 @@ export default function WorkspacePage() {
                 </>
               )}
             </div>
-          ) : !live ? (
-            <PanePlaceholder session={selected} />
-          ) : (
-            <TerminalPane
-              key={selected.id}
-              session={selected}
-              socket={socket}
-              register={registerPane}
-              notice={socket.state === 'dead' ? 'Disconnected. Reload to reconnect.' : notice}
-              dead={deadSessions.has(selected.id)}
-            />
-          )}
-        </div>
+          </div>
+        ) : (
+          <TerminalGrid
+            layout={layout}
+            sessions={sessions}
+            panes={panes}
+            live={live}
+            deadSessions={deadSessions}
+            notice={banner}
+            onFocusSlot={onFocusSlot}
+            onClearSlot={onClearSlot}
+            onNewSession={() => {
+              openSessionDialog(null)
+            }}
+          />
+        )}
       </main>
 
       <NewSessionDialog

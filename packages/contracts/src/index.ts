@@ -17,6 +17,16 @@ export type {
 } from './core.js'
 export { AGENT_KINDS } from './core.js'
 
+export type { Layout, LayoutInput, LayoutMode, NormalizeLayoutOptions } from './layout.js'
+export {
+  EMPTY_LAYOUT,
+  LAYOUT_MAX_SLOTS,
+  LAYOUT_MODES,
+  LAYOUT_SLOT_CAPACITY,
+  layoutSlotIndices,
+  normalizeLayout,
+} from './layout.js'
+
 export type { LoginInput, User, WsTicket } from './auth.js'
 
 export type { ErrorCode } from './errors.js'

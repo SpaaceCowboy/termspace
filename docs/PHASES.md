@@ -72,13 +72,14 @@ miniature — do not move on until it is true.
 - [x] Projects CRUD; `POST /api/projects` accepts an existing path or a git URL to clone
 - [x] Sessions belong to a project; `agent` field (`claude` | `codex` | `shell`)
 - [ ] Launch command per agent type, configurable per project
-- [ ] `GET /api/layouts` / `PUT /api/layouts` per user
+- [x] `GET /api/layouts` / `PUT /api/layouts` per user
 
 **Frontend (Claude Code)**
 - [x] Project sidebar, sessions nested under projects
-- [ ] Grid layout: 1 / 2 / 2×2 / tabs, switchable, persisted via layouts API
-- [ ] Hidden panes hold a headless `Terminal` and never call `open()`
-- [ ] WebGL renderer on the focused pane only, canvas elsewhere
+- [x] Grid layout: 1 / 2 / 2×2 / tabs, switchable, persisted via layouts API
+- [x] Hidden panes hold a headless `Terminal` and never call `open()`
+- [x] WebGL renderer on the focused pane only, xterm's own renderer elsewhere
+      (`@xterm/addon-canvas` has no release for xterm 6 — see PROGRESS 2026-08-11)
 - [x] New-session dialog: project + agent picker
 - [x] New-project dialog (not originally listed, but without it the app cannot
       be used from a browser at all)

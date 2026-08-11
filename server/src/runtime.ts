@@ -8,6 +8,7 @@ import { AuthSessionStore } from './auth/session-store.js'
 import { UserRepository } from './auth/user-repository.js'
 import type { Environment } from './config/env.js'
 import { registerPhase1Routes } from './http/routes.js'
+import { LayoutRepository } from './layouts/layout-repository.js'
 import { ProjectManager } from './projects/project-manager.js'
 import { ProjectRepository } from './projects/project-repository.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
@@ -26,6 +27,7 @@ import { WebSocketGatewayServer } from './ws/websocket-server.js'
 export interface ServerRuntimeServices {
   readonly auth: AuthService
   readonly authSessions: AuthSessionStore
+  readonly layouts: LayoutRepository
   readonly loginRateLimiter: LoginRateLimiter
   readonly projects: ProjectManager
   readonly sessions: SessionManager
@@ -58,6 +60,7 @@ export function createServerRuntime(
   const processes = new ExecFileProcessRunner()
   const tmux = new TmuxClient(processes)
   const sessions = new SessionManager(sessionRepository, tmux)
+  const layouts = new LayoutRepository(database)
   const projects = new ProjectManager(
     new ProjectRepository(database),
     processes,
@@ -67,6 +70,7 @@ export function createServerRuntime(
     auth,
     authSessionTtlMs: environment.TERMSPACE_AUTH_SESSION_TTL_MS,
     authSessions,
+    layouts,
     loginRateLimiter,
     projects,
     sessions,
@@ -110,6 +114,7 @@ export function createServerRuntime(
     services: {
       auth,
       authSessions,
+      layouts,
       loginRateLimiter,
       projects,
       sessions,

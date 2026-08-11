@@ -8,6 +8,8 @@ import type {
 } from './core.js'
 import type { ErrorCode } from './errors.js'
 import type { ApiErr, ApiError, ApiOk, AppConfig, HealthData } from './http.js'
+import { LAYOUT_MAX_SLOTS } from './layout.js'
+import type { Layout, LayoutInput, LayoutMode } from './layout.js'
 import { BINARY_SID_BYTES } from './transport.js'
 import type {
   ClientFrame,
@@ -163,6 +165,23 @@ export const createSessionInputFixture: CreateSessionInput = {
   name: 'portal-ui',
   agent: 'claude',
 }
+
+export const layoutModeFixtures: Readonly<Record<LayoutMode, LayoutMode>> = {
+  single: 'single',
+  split: 'split',
+  grid: 'grid',
+  tabs: 'tabs',
+}
+
+export const layoutInputFixture: LayoutInput = {
+  mode: 'split',
+  slots: Array.from({ length: LAYOUT_MAX_SLOTS }, (_, index) =>
+    index < sessionFixtures.length ? (sessionFixtures[index]?.id ?? null) : null,
+  ),
+  focusedSlot: 0,
+}
+
+export const layoutFixture: Layout = { ...layoutInputFixture, updatedAt: FIXED_NOW - 60_000 }
 
 export const errorCodeFixture: ErrorCode = 'session_not_found'
 

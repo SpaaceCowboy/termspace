@@ -188,3 +188,49 @@ and creating a project goes straight on to creating a session in it.
 Verified cold from an empty database: sign in, read config, add a project, start
 a session, attach, `pwd` in the project directory, restart the gateway, and both
 are still there. Nothing in that path needs curl or SQL any more.
+
+### 2026-08-11T15:40:00+03:30 · SOLO · 2 · CONTRACT
+Add `Layout`, `LayoutInput`, `LayoutMode`, and `normalizeLayout` to contracts.
+`slots` is always `LAYOUT_MAX_SLOTS` (8) long whatever the mode, so narrowing
+from `grid` to `single` and back does not throw away what was in slots 2-4 —
+the mode decides how many slots are live, not how many exist. A session id
+appears at most once: two panes on one tmux session would fight over its size.
+`normalizeLayout` is the single definition of well-formed and is shared by both
+sides — the server runs it before storing, the client after every local edit.
+It is total and idempotent, because the failure mode of a rejected layout is a
+workspace that will not render.
+
+### 2026-08-11T15:40:00+03:30 · SOLO · 2 · DONE
+Slice 3 — layouts and the grid. `GET`/`PUT /api/layouts`, keyed by user, with a
+`LayoutRepository` that validates stored JSON on the way out rather than
+trusting it, and empties slots whose session no longer exists so deleting a
+session in one tab cannot leave a ghost pane in another.
+
+The grid renders 1 / 2 / 2×2 / tabs, switchable from a toolbar and persisted
+debounced. Terminals now live in a `PaneStore` outside React, one per subscribed
+session, so re-rendering, changing mode, or switching tabs never costs a
+reattach. A pane that is not on screen holds a headless terminal — created,
+written to, never `open()`ed — and stays subscribed, so its screen is current
+the instant it is shown. Moving between headless and open rehosts through a
+serialized snapshot instead of asking the server for the screen again. Output
+arriving mid-rehost is held and replayed in order rather than dropped.
+
+Verified against the real gateway, database, and tmux: 15/15 checks on the
+layouts API, including that a four-pane grid round-trips, that narrowing to one
+pane keeps the other three parked, that a session cannot occupy two panes, that
+a slot naming a deleted session is emptied rather than the whole write refused,
+that malformed layouts are rejected without disturbing what is stored, and that
+deleting a session empties its pane on the next read.
+
+### 2026-08-11T15:40:00+03:30 · SOLO · 2 · DECISION
+WebGL stays confined to the focused pane, but the other panes get xterm's own
+renderer rather than the canvas addon: `@xterm/addon-canvas` has no release for
+xterm 6 (its latest still peers `@xterm/xterm ^5.0.0`), while fit, serialize,
+and webgl all do. This deviates from the letter of the "canvas elsewhere" rule
+in `CLAUDE.md` and keeps what the rule protects — browsers cap live WebGL
+contexts and a blown context renders blank.
+
+### 2026-08-11T15:40:00+03:30 · SOLO · 2 · DECISION
+`next.config.ts` takes `TERMSPACE_DIST_DIR`. A `pnpm build` run while a
+`next dev` is up on the same checkout leaves both with a half-written `.next`,
+and the symptom is a dev server serving HTML for chunks that 404.

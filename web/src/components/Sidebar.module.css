@@ -128,9 +128,14 @@
   background: var(--ts-bg-raised);
 }
 
+/* On screen somewhere in the grid, but not the pane with focus. */
+.itemOnScreen {
+  border-color: var(--ts-border);
+}
+
 .item[aria-current='true'] {
   background: var(--ts-bg-raised);
-  border-color: var(--ts-border);
+  border-color: var(--ts-accent);
 }
 
 .dot {
