@@ -9,6 +9,7 @@ import type {
   LayoutInput,
   LoginInput,
   Project,
+  PushSubscriptionInput,
   Session,
   UpdateProjectInput,
   User,
@@ -91,6 +92,7 @@ const HealthSchema = z.object({ version: z.string() })
 export const AppConfigSchema = z.object({
   projectRoot: z.string(),
   projectRootWritable: z.boolean(),
+  pushPublicKey: z.string().nullable(),
   defaultAgentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
 })
 const UserEnvelopeSchema = z.object({ user: UserSchema })
@@ -179,6 +181,23 @@ export const httpSource: DataSource = {
     return request(`/api/projects/${encodeURIComponent(projectId)}`, ProjectSchema, {
       method: 'PATCH',
       json: input,
+      signal,
+    })
+  },
+  subscribeToPush(
+    subscription: PushSubscriptionInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Empty>> {
+    return request('/api/push/subscriptions', EmptySchema, {
+      method: 'POST',
+      json: subscription,
+      signal,
+    })
+  },
+  unsubscribeFromPush(endpoint: string, signal?: AbortSignal): Promise<ApiResponse<Empty>> {
+    return request('/api/push/subscriptions', EmptySchema, {
+      method: 'DELETE',
+      json: { endpoint },
       signal,
     })
   },

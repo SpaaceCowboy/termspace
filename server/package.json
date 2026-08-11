@@ -13,11 +13,13 @@
     "seed:user": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env dist/seed/seed-user-cli.js",
     "start": "node --env-file-if-exists=.env dist/index.js",
     "test": "tsc -p tsconfig.build.json && node --test dist/*.test.js dist/**/*.test.js",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "vapid:generate": "tsc -p tsconfig.build.json && node dist/push/generate-vapid-cli.js"
   },
   "devDependencies": {
     "@types/better-sqlite3": "^9.6.0",
     "@types/node": "^22.0.0",
+    "@types/web-push": "^3.6.4",
     "@types/ws": "^8.18.1",
     "typescript": "^5.9.2"
   },
@@ -30,6 +32,7 @@
     "fastify": "^5.11.3",
     "node-pty": "1.0.0",
     "otplib": "^13.4.1",
+    "web-push": "^3.6.7",
     "ws": "^8.21.3",
     "zod": "^4.4.3"
   }

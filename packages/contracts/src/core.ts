@@ -90,3 +90,24 @@ export interface CreateSessionInput {
 }
 
 export const AGENT_KINDS = ['claude', 'codex', 'shell'] as const
+
+/**
+ * A browser's push endpoint, exactly as `PushSubscription.toJSON()` produces
+ * it. The keys are opaque base64url: the server never decodes them, it hands
+ * them to the push protocol implementation.
+ */
+export interface PushSubscriptionInput {
+  endpoint: string
+  keys: {
+    p256dh: string
+    auth: string
+  }
+}
+
+/** What the server tells the client about its own push registration. */
+export interface PushStatus {
+  /** False when the server has no VAPID keys configured; the UI hides push. */
+  enabled: boolean
+  /** Registered endpoints for this user, so the UI can say "this device is on". */
+  subscriptionCount: number
+}

@@ -15,6 +15,8 @@ export type {
   CreateProjectInput,
   CreateSessionInput,
   Project,
+  PushStatus,
+  PushSubscriptionInput,
   Session,
   UpdateProjectInput,
 } from './core.js'

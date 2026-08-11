@@ -9,6 +9,8 @@ import type {
   LayoutInput,
   LoginInput,
   Project,
+  PushStatus,
+  PushSubscriptionInput,
   Session,
   UpdateProjectInput,
   User,
@@ -89,6 +91,19 @@ const RepoUrlSchema = z
 const AgentCommandOverridesInputSchema = z
   .object(Object.fromEntries(AGENT_KINDS.map((kind) => [kind, AgentCommandSchema.optional()])))
   .strict()
+
+/**
+ * Exactly what `PushSubscription.toJSON()` produces. The keys are opaque
+ * base64url that only the push protocol reads, so they are bounded and checked
+ * for shape rather than decoded here.
+ */
+const PushSubscriptionInputSchema = z.object({
+  endpoint: z.url().max(2_048),
+  keys: z.object({
+    p256dh: z.string().min(1).max(256),
+    auth: z.string().min(1).max(256),
+  }),
+})
 
 const UpdateProjectInputSchema = z.object({
   agentCommands: AgentCommandOverridesInputSchema.optional(),
@@ -173,6 +188,14 @@ interface ProjectOperations {
   list(): readonly Project[]
 }
 
+interface PushOperations {
+  /** Null when the server has no VAPID keys; the UI hides push entirely. */
+  readonly publicKey: string | null
+  subscribe(userId: string, subscription: PushSubscriptionInput): void
+  unsubscribe(userId: string, endpoint: string): boolean
+  count(userId: string): number
+}
+
 interface LayoutOperations {
   find(userId: string, knownSessionIds: ReadonlySet<string>): Layout
   save(userId: string, input: LayoutInput, updatedAt: number): Layout
@@ -189,6 +212,7 @@ export interface Phase1RouteServices {
   readonly layouts: LayoutOperations
   readonly loginRateLimiter: RateLimiter
   readonly projects: ProjectOperations
+  readonly push: PushOperations
   readonly sessions: SessionOperations
   readonly tickets: Tickets
   readonly users: UserReader
@@ -288,7 +312,73 @@ export function registerPhase1Routes(
       projectRoot: services.projects.projectRoot,
       projectRootWritable: await services.projects.projectRootWritable(),
       defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+      pushPublicKey: services.push.publicKey,
     })
+  })
+
+  app.get('/api/push', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    return ok<PushStatus>({
+      enabled: services.push.publicKey !== null,
+      subscriptionCount: services.push.count(user.id),
+    })
+  })
+
+  app.post('/api/push/subscriptions', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    if (services.push.publicKey === null) {
+      // A server misconfiguration, not a client mistake: the UI only offers
+      // push when `GET /api/config` says it is available.
+      return sendError(
+        reply,
+        500,
+        'internal_error',
+        'Push is not configured on this server.',
+      )
+    }
+    const parsed = PushSubscriptionInputSchema.safeParse(request.body)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return sendError(
+        reply,
+        400,
+        'validation_failed',
+        'Invalid push subscription.',
+        issue?.path[0] === undefined ? undefined : String(issue.path[0]),
+      )
+    }
+    try {
+      services.push.subscribe(user.id, parsed.data)
+      reply.code(201)
+      return ok<Record<string, never>>({})
+    } catch (error) {
+      request.log.error({ err: error }, 'Push subscription failed')
+      return sendError(reply, 500, 'internal_error', 'Internal server error.')
+    }
+  })
+
+  app.delete('/api/push/subscriptions', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    const parsed = z
+      .object({ endpoint: z.url().max(2_048) })
+      .safeParse(request.body)
+    if (!parsed.success) {
+      return sendError(reply, 400, 'validation_failed', 'Invalid endpoint.', 'endpoint')
+    }
+    // Idempotent on purpose: unsubscribing something already gone is the
+    // outcome the caller wanted, and a browser can revoke permission without
+    // telling us first.
+    services.push.unsubscribe(user.id, parsed.data.endpoint)
+    return ok<Record<string, never>>({})
   })
 
   app.get('/api/projects', async (request, reply) => {

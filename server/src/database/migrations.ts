@@ -75,6 +75,30 @@ const migrations: readonly Migration[] = [
         CHECK (json_valid(agent_commands));
     `,
   },
+  {
+    version: 3,
+    name: 'push_subscriptions',
+    /**
+     * One row per browser that asked to be notified. `endpoint` is the identity
+     * — the same browser re-subscribing produces the same endpoint — so it is
+     * UNIQUE and a re-register is an upsert rather than a duplicate.
+     *
+     * Deleted with the user, because a subscription is permission granted by a
+     * person and must not outlive them.
+     */
+    sql: `
+      CREATE TABLE push_subscriptions (
+        endpoint TEXT PRIMARY KEY,
+        user_id TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        p256dh TEXT NOT NULL,
+        auth TEXT NOT NULL,
+        created_at INTEGER NOT NULL,
+        last_used_at INTEGER
+      ) STRICT;
+
+      CREATE INDEX push_subscriptions_user_id_idx ON push_subscriptions(user_id);
+    `,
+  },
 ]
 
 export interface MigrationResult {

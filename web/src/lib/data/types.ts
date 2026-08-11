@@ -8,6 +8,7 @@ import type {
   LayoutInput,
   LoginInput,
   Project,
+  PushSubscriptionInput,
   Session,
   UpdateProjectInput,
   User,
@@ -31,6 +32,11 @@ export interface DataSource {
     signal?: AbortSignal,
   ): Promise<ApiResponse<Project>>
   deleteProject(projectId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>>
+  subscribeToPush(
+    subscription: PushSubscriptionInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Empty>>
+  unsubscribeFromPush(endpoint: string, signal?: AbortSignal): Promise<ApiResponse<Empty>>
   listSessions(signal?: AbortSignal): Promise<ApiResponse<Session[]>>
   layout(signal?: AbortSignal): Promise<ApiResponse<Layout>>
   saveLayout(input: LayoutInput, signal?: AbortSignal): Promise<ApiResponse<Layout>>

@@ -42,6 +42,12 @@ export interface AppConfig {
    * UI can show the real command as a placeholder instead of inventing one.
    */
   defaultAgentCommands: Record<AgentKind, AgentCommand>
+  /**
+   * The VAPID public key a browser needs to subscribe, or null when push is
+   * not configured. Null is the signal for the UI to hide push entirely rather
+   * than offer something that cannot work.
+   */
+  pushPublicKey: string | null
 }
 
 export function isApiOk<T>(response: ApiResponse<T>): response is ApiOk<T> {

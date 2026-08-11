@@ -93,6 +93,12 @@ export const fixtureSource: DataSource = {
     liveProjects[index] = updated
     return ok(updated)
   },
+  subscribeToPush(): Promise<ApiResponse<Empty>> {
+    return ok({})
+  },
+  unsubscribeFromPush(): Promise<ApiResponse<Empty>> {
+    return ok({})
+  },
   deleteProject(projectId: string): Promise<ApiResponse<Empty>> {
     const index = liveProjects.findIndex((project) => project.id === projectId)
     if (index === -1) {

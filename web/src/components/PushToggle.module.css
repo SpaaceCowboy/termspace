@@ -1,0 +1,50 @@
+.wrap {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--ts-space-2);
+  padding: var(--ts-space-1) var(--ts-space-3);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-bg-sunken);
+  color: var(--ts-text-faint);
+  font-size: var(--ts-text-sm);
+  transition: background var(--ts-ease), color var(--ts-ease), border-color var(--ts-ease);
+}
+
+.toggle:hover:not(:disabled) {
+  background: var(--ts-bg-raised);
+  color: var(--ts-text);
+  border-color: var(--ts-border-strong);
+}
+
+.toggleOn,
+.toggleOn:hover:not(:disabled) {
+  background: var(--ts-accent-quiet);
+  border-color: var(--ts-accent);
+  color: var(--ts-accent);
+}
+
+.toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+
+/* Not a button: nothing in the page can undo a browser-level block. */
+.blocked {
+  font-size: var(--ts-text-sm);
+  color: var(--ts-text-faint);
+  cursor: help;
+}
+
+.error {
+  max-width: 34ch;
+  font-size: var(--ts-text-sm);
+  color: var(--ts-danger);
+  line-height: 1.4;
+}

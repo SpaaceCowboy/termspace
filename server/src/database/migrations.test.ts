@@ -22,8 +22,8 @@ describe('migrateDatabase', () => {
 
   it('creates every Phase 0 table in one ordered migration', () => {
     assert.deepEqual(migrateDatabase(database), {
-      applied: ['initial_schema', 'project_agent_commands'],
-      currentVersion: 2,
+      applied: ['initial_schema', 'project_agent_commands', 'push_subscriptions'],
+      currentVersion: 3,
     })
 
     const rows = database
@@ -36,6 +36,7 @@ describe('migrateDatabase', () => {
     assert.deepEqual(names, [
       'layouts',
       'projects',
+      'push_subscriptions',
       'schema_migrations',
       'sessions',
       'users',
@@ -46,7 +47,7 @@ describe('migrateDatabase', () => {
     migrateDatabase(database)
     assert.deepEqual(migrateDatabase(database), {
       applied: [],
-      currentVersion: 2,
+      currentVersion: 3,
     })
   })
 

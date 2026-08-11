@@ -21,6 +21,9 @@ import { ExecFileProcessRunner } from './tmux/process-runner.js'
 import { TmuxClient } from './tmux/tmux-client.js'
 import { GatewayConnection } from './ws/gateway-connection.js'
 import { SessionActivityTracker } from './activity/activity-tracker.js'
+import { PushNotifier } from './push/push-notifier.js'
+import { PushSubscriptionRepository } from './push/push-repository.js'
+import { createWebPushSender, readVapidConfig } from './push/web-push-sender.js'
 import { SessionFeedCoordinator } from './ws/session-feed-coordinator.js'
 import { TicketStore } from './ws/ticket-store.js'
 import { WebSocketGatewayServer } from './ws/websocket-server.js'
@@ -58,6 +61,8 @@ export function createServerRuntime(
   })
   const tickets = new TicketStore({ ttlMs: 10_000 })
   const sessionRepository = new SessionRepository(database)
+  const pushRepository = new PushSubscriptionRepository(database)
+  const vapid = readVapidConfig(environment)
   const processes = new ExecFileProcessRunner()
   const tmux = new TmuxClient(processes)
   const sessions = new SessionManager(sessionRepository, tmux)
@@ -74,6 +79,14 @@ export function createServerRuntime(
     layouts,
     loginRateLimiter,
     projects,
+    push: {
+      publicKey: vapid?.publicKey ?? null,
+      subscribe: (userId, subscription) => {
+        pushRepository.save(userId, subscription, Date.now())
+      },
+      unsubscribe: (userId, endpoint) => pushRepository.delete(userId, endpoint),
+      count: (userId) => pushRepository.countForUser(userId),
+    },
     sessions,
     tickets,
     users,
@@ -91,6 +104,19 @@ export function createServerRuntime(
    * have to agree about it.
    */
   const activity = new SessionActivityTracker({ onError: onGatewayError })
+  const pushNotifier =
+    vapid === null
+      ? null
+      : new PushNotifier({
+          repository: pushRepository,
+          sender: createWebPushSender(vapid),
+          onError: onGatewayError,
+          log: (event) => {
+            // Outcome and latency, never the payload.
+            app.log.info(event, 'Push delivery')
+          },
+        })
+
   activity.listen((change) => {
     try {
       sessionRepository.updateState(change.sessionId, change.state, change.since)
@@ -98,6 +124,15 @@ export function createServerRuntime(
       // A write failure must not stop the frame reaching the browser.
       onGatewayError(error)
     }
+    if (change.state !== 'needs-you' || pushNotifier === null) {
+      return
+    }
+    const session = sessions.find(change.sessionId)
+    if (session === null) {
+      return
+    }
+    // Fire and forget: a slow push service must never hold up a status frame.
+    void pushNotifier.notifyAll(session).catch(onGatewayError)
   })
   const gateway = new WebSocketGatewayServer(app.server, {
     allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN,

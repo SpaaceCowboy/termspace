@@ -600,3 +600,55 @@ nothing, and the derived state survives into the database. 163/163 server,
 87/87 web, 25/25 contracts.
 
 Not done in this slice: auto-title, Web Push, and the output coalescing tiers.
+
+### 2026-08-11T18:20:00+03:30 · SOLO · 3 · DONE
+Web Push, both halves. A session entering `needs-you` now notifies every device
+that asked to be notified, and tapping the notification focuses that pane.
+
+`web-push` is a new dependency and it earns it: Web Push needs VAPID JWT signing
+plus RFC 8291 payload encryption (ECDH, HKDF, AES128GCM). That is exactly the
+crypto not to hand-roll. It is confined behind a `PushSender` interface, so the
+notifier's fan-out, expiry handling and logging are tested without crypto, a
+network, or a push service.
+
+Decisions worth keeping:
+- **Push is optional.** Without a VAPID pair the server boots with push off and
+  `GET /api/config` reports a null public key, so the UI hides the feature
+  rather than offering a button that cannot work. A *half* configured pair is
+  refused at startup, because the symptom otherwise is notifications that
+  silently never arrive.
+- **The payload carries no terminal output.** It crosses a third-party push
+  service, so it says a session wants attention and nothing about what the
+  session is doing. There is a test asserting exactly that shape.
+- **An expired endpoint (404/410) is deleted, a failure is kept.** The push
+  service is a vendor: a permanently dead endpoint must not be retried forever,
+  and a transient 502 must not throw away a real device.
+- **Every send has a timeout.** `web-push` has none of its own, and a hung
+  request would hold a notification open indefinitely.
+- **Delivery logs outcome and latency, never the payload.**
+- **The permission prompt is only raised from a click.** A browser asked for
+  notification permission without a gesture denies it permanently, with no way
+  back.
+- **Unsubscribe tells the server first**, then the browser. The other order
+  leaves the server pushing to an endpoint that no longer exists.
+- **Notification click prefers an existing tab** over opening a second one —
+  every tab holds its own WebSocket and terminals — and falls back to a URL
+  parameter when no tab is open, since a worker cannot postMessage into a page
+  that does not exist yet.
+- Sessions have no owner in the schema, so a `needs-you` notifies every
+  subscribed user. `listSubscribedUserIds` is the seam that has to narrow if
+  sessions ever gain an owner.
+
+Verified 14/14 against a real gateway, including a **real encrypted,
+VAPID-signed delivery** to a TLS endpoint — the test stands up an HTTPS server
+and a genuine P-256 key pair, because `web-push` speaks TLS whatever the
+endpoint scheme says, and a placeholder key fails inside the crypto without ever
+reaching the network. Both of those were found by this test rather than
+reasoned about. 171/171 server, 92/92 web, 25/25 contracts.
+
+Also learned, and now used by the test: an `agent: claude` session launches the
+real Claude TUI, so typed text lands in its input box rather than running. The
+test overrides the launch command to a plain shell while keeping the agent kind,
+which is the per-project launch command feature paying for itself.
+
+Left in phase 3: auto-title, and the output coalescing tiers by visibility.

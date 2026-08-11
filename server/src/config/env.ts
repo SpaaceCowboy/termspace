@@ -32,8 +32,33 @@ const EnvironmentSchema = z
       .refine((value) => value.startsWith('/'), 'Must be an absolute path')
       .refine((value) => !value.includes('\0'), 'Must not contain a null byte')
       .default('/srv/projects'),
+    /**
+     * Web Push is optional. Both keys must be present or push is simply off —
+     * a half-configured pair is a mistake worth refusing, since the symptom
+     * otherwise is notifications that silently never arrive.
+     */
+    TERMSPACE_VAPID_PUBLIC_KEY: z.string().min(1).optional(),
+    TERMSPACE_VAPID_PRIVATE_KEY: z.string().min(1).optional(),
+    TERMSPACE_VAPID_SUBJECT: z
+      .string()
+      .min(1)
+      .refine(
+        (value) => value.startsWith('mailto:') || value.startsWith('https://'),
+        'Must be a mailto: or https: URL',
+      )
+      .optional(),
   })
   .superRefine((environment, context) => {
+    const hasPublic = environment.TERMSPACE_VAPID_PUBLIC_KEY !== undefined
+    const hasPrivate = environment.TERMSPACE_VAPID_PRIVATE_KEY !== undefined
+    if (hasPublic !== hasPrivate) {
+      context.addIssue({
+        code: 'custom',
+        message:
+          'TERMSPACE_VAPID_PUBLIC_KEY and TERMSPACE_VAPID_PRIVATE_KEY must be set together',
+        path: [hasPublic ? 'TERMSPACE_VAPID_PRIVATE_KEY' : 'TERMSPACE_VAPID_PUBLIC_KEY'],
+      })
+    }
     if (
       environment.NODE_ENV === 'production' &&
       environment.TERMSPACE_ALLOWED_ORIGIN === undefined

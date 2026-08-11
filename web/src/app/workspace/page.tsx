@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionBadge } from '@/components/ConnectionBadge'
+import { PushToggle } from '@/components/PushToggle'
 import { LayoutToolbar } from '@/components/LayoutToolbar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -29,6 +30,7 @@ import {
   withoutSession,
 } from '@/lib/layout/layout-actions.ts'
 import { useLayout } from '@/lib/layout/useLayout.ts'
+import { usePush } from '@/lib/push/usePush.ts'
 import { documentTitle } from '@/lib/session-summary.ts'
 import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
 import { useSocket } from '@/lib/socket/useSocket.ts'
@@ -52,6 +54,7 @@ export default function WorkspacePage() {
     AgentKind,
     readonly string[]
   > | null>(null)
+  const [pushPublicKey, setPushPublicKey] = useState<string | null>(null)
   /** The project whose launch commands are being edited, if any. */
   const [settingsFor, setSettingsFor] = useState<string | null>(null)
   /** Pending destructive confirmations, by id. */
@@ -181,6 +184,7 @@ export default function WorkspacePage() {
         setDefaultAgentCommands(
           configResponse.ok ? configResponse.data.defaultAgentCommands : null,
         )
+        setPushPublicKey(configResponse.ok ? configResponse.data.pushPublicKey : null)
         setProjectRootWritable(
           configResponse.ok ? configResponse.data.projectRootWritable : true,
         )
@@ -277,6 +281,54 @@ export default function WorkspacePage() {
     }
   }, [sessions])
 
+  const push = usePush(pushPublicKey, authenticated)
+
+  /*
+   * Tapping a notification focuses the pane it came from. The worker prefers an
+   * existing tab over opening a second one — each tab holds its own socket and
+   * terminals — so the request arrives as a message rather than as navigation.
+   */
+  useEffect(() => {
+    if (!authenticated || typeof navigator === 'undefined' || !('serviceWorker' in navigator)) {
+      return
+    }
+    const onMessage = (event: MessageEvent<unknown>): void => {
+      const data = event.data
+      if (
+        typeof data !== 'object' ||
+        data === null ||
+        (data as { type?: unknown }).type !== 'focus-session'
+      ) {
+        return
+      }
+      const sid = (data as { sessionId?: unknown }).sessionId
+      if (typeof sid === 'string') {
+        apply((current) => showSession(current, sid))
+      }
+    }
+    navigator.serviceWorker.addEventListener('message', onMessage)
+    return () => {
+      navigator.serviceWorker.removeEventListener('message', onMessage)
+    }
+  }, [apply, authenticated])
+
+  /*
+   * Opened straight from a notification, with no tab already running: the
+   * worker cannot postMessage into a page that does not exist yet, so the
+   * session arrives in the URL instead.
+   */
+  useEffect(() => {
+    if (!authenticated || typeof window === 'undefined') {
+      return
+    }
+    const requested = new URLSearchParams(window.location.search).get('session')
+    if (requested === null) {
+      return
+    }
+    apply((current) => showSession(current, requested))
+    window.history.replaceState(null, '', '/workspace')
+  }, [apply, authenticated])
+
   const onSelectSession = useCallback(
     (sid: string) => {
       apply((current) => showSession(current, sid))
@@ -361,6 +413,7 @@ export default function WorkspacePage() {
           </p>
           <div className={styles.topbarRight}>
             <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
+            <PushToggle push={push} available={pushPublicKey !== null} />
             <ConnectionBadge state={socket.state} />
           </div>
         </div>

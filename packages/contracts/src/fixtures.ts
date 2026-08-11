@@ -196,6 +196,7 @@ export const appConfigFixture: AppConfig = {
   projectRoot: '/srv/projects',
   projectRootWritable: true,
   defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+  pushPublicKey: 'BExampleVapidPublicKeyForFixturesOnly0000000000000000000000000000000000000000000000000',
 }
 
 export const apiErrorFixture: ApiError = {

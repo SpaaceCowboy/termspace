@@ -202,8 +202,10 @@ describe('Phase 1 HTTP routes', () => {
   let sessions: FakeSessions
   let user: User | null
   let issuedTicket: WsTicket
+  let pushSubscriptions: { userId: string; endpoint: string }[]
 
   beforeEach(() => {
+    pushSubscriptions = []
     app = Fastify()
     auth = new FakeAuth()
     authSessions = new FakeAuthSessions()
@@ -220,6 +222,21 @@ describe('Phase 1 HTTP routes', () => {
       layouts,
       loginRateLimiter: limiter,
       projects,
+      push: {
+        publicKey: 'BFakeVapidPublicKey',
+        subscribe: (userId, subscription) => {
+          pushSubscriptions.push({ userId, endpoint: subscription.endpoint })
+        },
+        unsubscribe: (_userId, endpoint) => {
+          const index = pushSubscriptions.findIndex((entry) => entry.endpoint === endpoint)
+          if (index === -1) {
+            return false
+          }
+          pushSubscriptions.splice(index, 1)
+          return true
+        },
+        count: () => pushSubscriptions.length,
+      },
       sessions,
       tickets: { issue: () => issuedTicket },
       users: { findById: () => user },
@@ -652,6 +669,7 @@ describe('Phase 1 HTTP routes', () => {
         projectRoot: '/srv/projects',
         projectRootWritable: true,
         defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+        pushPublicKey: 'BFakeVapidPublicKey',
       },
     })
 
