@@ -93,3 +93,28 @@ WebSocket upgrade was verified to survive the proxy.
 **Consequence** — `next dev` is in the request path in development, and the
 gateway location is a build-time concern (`TERMSPACE_GATEWAY_ORIGIN`) rather
 than a runtime one. A production deploy must keep both on one origin.
+
+## 5. Project directories are confined to a configured root
+2026-08-11 · Claude Code · Status: accepted
+
+**Context** — `POST /api/projects` took any absolute path, and `POST
+/api/sessions` took any existing `cwd` regardless of which project it claimed.
+On a public VPS that means a project, and therefore an agent's working
+directory, could be `$HOME` or the app's own data directory.
+
+**Options** — (a) leave it open, on the grounds that a session is already an
+arbitrary shell so confinement proves nothing; (b) confine project paths to a
+configured root and a session's `cwd` to its own project; (c) a real sandbox
+per session (containers, bubblewrap).
+
+**Choice** — (b). (a) is right about security and wrong about everything else:
+the point is not to stop an attacker who already has a session, it is that
+phase 5's systemd unit cannot declare `ReadWritePaths` if projects can live
+anywhere, agents cause accidental damage through cwd, and backups need one
+tree. (c) is a different product.
+
+**Consequence** — `TERMSPACE_PROJECT_ROOT` (default `/srv/projects`) must exist
+and be writable by the app user, or every project creation fails. Adopting a
+repo that already lives elsewhere on the box now needs a move or a bind mount.
+The check is on the normalized path string, so a symlink under the root that
+points outside it is not caught.

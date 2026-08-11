@@ -1,5 +1,11 @@
 import type { LoginInput, User, WsTicket } from './auth.js'
-import type { AgentKind, CreateSessionInput, Project, Session } from './core.js'
+import type {
+  AgentKind,
+  CreateProjectInput,
+  CreateSessionInput,
+  Project,
+  Session,
+} from './core.js'
 import type { ErrorCode } from './errors.js'
 import type { ApiErr, ApiError, ApiOk, HealthData } from './http.js'
 import { BINARY_SID_BYTES } from './transport.js'
@@ -142,6 +148,14 @@ export const loginInputFixture: LoginInput = {
 export const wsTicketFixture: WsTicket = {
   ticket: 'tkt_01HZX0TICKET00000000000000000001',
   expiresAt: FIXED_NOW + 10_000,
+}
+
+export const createProjectInputFixture: CreateProjectInput = {
+  name: 'Portal UI',
+  path: '/srv/projects/portal-ui',
+  repoUrl: 'git@github.com:example/portal-ui.git',
+  defaultBranch: 'main',
+  setupCommand: 'pnpm install',
 }
 
 export const createSessionInputFixture: CreateSessionInput = {

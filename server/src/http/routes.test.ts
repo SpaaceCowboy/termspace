@@ -1,10 +1,28 @@
 import assert from 'node:assert/strict'
 import { afterEach, beforeEach, describe, it } from 'node:test'
 
-import type { Session, User, WsTicket } from '@termspace/contracts'
-import { sessionFixture, userFixture } from '@termspace/contracts'
+import type {
+  CreateProjectInput,
+  Project,
+  Session,
+  User,
+  WsTicket,
+} from '@termspace/contracts'
+import {
+  projectFixture,
+  projectFixtures,
+  sessionFixture,
+  userFixture,
+} from '@termspace/contracts'
 import Fastify, { type FastifyInstance } from 'fastify'
 
+import {
+  ProjectCloneFailedError,
+  ProjectConflictError,
+  ProjectHasSessionsError,
+  ProjectPathMissingError,
+  ProjectPathOccupiedError,
+} from '../projects/project-manager.js'
 import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
 import { registerPhase1Routes, type Phase1RouteServices } from './routes.js'
 
@@ -100,11 +118,45 @@ class FakeSessions {
   }
 }
 
+class FakeProjects {
+  createdInput: CreateProjectInput | undefined
+  createError: Error | undefined
+  deleteError: Error | undefined
+  deleteResult = true
+  readonly deleted: string[] = []
+
+  async create(input: CreateProjectInput): Promise<Project> {
+    this.createdInput = input
+    if (this.createError !== undefined) {
+      throw this.createError
+    }
+    return projectFixture
+  }
+
+  list(): readonly Project[] {
+    return projectFixtures
+  }
+
+  /** A method, not an assignment: assigning would narrow the field to `undefined`. */
+  forget(): void {
+    this.createdInput = undefined
+  }
+
+  delete(projectId: string): boolean {
+    this.deleted.push(projectId)
+    if (this.deleteError !== undefined) {
+      throw this.deleteError
+    }
+    return this.deleteResult
+  }
+}
+
 describe('Phase 1 HTTP routes', () => {
   let app: FastifyInstance
   let auth: FakeAuth
   let authSessions: FakeAuthSessions
   let limiter: FakeRateLimiter
+  let projects: FakeProjects
   let sessions: FakeSessions
   let user: User | null
   let issuedTicket: WsTicket
@@ -114,6 +166,7 @@ describe('Phase 1 HTTP routes', () => {
     auth = new FakeAuth()
     authSessions = new FakeAuthSessions()
     limiter = new FakeRateLimiter()
+    projects = new FakeProjects()
     sessions = new FakeSessions()
     user = userFixture
     issuedTicket = { ticket: 'b'.repeat(43), expiresAt: 10_000 }
@@ -122,6 +175,7 @@ describe('Phase 1 HTTP routes', () => {
       authSessionTtlMs: 60_000,
       authSessions,
       loginRateLimiter: limiter,
+      projects,
       sessions,
       tickets: { issue: () => issuedTicket },
       users: { findById: () => user },
@@ -311,5 +365,170 @@ describe('Phase 1 HTTP routes', () => {
       ok: false,
       error: { code: 'validation_failed', message: 'Invalid request.' },
     })
+  })
+
+  it('lists, creates, and deletes projects through the contract envelope', async () => {
+    const listed = await app.inject({
+      method: 'GET',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(listed.statusCode, 200)
+    assert.deepEqual(listed.json(), { ok: true, data: projectFixtures })
+
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { name: 'Portal UI', path: '/srv/projects/portal-ui' },
+    })
+    assert.equal(created.statusCode, 201)
+    assert.deepEqual(created.json(), { ok: true, data: projectFixture })
+    // An absent optional must stay absent, not arrive as an explicit undefined.
+    assert.deepEqual(projects.createdInput, {
+      name: 'Portal UI',
+      path: '/srv/projects/portal-ui',
+    })
+
+    const deleted = await app.inject({
+      method: 'DELETE',
+      url: `/api/projects/${projectFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(deleted.statusCode, 200)
+    assert.deepEqual(projects.deleted, [projectFixture.id])
+  })
+
+  it('passes the optional project fields through when they are present', async () => {
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        name: 'Portal UI',
+        path: '/srv/projects/portal-ui',
+        repoUrl: 'https://github.com/example/portal-ui.git',
+        defaultBranch: 'develop',
+        setupCommand: 'pnpm install',
+      },
+    })
+    assert.equal(response.statusCode, 201)
+    assert.deepEqual(projects.createdInput, {
+      name: 'Portal UI',
+      path: '/srv/projects/portal-ui',
+      repoUrl: 'https://github.com/example/portal-ui.git',
+      defaultBranch: 'develop',
+      setupCommand: 'pnpm install',
+    })
+  })
+
+  it('refuses repo URLs and branches that would reach a git argv', async () => {
+    for (const repoUrl of [
+      'ext::sh -c whoami',
+      'file:///etc/passwd',
+      '--upload-pack=touch /tmp/pwned',
+      '-u./payload',
+      'relative/path.git',
+      'https://example.com/a b.git',
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/projects',
+        headers: { cookie: SESSION_COOKIE },
+        payload: { name: 'Evil', path: '/srv/projects/evil', repoUrl },
+      })
+      assert.equal(response.statusCode, 400, `accepted repoUrl ${repoUrl}`)
+      assert.equal(response.json().error.field, 'repoUrl')
+    }
+
+    const branch = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        name: 'Evil',
+        path: '/srv/projects/evil',
+        repoUrl: 'https://github.com/example/x.git',
+        defaultBranch: '--upload-pack=id',
+      },
+    })
+    assert.equal(branch.statusCode, 400)
+    assert.equal(branch.json().error.field, 'defaultBranch')
+    assert.equal(projects.createdInput, undefined)
+  })
+
+  it('accepts the transports we do clone over, including a local bare repo', async () => {
+    for (const repoUrl of [
+      'https://github.com/example/x.git',
+      'ssh://git@github.com/example/x.git',
+      'git://github.com/example/x.git',
+      'git@github.com:example/x.git',
+      '/srv/repos/x.git',
+    ]) {
+      projects.forget()
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/projects',
+        headers: { cookie: SESSION_COOKIE },
+        payload: { name: 'Fine', path: '/srv/projects/fine', repoUrl },
+      })
+      assert.equal(response.statusCode, 201, `refused repoUrl ${repoUrl}`)
+      assert.equal(projects.createdInput?.repoUrl, repoUrl)
+    }
+  })
+
+  it('maps project failures to contract errors with the offending field', async () => {
+    const cases: [Error, string, string][] = [
+      [new ProjectPathMissingError('missing'), 'validation_failed', 'path'],
+      [new ProjectPathOccupiedError('occupied'), 'validation_failed', 'path'],
+      [new ProjectConflictError('conflict'), 'validation_failed', 'path'],
+      [new ProjectCloneFailedError('clone'), 'validation_failed', 'repoUrl'],
+    ]
+    for (const [error, code, field] of cases) {
+      projects.createError = error
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/projects',
+        headers: { cookie: SESSION_COOKIE },
+        payload: { name: 'Portal UI', path: '/srv/projects/portal-ui' },
+      })
+      assert.equal(response.statusCode, 400, error.constructor.name)
+      assert.equal(response.json().error.code, code)
+      assert.equal(response.json().error.field, field)
+    }
+
+    projects.createError = undefined
+    projects.deleteResult = false
+    const missing = await app.inject({
+      method: 'DELETE',
+      url: '/api/projects/prj_missing',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(missing.statusCode, 404)
+    assert.equal(missing.json().error.code, 'project_not_found')
+
+    projects.deleteError = new ProjectHasSessionsError('busy')
+    const busy = await app.inject({
+      method: 'DELETE',
+      url: `/api/projects/${projectFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(busy.statusCode, 400)
+    assert.equal(busy.json().error.code, 'validation_failed')
+  })
+
+  it('requires authentication for every project route', async () => {
+    user = null
+    for (const [method, url] of [
+      ['GET', '/api/projects'],
+      ['POST', '/api/projects'],
+      ['DELETE', `/api/projects/${projectFixture.id}`],
+    ] as const) {
+      const response = await app.inject({ method, url, headers: { cookie: SESSION_COOKIE } })
+      assert.equal(response.statusCode, 401, `${method} ${url}`)
+      assert.equal(response.json().error.code, 'unauthorized')
+    }
+    assert.equal(projects.createdInput, undefined)
+    assert.deepEqual(projects.deleted, [])
   })
 })

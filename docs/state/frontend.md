@@ -1,54 +1,79 @@
-# Current state — frontend (Claude Code)
+# Current state — Termspace (solo)
 
-Overwritten, never appended. This is "where was I", not history — history lives
-in `docs/PROGRESS.md`.
+As of 2026-08-11 this is a solo project: Codex is out and I own `server/**`,
+`web/**`, and `packages/contracts/**`. The two-agent ceremony in `CLAUDE.md`
+(BLOCKED entries, contract proposals, per-agent gates, `docs/state/backend.md`
+being off-limits) no longer applies. The hard technical rules there still do.
 
-Rewrite this file every time you stop working: at the end of a session, when
-you finish a task, when you switch tasks, and especially when you are running
-low on context. Read it first at every session start, before `PROGRESS.md`.
-
-If it says you were mid-task, resume from `Next concrete step`. Do not restart
-the task and do not rewrite what is already there.
+Overwritten, never appended. Read it first at every session start.
 
 ---
 
-**Phase:** 1 — frontend gate ticked, waiting on the human for `SHIP 1`
-**Working on:** nothing in flight. All five phase 1 frontend boxes are done.
-**Done so far:** frame codec (`web/src/lib/socket/frame-codec.ts`), backoff,
-  `GatewayClient` + `useSocket`, live `TerminalPane`, working login with
-  per-`ErrorCode` messages and redirect, connection badge, auth guard on
-  `/workspace`. Data layer extended to the full phase 1 HTTP surface and now
-  defaults to the real backend. Next proxies `/api/*` and `/ws` in dev.
-  Verified live end to end against Codex's gateway, including the exit criteria
-  restart test. Tests: contracts 12, web 33, server 80. Typecheck and build clean.
-**Next concrete step:** do not start phase 2 until the human says `SHIP 1`.
-  When they do, the first box is the project sidebar with sessions nested under
-  projects, which needs `GET /api/projects` — a phase 2 backend box that does not
-  exist yet, so build it against `fixtureSource.listProjects()` and flip over
-  when Codex lands it. Before that, read `docs/PROGRESS.md` for the phase 2
-  `Layout` contract: it is still undefined and both the grid-layout box and the
-  layouts API depend on it, so propose it early rather than mid-task.
+**Phase:** 2 — it becomes a workspace. Slice 1 of 3 landed.
+
+**Working on:** phase 2 in vertical slices — each feature through the whole
+stack before the next, so every slice is usable when it lands.
+
+**Done so far:**
+- Phase 1 re-validated from scratch, not taken on trust. Typecheck clean, tests
+  green, and the exit criterion driven for real: SIGKILL the gateway, restart,
+  reattach, and the scrollback marker plus the backgrounded process survive.
+  Also verified single-use tickets, `Origin` rejection, and that a rejected
+  foreign-origin upgrade does not burn the ticket.
+- The two frame codecs were cross-checked against each other in both
+  directions, including a UTF-8 char split across two binary frames.
+- **Slice 1 — projects.** `CreateProjectInput` and `project_not_found` in
+  contracts; `ProjectRepository` + `ProjectManager` (slug uniqueness, path
+  normalization, adopt-or-clone, refuses to delete a project with sessions);
+  `GET/POST/DELETE /api/projects`; data layer `createProject`/`deleteProject` on
+  both fixture and http sources; sidebar nests sessions under their projects
+  with an "Unknown project" group so an orphaned session is never unreachable.
+  Validated against the real gateway including a real `git clone`.
+
+**Next concrete step:** slice 2 — the new-session dialog (project + agent
+picker), wired to `POST /api/sessions`, opened from the `+` on each sidebar
+project group. `Sidebar` already takes an optional `onNewSession(projectId)`
+that the workspace page does not pass yet; that is the hook to fill in. This is
+what makes the app self-sufficient — right now a session still cannot be created
+from the browser. Slice 3 is layouts (needs a `Layout` contract type, still
+undefined) plus the grid, headless hidden panes, and WebGL-on-focused-only.
+
 **Landmines:**
-- `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20.19.2
+- `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
   against a `>=22` engine. Use
   `export PATH="$HOME/.nvm/versions/node/v24.16.0/bin:$PATH"` plus a `pnpm` shim
-  that execs `corepack pnpm`, or root scripts die with `pnpm: not found`.
-- `node-pty`'s prebuilt binding is compiled for Node 22 (ABI 127) and will not
-  load on Node 24 (ABI 137). I rebuilt it in place with `npm rebuild` inside
-  `node_modules/.pnpm/node-pty@1.0.0/node_modules/node-pty`. A fresh
-  `pnpm install` will undo that and the gateway will refuse to boot.
-- Port 3000 is taken by an unrelated app on this box. Use `PORT=3100 pnpm dev`,
-  and start the gateway with `TERMSPACE_ALLOWED_ORIGIN=http://localhost:3100`
-  or the WebSocket upgrade is rejected.
-- Auth sessions are in memory server-side, so a gateway restart invalidates the
-  cookie. The client treats a 401 on the ticket as fatal and goes `dead` rather
-  than retrying forever; that is deliberate, not a bug.
+  that execs `corepack pnpm`.
+- `node-pty`'s prebuilt binding is for Node 22 (ABI 127) and will not load on
+  Node 24. Rebuild with `npm rebuild` inside
+  `node_modules/.pnpm/node-pty@1.0.0/node_modules/node-pty`. **Any `pnpm install`
+  undoes this** and the gateway then refuses to boot.
+- When killing test gateways, match on `termspace/server/dist/index.js`. A bare
+  `pkill -f dist/index.js` also matches the invoking shell. An orphaned gateway
+  answers health checks against a deleted database and silently invalidates a
+  test run.
+- Port 3000 is taken by another app; web defaults to 3002. Whatever port the
+  browser uses must match `TERMSPACE_ALLOWED_ORIGIN` or the WS upgrade fails.
+- Auth sessions are in memory, so a gateway restart forces a re-login. The
+  client treats a 401 on the ticket as fatal and goes `dead` deliberately.
+- `exactOptionalPropertyTypes` is on: an absent optional and an explicit
+  `undefined` are different types. Build inputs with conditional spreads, and in
+  tests reset a fake's field through a method — assigning narrows it to `never`.
 - Node's type stripping needs explicit `.ts` extensions on relative imports in
-  anything `node --test` executes. `web/src/lib/**` uses them; components do not
-  because only the bundler loads those.
-- Creating a session needs a row in `projects`; there is no projects API until
-  phase 2, so any manual test has to insert one directly.
-- `docs/CONTRACTS.md` has the literal string `` `## Settled` `` in its rules
-  prose. Anchor scripts on a full-line match or you will corrupt the file.
-- Compose CSS module class names with `cx()`; they are typed `string | undefined`.
-**Uncommitted:** none.
+  anything `node --test` runs. Logic that needs testing goes in `web/src/lib/**`,
+  not in a `.tsx` — a component's CSS module import cannot be loaded by the
+  test runner.
+- `TERMSPACE_PROJECT_ROOT` (default `/srv/projects`) must exist and be writable
+  by the app user or every project creation fails. Project paths are confined to
+  it, and a session `cwd` is confined to its own project — see decision #5. Any
+  test that creates a project must set this env var to a directory it owns.
+- Containment resolves symlinks (`assertRealPathWithinRoot`). It is still a
+  check, not a lock: TOCTOU remains, and only the phase 5 systemd work makes it
+  binding. Before writing that unit, read the ⚠ note on phase 5 in
+  `docs/PHASES.md` — the tmux server needs its own unit or a restart kills every
+  agent session.
+- The database is chmod 0600 and a data directory *we create* is 0700. An
+  existing directory is deliberately left alone.
+
+**Uncommitted:** everything in the slice-1 list above. Validation scripts live
+in the session scratchpad (`e2e.mjs`, `e2e-projects.mjs`, `seam.mjs`) and are
+not in the repo.

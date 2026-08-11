@@ -8,6 +8,8 @@ import { AuthSessionStore } from './auth/session-store.js'
 import { UserRepository } from './auth/user-repository.js'
 import type { Environment } from './config/env.js'
 import { registerPhase1Routes } from './http/routes.js'
+import { ProjectManager } from './projects/project-manager.js'
+import { ProjectRepository } from './projects/project-repository.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
 import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
@@ -25,6 +27,7 @@ export interface ServerRuntimeServices {
   readonly auth: AuthService
   readonly authSessions: AuthSessionStore
   readonly loginRateLimiter: LoginRateLimiter
+  readonly projects: ProjectManager
   readonly sessions: SessionManager
   readonly tickets: TicketStore
   readonly users: UserRepository
@@ -52,13 +55,20 @@ export function createServerRuntime(
   })
   const tickets = new TicketStore({ ttlMs: 10_000 })
   const sessionRepository = new SessionRepository(database)
-  const tmux = new TmuxClient(new ExecFileProcessRunner())
+  const processes = new ExecFileProcessRunner()
+  const tmux = new TmuxClient(processes)
   const sessions = new SessionManager(sessionRepository, tmux)
+  const projects = new ProjectManager(
+    new ProjectRepository(database),
+    processes,
+    environment.TERMSPACE_PROJECT_ROOT,
+  )
   registerPhase1Routes(app, {
     auth,
     authSessionTtlMs: environment.TERMSPACE_AUTH_SESSION_TTL_MS,
     authSessions,
     loginRateLimiter,
+    projects,
     sessions,
     tickets,
     users,
@@ -101,6 +111,7 @@ export function createServerRuntime(
       auth,
       authSessions,
       loginRateLimiter,
+      projects,
       sessions,
       tickets,
       users,

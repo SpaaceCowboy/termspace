@@ -1,6 +1,7 @@
 import { CLIENT_ERROR_PREFIX } from '@termspace/contracts'
 import type {
   ApiResponse,
+  CreateProjectInput,
   CreateSessionInput,
   HealthData,
   LoginInput,
@@ -133,6 +134,22 @@ export const httpSource: DataSource = {
   },
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>> {
     return request('/api/projects', z.array(ProjectSchema), { signal })
+  },
+  createProject(
+    input: CreateProjectInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Project>> {
+    return request('/api/projects', ProjectSchema, {
+      method: 'POST',
+      json: input,
+      signal,
+    })
+  },
+  deleteProject(projectId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>> {
+    return request(`/api/projects/${encodeURIComponent(projectId)}`, EmptySchema, {
+      method: 'DELETE',
+      signal,
+    })
   },
   listSessions(signal?: AbortSignal): Promise<ApiResponse<Session[]>> {
     return request('/api/sessions', z.array(SessionSchema), { signal })

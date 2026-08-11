@@ -69,13 +69,13 @@ miniature — do not move on until it is true.
 ## Phase 2 — It becomes a workspace
 
 **Backend (Codex)**
-- [ ] Projects CRUD; `POST /api/projects` accepts an existing path or a git URL to clone
-- [ ] Sessions belong to a project; `agent` field (`claude` | `codex` | `shell`)
+- [x] Projects CRUD; `POST /api/projects` accepts an existing path or a git URL to clone
+- [x] Sessions belong to a project; `agent` field (`claude` | `codex` | `shell`)
 - [ ] Launch command per agent type, configurable per project
 - [ ] `GET /api/layouts` / `PUT /api/layouts` per user
 
 **Frontend (Claude Code)**
-- [ ] Project sidebar, sessions nested under projects
+- [x] Project sidebar, sessions nested under projects
 - [ ] Grid layout: 1 / 2 / 2×2 / tabs, switchable, persisted via layouts API
 - [ ] Hidden panes hold a headless `Terminal` and never call `open()`
 - [ ] WebGL renderer on the focused pane only, canvas elsewhere
@@ -129,6 +129,14 @@ side by side, no file collisions.
 
 **Backend (Codex)**
 - [ ] systemd unit + slice with `MemoryMax` per session
+      ⚠ The tmux server must get its **own** unit or transient scope. Verified on
+      this box: a daemonized tmux server keeps the cgroup of whatever spawned it
+      (its parent becomes pid 1, its cgroup does not change). Under one service
+      with the default `KillMode=control-group`, `systemctl restart` would kill
+      every agent session — breaking non-negotiable #1.
+- [ ] Hardening on the unit that owns the shells: `ProtectSystem=strict`,
+      `ProtectHome`, `ReadWritePaths=$TERMSPACE_PROJECT_ROOT`, `NoNewPrivileges`,
+      `PrivateTmp`. This is where the project root stops being advisory.
 - [ ] Idle session reaper with a configurable grace period
 - [ ] SQLite backup on a timer, restore documented
 - [ ] Structured request log, no secrets, log rotation

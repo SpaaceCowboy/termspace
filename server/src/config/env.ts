@@ -21,6 +21,17 @@ const EnvironmentSchema = z
     TERMSPACE_DATABASE_PATH: z.string().min(1).default('./data/termspace.db'),
     TERMSPACE_HOST: z.string().min(1).default('127.0.0.1'),
     TERMSPACE_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
+    /**
+     * Every project directory lives under this. Not a jail — a session is a real
+     * shell and can leave it — but it bounds accidental agent damage, and it is
+     * what lets the systemd unit declare a single `ReadWritePaths`.
+     */
+    TERMSPACE_PROJECT_ROOT: z
+      .string()
+      .min(1)
+      .refine((value) => value.startsWith('/'), 'Must be an absolute path')
+      .refine((value) => !value.includes('\0'), 'Must not contain a null byte')
+      .default('/srv/projects'),
   })
   .superRefine((environment, context) => {
     if (

@@ -12,11 +12,22 @@ describe('readEnvironment', () => {
       TERMSPACE_DATABASE_PATH: './data/termspace.db',
       TERMSPACE_HOST: '127.0.0.1',
       TERMSPACE_PORT: 3001,
+      TERMSPACE_PROJECT_ROOT: '/srv/projects',
     })
   })
 
   it('rejects an invalid port', () => {
     assert.throws(() => readEnvironment({ TERMSPACE_PORT: '70000' }))
+  })
+
+  it('requires the project root to be an absolute path', () => {
+    assert.throws(() => readEnvironment({ TERMSPACE_PROJECT_ROOT: 'projects' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_PROJECT_ROOT: '' }))
+    assert.equal(
+      readEnvironment({ TERMSPACE_PROJECT_ROOT: '/home/app/projects' })
+        .TERMSPACE_PROJECT_ROOT,
+      '/home/app/projects',
+    )
   })
 
   it('requires an explicit allowed Origin in production', () => {

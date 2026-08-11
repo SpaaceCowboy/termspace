@@ -3,6 +3,12 @@ import { stat } from 'node:fs/promises'
 import type { AgentKind, Session } from '@termspace/contracts'
 
 import { createSessionId } from './session-id.js'
+import {
+  assertRealPathWithinRoot,
+  assertWithinRoot,
+  normalizeAbsolutePath,
+  type RealPath,
+} from '../fs/contained-path.js'
 import type { TmuxLaunchCommand } from '../tmux/tmux-client.js'
 
 interface SessionRepositoryPort {
@@ -26,15 +32,18 @@ interface SessionManagerOptions {
   readonly createId?: () => string
   readonly isDirectory?: (path: string) => Promise<boolean>
   readonly now?: () => number
+  readonly realPath?: RealPath
 }
 
 export class SessionProjectNotFoundError extends Error {}
 export class SessionDirectoryNotFoundError extends Error {}
+export class SessionCwdOutsideProjectError extends Error {}
 
 export class SessionManager {
   readonly #createId: () => string
   readonly #isDirectory: (path: string) => Promise<boolean>
   readonly #now: () => number
+  readonly #realPath: RealPath | undefined
   readonly #repository: SessionRepositoryPort
   readonly #tmux: TmuxPort
 
@@ -48,6 +57,7 @@ export class SessionManager {
     this.#createId = options.createId ?? createSessionId
     this.#isDirectory = options.isDirectory ?? isDirectory
     this.#now = options.now ?? Date.now
+    this.#realPath = options.realPath
   }
 
   async create(
@@ -60,7 +70,19 @@ export class SessionManager {
     if (project === null) {
       throw new SessionProjectNotFoundError(`Project ${projectId} was not found`)
     }
-    const cwd = requestedCwd ?? project.path
+    // An explicit cwd is confined to its own project. Without this a session can
+    // be started anywhere on the box regardless of which project it claims to
+    // belong to, which makes the project boundary decorative.
+    let cwd = project.path
+    if (requestedCwd !== undefined) {
+      cwd = assertWithinRoot(project.path, normalizeAbsolutePath(requestedCwd), {
+        allowRoot: true,
+      })
+      await assertRealPathWithinRoot(project.path, cwd, {
+        allowRoot: true,
+        ...(this.#realPath === undefined ? {} : { realPath: this.#realPath }),
+      })
+    }
     if (!(await this.#isDirectory(cwd))) {
       throw new SessionDirectoryNotFoundError(`Directory ${cwd} was not found`)
     }

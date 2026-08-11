@@ -91,13 +91,40 @@ describe('SessionManager', () => {
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await manager.create('project-1', 'Shell', 'shell', '/tmp')
+    await manager.create('project-1', 'Shell', 'shell', '/srv/project/web/')
 
     assert.deepEqual(tmux.created[0], {
       id: SID,
-      cwd: '/tmp',
+      cwd: '/srv/project/web',
       launchCommand: undefined,
     })
+  })
+
+  it('refuses a cwd outside its own project, before creating anything', async () => {
+    for (const cwd of [
+      '/tmp',
+      '/srv/project/../../etc',
+      '/srv/project-other/x', // prefix match on the string alone would allow this
+      '/srv/project', // the project root itself is fine, so this one must pass
+    ]) {
+      const repository = new FakeRepository()
+      const tmux = new FakeTmux()
+      const manager = createManager(repository, tmux)
+
+      if (cwd === '/srv/project') {
+        await manager.create('project-1', 'Shell', 'shell', cwd)
+        assert.equal(tmux.created.length, 1)
+        continue
+      }
+
+      await assert.rejects(
+        manager.create('project-1', 'Shell', 'shell', cwd),
+        (error: unknown) => error instanceof Error,
+        `accepted ${cwd}`,
+      )
+      assert.deepEqual(tmux.created, [], `created tmux for ${cwd}`)
+      assert.deepEqual(repository.sessions, [])
+    }
   })
 
   it('rolls tmux back if persistence fails', async () => {

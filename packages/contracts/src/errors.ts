@@ -7,6 +7,7 @@ export const ERROR_CODES = [
   'origin_rejected',
   'session_not_found',
   'session_dead',
+  'project_not_found',
   'validation_failed',
   'internal_error',
 ] as const

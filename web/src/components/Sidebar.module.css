@@ -46,6 +46,42 @@
   color: var(--ts-text-dim);
 }
 
+.groupName {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.groupAction {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--ts-radius);
+  color: var(--ts-text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.groupAction:hover {
+  background: var(--ts-bg-raised);
+  border-color: var(--ts-border);
+  color: var(--ts-text);
+}
+
+.groupEmpty {
+  padding: 2px 8px 6px;
+  margin: 0;
+  font-size: 11px;
+  color: var(--ts-text-dim);
+}
+
 .list {
   list-style: none;
   margin: 0;

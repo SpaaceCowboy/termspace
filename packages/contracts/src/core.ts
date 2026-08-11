@@ -11,6 +11,19 @@ export interface Project {
   createdAt: number
 }
 
+/**
+ * Either adopt a directory that is already on the box (`path`) or clone
+ * `repoUrl` into it. Exactly one of the two must say where the code comes from:
+ * with no `repoUrl` the path must already exist, and with one it must not.
+ */
+export interface CreateProjectInput {
+  name: string
+  path: string
+  repoUrl?: string
+  defaultBranch?: string
+  setupCommand?: string
+}
+
 export type AgentKind = 'claude' | 'codex' | 'shell'
 
 export interface Session {

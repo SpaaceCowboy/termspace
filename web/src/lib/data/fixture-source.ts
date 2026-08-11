@@ -4,6 +4,7 @@ import {
   sessionFixtures,
   userFixture,
   type ApiResponse,
+  type CreateProjectInput,
   type CreateSessionInput,
   type HealthData,
   type LoginInput,
@@ -27,6 +28,7 @@ function fail<T>(code: string, message: string): Promise<ApiResponse<T>> {
 }
 
 const liveSessions: Session[] = [...sessionFixtures]
+const liveProjects: Project[] = [...projectFixtures]
 
 export const fixtureSource: DataSource = {
   kind: 'fixtures',
@@ -34,7 +36,36 @@ export const fixtureSource: DataSource = {
     return ok(healthDataFixture)
   },
   listProjects(): Promise<ApiResponse<Project[]>> {
-    return ok([...projectFixtures])
+    return ok([...liveProjects])
+  },
+  createProject(input: CreateProjectInput): Promise<ApiResponse<Project>> {
+    const slug = input.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    if (liveProjects.some((project) => project.path === input.path)) {
+      return fail('validation_failed', 'A project already uses that directory.')
+    }
+    const created: Project = {
+      id: `prj_fixture${String(liveProjects.length).padStart(4, '0')}`,
+      slug: slug === '' ? 'project' : slug,
+      name: input.name,
+      path: input.path,
+      repoUrl: input.repoUrl ?? null,
+      defaultBranch: input.defaultBranch ?? 'main',
+      setupCommand: input.setupCommand ?? null,
+      createdAt: Date.now(),
+    }
+    liveProjects.push(created)
+    return ok(created)
+  },
+  deleteProject(projectId: string): Promise<ApiResponse<Empty>> {
+    const index = liveProjects.findIndex((project) => project.id === projectId)
+    if (index === -1) {
+      return fail('project_not_found', 'Project was not found.')
+    }
+    if (liveSessions.some((session) => session.projectId === projectId)) {
+      return fail('validation_failed', 'Delete this project’s sessions first.')
+    }
+    liveProjects.splice(index, 1)
+    return ok({})
   },
   listSessions(): Promise<ApiResponse<Session[]>> {
     return ok([...liveSessions])

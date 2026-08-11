@@ -1,6 +1,6 @@
 'use client'
 
-import type { ServerFrame, Session } from '@termspace/contracts'
+import type { Project, ServerFrame, Session } from '@termspace/contracts'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
@@ -18,6 +18,7 @@ type AuthState = 'checking' | 'authenticated' | 'anonymous'
 export default function WorkspacePage() {
   const router = useRouter()
   const [auth, setAuth] = useState<AuthState>('checking')
+  const [projects, setProjects] = useState<readonly Project[]>([])
   const [sessions, setSessions] = useState<readonly Session[]>([])
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -112,24 +113,30 @@ export default function WorkspacePage() {
     }
     const controller = new AbortController()
     setLoading(true)
-    dataSource
-      .listSessions(controller.signal)
-      .then((response) => {
+    Promise.all([
+      dataSource.listProjects(controller.signal),
+      dataSource.listSessions(controller.signal),
+    ])
+      .then(([projectResponse, sessionResponse]) => {
         if (controller.signal.aborted) {
           return
         }
-        if (!response.ok) {
-          setError(response.error.message)
+        // Sessions are what the grid renders, so a projects failure alone must
+        // not blank the workspace — the sidebar falls back to one unknown group.
+        if (!sessionResponse.ok) {
+          setError(sessionResponse.error.message)
+          setProjects([])
           setSessions([])
           return
         }
-        setError(null)
-        setSessions(response.data)
-        setSelectedId((current) => current ?? response.data[0]?.id ?? null)
+        setError(projectResponse.ok ? null : projectResponse.error.message)
+        setProjects(projectResponse.ok ? projectResponse.data : [])
+        setSessions(sessionResponse.data)
+        setSelectedId((current) => current ?? sessionResponse.data[0]?.id ?? null)
       })
       .catch((cause: unknown) => {
         if (!controller.signal.aborted) {
-          setError(cause instanceof Error ? cause.message : 'Could not load sessions.')
+          setError(cause instanceof Error ? cause.message : 'Could not load the workspace.')
         }
       })
       .finally(() => {
@@ -160,6 +167,7 @@ export default function WorkspacePage() {
         Skip to terminals
       </a>
       <Sidebar
+        projects={projects}
         sessions={sessions}
         selectedId={selectedId}
         onSelect={setSelectedId}

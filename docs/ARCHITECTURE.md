@@ -90,6 +90,29 @@ Prompt patterns live in `server/src/activity/patterns.ts` and are per-agent
 - WebSocket: `POST /api/ws-ticket` returns a single-use token with a 10 s TTL,
   redeemed in the handshake. The `Origin` header is validated again server-side.
 - The app user has no sudo. Per-session memory ceiling via a systemd slice.
+- Every project directory lives under `TERMSPACE_PROJECT_ROOT` (default
+  `/srv/projects`), and a session's `cwd` must be inside its own project.
 
 The threat model is honest: this app is a deliberate remote shell. Auth is the
 only wall. Everything else is damage limitation.
+
+The project root is damage limitation, not a wall — a session is a real shell
+and can `cd` anywhere the app user can reach. What it does buy: an agent's cwd
+can never start outside the tree, a typo cannot clone into `$HOME` or `/`, there
+is one directory to back up, and the systemd unit can name a single
+`ReadWritePaths`.
+
+Containment is checked twice: once on the normalized path string, then again on
+the `realpath`, so a symlink under the root that points out of it is refused.
+A path that does not exist yet resolves its nearest existing ancestor, and an
+entry that exists but does not resolve — a dangling symlink — is refused rather
+than judged by where it sits. This is a check, not a lock: between the check and
+the use, anything running as this user could swap a symlink. Closing that needs
+an OS-level boundary.
+
+That boundary is the phase 5 systemd work, and it is where confinement stops
+being advisory. Two things it must get right: the tmux server needs its own unit
+or scope (a daemonized tmux keeps the cgroup of whatever spawned it, so one
+service plus the default `KillMode` means a restart kills every agent), and the
+hardening directives belong on the unit that owns the *shells*, not only on the
+gateway.

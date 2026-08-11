@@ -8,7 +8,13 @@ export type {
 } from './transport.js'
 export { BINARY_SID_BYTES, SESSION_STATES, VISIBILITY_LEVELS } from './transport.js'
 
-export type { AgentKind, CreateSessionInput, Project, Session } from './core.js'
+export type {
+  AgentKind,
+  CreateProjectInput,
+  CreateSessionInput,
+  Project,
+  Session,
+} from './core.js'
 export { AGENT_KINDS } from './core.js'
 
 export type { LoginInput, User, WsTicket } from './auth.js'
