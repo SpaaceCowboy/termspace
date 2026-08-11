@@ -9,6 +9,9 @@ export const RESIZE_DEBOUNCE_MS = 100
  */
 const MAX_BUFFERED_BYTES = 1_048_576
 
+/** Keystrokes held while waiting for the first `restore`. A human types slowly. */
+const MAX_PENDING_INPUT_CHUNKS = 64
+
 export type RendererKind = 'webgl' | 'dom'
 
 export interface PaneSize {
@@ -67,8 +70,10 @@ interface PaneEntry {
   visibility: VisibilityLevel
   container: HTMLElement | null
   terminal: PaneTerminal | null
-  /** True once a `restore` has been applied, so input is never wired first. */
-  inputWired: boolean
+  /** True once a `restore` has been applied to this pane's current terminal. */
+  restored: boolean
+  /** Keystrokes typed before the first restore landed, held rather than sent. */
+  pendingInput: string[]
   input: PaneDisposable | null
   resize: PaneDisposable | null
   cancelResize: (() => void) | null
@@ -133,8 +138,9 @@ export class PaneStore {
 
   /**
    * A fresh screen from the server: on first subscribe and again on every
-   * reconnect. Input is wired only after it has been applied, or the first
-   * keystrokes land in a buffer that is about to be overwritten.
+   * reconnect. Anything typed before it lands was held back, and goes out now
+   * — the point of the rule is that keystrokes never act on a buffer the
+   * server is about to overwrite, not that early keystrokes are thrown away.
    */
   restore(sid: string, data: string): void {
     const entry = this.#panes.get(sid)
@@ -151,7 +157,8 @@ export class PaneStore {
       entry.bufferedBytes = 0
       terminal.write(data)
       await terminal.flush()
-      this.#wireInput(entry)
+      entry.restored = true
+      this.#flushInput(entry)
       this.#fit(entry)
     })
   }
@@ -185,7 +192,8 @@ export class PaneStore {
       visibility: request.visibility,
       container: request.container,
       terminal: null,
-      inputWired: false,
+      restored: false,
+      pendingInput: [],
       input: null,
       resize: null,
       cancelResize: null,
@@ -257,26 +265,39 @@ export class PaneStore {
       })
       this.#fit(entry)
     }
-    if (entry.inputWired) {
-      // The snapshot is this session's current screen, so wiring input back is
-      // not the stale-buffer case the restore rule guards against.
-      entry.input = terminal.onData((chunk) => {
-        this.#options.socket.sendInput(entry.sid, chunk)
-      })
-    }
+    this.#wireInput(entry)
   }
 
+  /**
+   * Wired as soon as a terminal exists, so a pane can never end up permanently
+   * unable to accept a keystroke because a `restore` went missing. Until that
+   * restore lands the keystrokes are held, not sent.
+   */
   #wireInput(entry: PaneEntry): void {
-    if (entry.terminal === null) {
+    const terminal = entry.terminal
+    if (terminal === null || entry.input !== null) {
       return
     }
-    entry.inputWired = true
-    if (entry.input !== null) {
-      return
-    }
-    entry.input = entry.terminal.onData((chunk) => {
+    entry.input = terminal.onData((chunk) => {
+      if (!entry.restored) {
+        if (entry.pendingInput.length < MAX_PENDING_INPUT_CHUNKS) {
+          entry.pendingInput.push(chunk)
+        }
+        return
+      }
       this.#options.socket.sendInput(entry.sid, chunk)
     })
+  }
+
+  #flushInput(entry: PaneEntry): void {
+    if (entry.pendingInput.length === 0) {
+      return
+    }
+    const pending = entry.pendingInput
+    entry.pendingInput = []
+    for (const chunk of pending) {
+      this.#options.socket.sendInput(entry.sid, chunk)
+    }
   }
 
   #buffer(entry: PaneEntry, bytes: string | Uint8Array): void {
@@ -348,6 +369,7 @@ export class PaneStore {
     this.#teardownTerminal(entry)
     entry.buffered = []
     entry.bufferedBytes = 0
+    entry.pendingInput = []
     this.#options.socket.unsubscribe(sid)
   }
 

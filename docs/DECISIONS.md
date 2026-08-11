@@ -118,3 +118,40 @@ and be writable by the app user, or every project creation fails. Adopting a
 repo that already lives elsewhere on the box now needs a move or a bind mount.
 The check is on the normalized path string, so a symlink under the root that
 points outside it is not caught.
+
+## 6. The app runs with root privileges, not as an unprivileged user
+2026-08-11 · Shayan (owner) · Status: accepted · **Supersedes non-negotiable #3**
+
+**Context** — `PROJECT.md` non-negotiable #3 said the app runs as an
+unprivileged user with no sudo. That makes a session unable to install anything
+system-wide: `apt install nodejs` fails, and so does every other package the
+owner might want in a project. This is a single-user box run by its owner, who
+is already root on it by other means (ssh).
+
+**Options** — (a) keep no sudo, install system packages out of band over ssh;
+(b) unprivileged user with NOPASSWD sudo scoped to `apt-get` only; (c) run as
+root, or as a user with unrestricted sudo.
+
+**Choice** — (c), decided by the owner. (a) is the safest and was the original
+position; (b) buys most of the convenience for a fraction of the exposure. Both
+were declined: the owner is the only user and wants an unrestricted shell.
+
+**Consequence** — this is a real and deliberate widening of the blast radius,
+recorded so nobody has to rediscover it:
+
+- An agent session can destroy or reconfigure the box. Agents read untrusted
+  repository content, so prompt injection now reaches root.
+- Any flaw in the auth, ticket, or `Origin` path becomes remote **root**
+  compromise rather than compromise of one unprivileged account.
+- The project-root containment in decision #5 keeps its value as a guard
+  against *accidents* only. As a security boundary it is gone: root can leave
+  the root at will.
+- The phase 5 systemd hardening (`ProtectSystem=strict`, `ProtectHome`,
+  `NoNewPrivileges`, `ReadWritePaths`) becomes the *only* remaining boundary,
+  which raises its priority rather than lowering it. `NoNewPrivileges` in
+  particular has to be reconsidered, since it would break `sudo` inside a
+  session.
+- Backups and the SQLite file are now root-owned; the 0600/0700 modes stay.
+
+**Reversing this** is a matter of changing the systemd `User=`, `chown`-ing the
+project root and data directory, and accepting that sessions lose `sudo`.

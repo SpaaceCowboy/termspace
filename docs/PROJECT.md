@@ -49,8 +49,10 @@ explicit decision entry. In particular, out of scope for v1:
    no optimisation is worth breaking it.
 2. The WebSocket is authenticated by a single-use ticket **and** an `Origin`
    check. Never by cookie alone.
-3. The app runs as an unprivileged user with no sudo, on a box hosting nothing
-   else that matters.
+3. ~~The app runs as an unprivileged user with no sudo~~ — **superseded by
+   decision #6 (2026-08-11)**: it runs with root privileges so that a session
+   can install system packages. The box must therefore host nothing else that
+   matters, and the phase 5 systemd hardening is now the only boundary left.
 4. Every displayed session state is derived from observed output. Agents are
    never asked to self-report.
 

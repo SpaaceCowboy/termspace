@@ -270,3 +270,20 @@ fail now succeeds with `createDirectory`; the directory really is on disk at
 with nothing written; `createDirectory` cannot escape the root; and a session
 starts in the directory that was just made. Against an unwritable root, the
 boot log, `GET /api/config`, and the create error all say the same thing.
+
+### 2026-08-11T17:05:00+03:30 · SOLO · 2 · DECISION
+Decision #6: the app runs with root privileges, superseding non-negotiable #3.
+The owner is the only user and wants `apt install` to work inside a session.
+Recorded with the cost stated plainly — prompt injection now reaches root, an
+auth flaw becomes remote root, and the phase 5 systemd unit goes from being a
+second boundary to being the only one.
+
+### 2026-08-11T17:05:00+03:30 · SOLO · 2 · DONE
+A pane can no longer end up permanently unable to accept a keystroke. Input was
+wired only after a `restore` was applied, so a restore that never landed left a
+pane that renders output and swallows every key — with nothing in the UI to say
+why. Input is now wired the moment a terminal exists, and keystrokes typed
+before the restore are held and sent in order once it lands, which keeps what
+the rule was protecting (nothing acts on a buffer the server is about to
+overwrite) without the dead-pane failure mode. Terminal creation errors reach
+the UI instead of being swallowed by an unset `onError`.

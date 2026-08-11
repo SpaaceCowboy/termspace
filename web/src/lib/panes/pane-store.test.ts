@@ -197,22 +197,39 @@ describe('PaneStore', () => {
     assert.deepEqual(socket.calls.slice(-2), [`vis:${SID_A}:visible`, `vis:${SID_B}:focused`])
   })
 
-  it('wires input only after a restore has been applied', async () => {
+  it('holds keystrokes typed before the restore, then sends them in order', async () => {
     const element = container('a')
     store.sync([{ sid: SID_A, visibility: 'focused', container: element }])
     await settle()
 
     const terminal = FakeTerminal.instances[0]
-    // Compared as a boolean: asserting the field itself narrows its type to
-    // `null` for the rest of the test.
-    assert.equal(terminal?.inputHandler === null, true, 'input is not wired before restore')
+    // The pane accepts input from the moment it exists, so a restore that never
+    // arrives cannot leave it permanently unable to take a keystroke.
+    terminal?.inputHandler?.('e')
+    terminal?.inputHandler?.('cho\r')
+    assert.deepEqual(socket.input, [], 'nothing is sent against a screen not yet restored')
 
     store.restore(SID_A, 'screen so far$ ')
     await settle()
     assert.equal(terminal?.resets, 1)
-    assert.equal(terminal.text, 'screen so far$ ')
-    terminal.inputHandler?.('ls\r')
-    assert.deepEqual(socket.input, [`${SID_A}:ls\r`])
+    assert.equal(terminal?.text, 'screen so far$ ')
+    assert.deepEqual(socket.input, [`${SID_A}:e`, `${SID_A}:cho\r`], 'held input, in order')
+
+    terminal?.inputHandler?.('ls\r')
+    assert.deepEqual(socket.input.at(-1), `${SID_A}:ls\r`, 'and it flows straight through after')
+  })
+
+  it('drops held keystrokes past a sane ceiling rather than growing forever', async () => {
+    store.sync([{ sid: SID_A, visibility: 'focused', container: container('a') }])
+    await settle()
+
+    const terminal = FakeTerminal.instances[0]
+    for (let index = 0; index < 500; index += 1) {
+      terminal?.inputHandler?.('x')
+    }
+    store.restore(SID_A, 'ready$ ')
+    await settle()
+    assert.ok(socket.input.length <= 64, `held ${String(socket.input.length)} chunks`)
   })
 
   it('keeps a hidden pane current, then shows it without asking the server again', async () => {
@@ -243,6 +260,7 @@ describe('PaneStore', () => {
     // Input was live before the switch, so it comes back with the new terminal.
     shown?.inputHandler?.('x')
     assert.deepEqual(socket.input, [`${SID_A}:x`])
+    assert.equal(headless?.inputDisposed, true, 'the old input handler is disposed')
   })
 
   it('hides a visible pane back into a headless terminal that keeps receiving output', async () => {

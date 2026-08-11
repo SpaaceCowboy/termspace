@@ -138,8 +138,11 @@ side by side, no file collisions.
       with the default `KillMode=control-group`, `systemctl restart` would kill
       every agent session — breaking non-negotiable #1.
 - [ ] Hardening on the unit that owns the shells: `ProtectSystem=strict`,
-      `ProtectHome`, `ReadWritePaths=$TERMSPACE_PROJECT_ROOT`, `NoNewPrivileges`,
-      `PrivateTmp`. This is where the project root stops being advisory.
+      `ProtectHome`, `ReadWritePaths=$TERMSPACE_PROJECT_ROOT`, `PrivateTmp`.
+      ⚠ Decision #6 runs the app as root so sessions can install packages, which
+      makes this unit the only boundary left rather than a second one — and
+      `NoNewPrivileges` is now off the list, since it breaks `sudo` inside a
+      session. Re-read decision #6 before writing it.
 - [ ] Idle session reaper with a configurable grace period
 - [ ] SQLite backup on a timer, restore documented
 - [ ] Structured request log, no secrets, log rotation

@@ -96,8 +96,18 @@ export default function WorkspacePage() {
     panesRef.current?.write(sid, bytes)
   }, [])
 
+  // A pane that cannot build its terminal must say so. Swallowing this leaves a
+  // pane that renders nothing and accepts no input, with nothing to go on.
+  const onPaneError = useCallback((cause: unknown) => {
+    setNotice(
+      cause instanceof Error
+        ? `The terminal failed to start: ${cause.message}`
+        : 'The terminal failed to start.',
+    )
+  }, [])
+
   const socket = useSocket({ onFrame, onOutput }, live && authenticated)
-  const panes = usePanes(socket, live && authenticated)
+  const panes = usePanes(socket, live && authenticated, onPaneError)
   panesRef.current = panes
 
   useEffect(() => {
