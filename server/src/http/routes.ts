@@ -1,6 +1,7 @@
 import type {
   ApiErr,
   ApiOk,
+  AppConfig,
   CreateProjectInput,
   CreateSessionInput,
   ErrorCode,
@@ -123,6 +124,7 @@ interface SessionOperations {
 }
 
 interface ProjectOperations {
+  readonly projectRoot: string
   create(input: CreateProjectInput): Promise<Project>
   delete(projectId: string): boolean
   list(): readonly Project[]
@@ -227,6 +229,13 @@ export function registerPhase1Routes(
     }
     const ticket: WsTicket = services.tickets.issue(user.id)
     return ok<WsTicket>(ticket)
+  })
+
+  app.get('/api/config', async (request, reply) => {
+    if (resolveAuthenticatedUser(request, services) === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    return ok<AppConfig>({ projectRoot: services.projects.projectRoot })
   })
 
   app.get('/api/projects', async (request, reply) => {

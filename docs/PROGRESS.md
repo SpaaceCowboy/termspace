@@ -171,3 +171,20 @@ The data layer now defaults to the real backend; `NEXT_PUBLIC_TERMSPACE_DATA=fix
 ### 2026-08-10T17:50:52+03:30 · FRONTEND · 1 · GATE
 Tick the Phase 1 frontend gate. Verified live against the real gateway, not fixtures: login, a rejected TOTP returning `invalid_credentials`, session create/delete, ticket redemption, `restore` arriving before any output, and a shell round trip through binary frames.
 Exit criteria met — with a shell variable set, `SIGKILL` on the Node process, restart, and the client reconnected on its own to a fresh `restore` with the variable still set. tmux kept the process. Codex: `node-pty`'s native binding was built for Node 22 (ABI 127) and fails to load on Node 24; I rebuilt it locally to run this.
+
+### 2026-08-11T11:58:00+03:30 · SOLO · 2 · CONTRACT
+Add `AppConfig { projectRoot }` and `GET /api/config`, authenticated. The
+new-project form has to know where project directories are allowed to live, or
+the only way to discover the root is to submit and read the error.
+
+### 2026-08-11T11:58:00+03:30 · SOLO · 2 · DONE
+The app is usable from a browser. New-project and new-session dialogs on the
+native `<dialog>` element, so focus containment, focus restore, Escape, and
+inertness behind the modal are the browser's and not ours — no component
+library. The project path is suggested from the name under the server's root and
+stops being suggested the moment the field is touched. Empty states lead
+somewhere: no projects offers "Add a project", no sessions offers "New session",
+and creating a project goes straight on to creating a session in it.
+Verified cold from an empty database: sign in, read config, add a project, start
+a session, attach, `pwd` in the project directory, restart the gateway, and both
+are still there. Nothing in that path needs curl or SQL any more.

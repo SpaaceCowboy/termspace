@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useRef, useState } from 'react'
 
 import { ConnectionBadge } from '@/components/ConnectionBadge'
+import { NewProjectDialog } from '@/components/NewProjectDialog'
+import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { PanePlaceholder } from '@/components/PanePlaceholder'
 import { Sidebar } from '@/components/Sidebar'
 import { TerminalPane, type PaneHandle } from '@/components/TerminalPane'
@@ -25,6 +27,10 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null)
   const [notice, setNotice] = useState<string | null>(null)
   const [deadSessions, setDeadSessions] = useState<ReadonlySet<string>>(new Set())
+  const [projectRoot, setProjectRoot] = useState<string | null>(null)
+  const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
+  const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
+  const [projectDialogOpen, setProjectDialogOpen] = useState(false)
 
   const panesRef = useRef(new Map<string, PaneHandle>())
 
@@ -116,8 +122,9 @@ export default function WorkspacePage() {
     Promise.all([
       dataSource.listProjects(controller.signal),
       dataSource.listSessions(controller.signal),
+      dataSource.config(controller.signal),
     ])
-      .then(([projectResponse, sessionResponse]) => {
+      .then(([projectResponse, sessionResponse, configResponse]) => {
         if (controller.signal.aborted) {
           return
         }
@@ -129,6 +136,7 @@ export default function WorkspacePage() {
           setSessions([])
           return
         }
+        setProjectRoot(configResponse.ok ? configResponse.data.projectRoot : null)
         setError(projectResponse.ok ? null : projectResponse.error.message)
         setProjects(projectResponse.ok ? projectResponse.data : [])
         setSessions(sessionResponse.data)
@@ -148,6 +156,26 @@ export default function WorkspacePage() {
       controller.abort()
     }
   }, [auth])
+
+  const openSessionDialog = useCallback((forProjectId: string | null) => {
+    setSessionDialogFor(forProjectId)
+    setSessionDialogOpen(true)
+  }, [])
+
+  const onSessionCreated = useCallback((session: Session) => {
+    setSessions((current) => [...current, session])
+    setSelectedId(session.id)
+    setSessionDialogOpen(false)
+  }, [])
+
+  const onProjectCreated = useCallback((project: Project) => {
+    setProjects((current) => [...current, project])
+    setProjectDialogOpen(false)
+    // A project with no sessions is not much use, so go straight on to the
+    // thing you actually came to do.
+    setSessionDialogFor(project.id)
+    setSessionDialogOpen(true)
+  }, [])
 
   const selected = sessions.find((session) => session.id === selectedId) ?? null
 
@@ -171,6 +199,10 @@ export default function WorkspacePage() {
         sessions={sessions}
         selectedId={selectedId}
         onSelect={setSelectedId}
+        onNewSession={openSessionDialog}
+        onNewProject={() => {
+          setProjectDialogOpen(true)
+        }}
         loading={loading}
         error={error}
         sourceKind={dataSource.kind}
@@ -184,9 +216,34 @@ export default function WorkspacePage() {
         </div>
         <div className={styles.grid}>
           {selected === null ? (
-            <p className={styles.empty}>
-              {loading ? 'Loading sessions…' : 'No session selected.'}
-            </p>
+            <div className={styles.empty}>
+              {loading ? (
+                <p>Loading sessions…</p>
+              ) : (
+                <>
+                  <p>
+                    {sessions.length === 0
+                      ? projects.length === 0
+                        ? 'No projects yet. Add one, then start a session in it.'
+                        : 'No sessions yet.'
+                      : 'No session selected.'}
+                  </p>
+                  <button
+                    type="button"
+                    className={styles.emptyAction}
+                    onClick={() => {
+                      if (projects.length === 0) {
+                        setProjectDialogOpen(true)
+                      } else {
+                        openSessionDialog(null)
+                      }
+                    }}
+                  >
+                    {projects.length === 0 ? 'Add a project' : 'New session'}
+                  </button>
+                </>
+              )}
+            </div>
           ) : !live ? (
             <PanePlaceholder session={selected} />
           ) : (
@@ -201,6 +258,24 @@ export default function WorkspacePage() {
           )}
         </div>
       </main>
+
+      <NewSessionDialog
+        open={sessionDialogOpen}
+        projects={projects}
+        initialProjectId={sessionDialogFor}
+        onClose={() => {
+          setSessionDialogOpen(false)
+        }}
+        onCreated={onSessionCreated}
+      />
+      <NewProjectDialog
+        open={projectDialogOpen}
+        projectRoot={projectRoot}
+        onClose={() => {
+          setProjectDialogOpen(false)
+        }}
+        onCreated={onProjectCreated}
+      />
     </div>
   )
 }

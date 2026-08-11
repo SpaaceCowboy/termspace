@@ -26,7 +26,8 @@ export interface SidebarProps {
   sessions: readonly Session[]
   selectedId: string | null
   onSelect: (sessionId: string) => void
-  onNewSession?: (projectId: string) => void
+  onNewSession?: (projectId: string | null) => void
+  onNewProject?: () => void
   loading: boolean
   error: string | null
   sourceKind: string
@@ -38,6 +39,7 @@ export function Sidebar({
   selectedId,
   onSelect,
   onNewSession,
+  onNewProject,
   loading,
   error,
   sourceKind,
@@ -49,6 +51,14 @@ export function Sidebar({
         Termspace
       </h1>
 
+      {onNewProject !== undefined ? (
+        <div className={styles.toolbar}>
+          <button type="button" className={styles.newProject} onClick={onNewProject}>
+            + New project
+          </button>
+        </div>
+      ) : null}
+
       <div className={styles.scroll}>
         <SidebarBody
           projects={projects}
@@ -56,6 +66,7 @@ export function Sidebar({
           selectedId={selectedId}
           onSelect={onSelect}
           {...(onNewSession === undefined ? {} : { onNewSession })}
+          {...(onNewProject === undefined ? {} : { onNewProject })}
           loading={loading}
           error={error}
         />

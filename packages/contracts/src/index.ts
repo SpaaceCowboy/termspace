@@ -22,7 +22,7 @@ export type { LoginInput, User, WsTicket } from './auth.js'
 export type { ErrorCode } from './errors.js'
 export { CLIENT_ERROR_PREFIX, ERROR_CODES, isErrorCode } from './errors.js'
 
-export type { ApiErr, ApiError, ApiOk, ApiResponse, HealthData } from './http.js'
+export type { ApiErr, ApiError, ApiOk, ApiResponse, AppConfig, HealthData } from './http.js'
 export { isApiOk } from './http.js'
 
 export * from './fixtures.js'

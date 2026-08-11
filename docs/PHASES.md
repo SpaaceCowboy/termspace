@@ -79,7 +79,9 @@ miniature — do not move on until it is true.
 - [ ] Grid layout: 1 / 2 / 2×2 / tabs, switchable, persisted via layouts API
 - [ ] Hidden panes hold a headless `Terminal` and never call `open()`
 - [ ] WebGL renderer on the focused pane only, canvas elsewhere
-- [ ] New-session dialog: project + agent picker
+- [x] New-session dialog: project + agent picker
+- [x] New-project dialog (not originally listed, but without it the app cannot
+      be used from a browser at all)
 
 **Exit criteria**
 Four sessions across two projects visible at once, layout survives a reload,

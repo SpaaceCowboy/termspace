@@ -119,6 +119,7 @@ class FakeSessions {
 }
 
 class FakeProjects {
+  readonly projectRoot = '/srv/projects'
   createdInput: CreateProjectInput | undefined
   createError: Error | undefined
   deleteError: Error | undefined
@@ -520,6 +521,7 @@ describe('Phase 1 HTTP routes', () => {
   it('requires authentication for every project route', async () => {
     user = null
     for (const [method, url] of [
+      ['GET', '/api/config'],
       ['GET', '/api/projects'],
       ['POST', '/api/projects'],
       ['DELETE', `/api/projects/${projectFixture.id}`],

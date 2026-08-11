@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  AppConfig,
   CreateProjectInput,
   CreateSessionInput,
   HealthData,
@@ -15,6 +16,7 @@ export type Empty = Record<string, never>
 export interface DataSource {
   readonly kind: 'fixtures' | 'http'
   health(signal?: AbortSignal): Promise<ApiResponse<HealthData>>
+  config(signal?: AbortSignal): Promise<ApiResponse<AppConfig>>
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>>
   createProject(
     input: CreateProjectInput,

@@ -9,7 +9,7 @@ Overwritten, never appended. Read it first at every session start.
 
 ---
 
-**Phase:** 2 — it becomes a workspace. Slice 1 of 3 landed.
+**Phase:** 2 — it becomes a workspace. Slices 1 and 2 of 3 landed.
 
 **Working on:** phase 2 in vertical slices — each feature through the whole
 stack before the next, so every slice is usable when it lands.
@@ -30,13 +30,20 @@ stack before the next, so every slice is usable when it lands.
   with an "Unknown project" group so an orphaned session is never unreachable.
   Validated against the real gateway including a real `git clone`.
 
-**Next concrete step:** slice 2 — the new-session dialog (project + agent
-picker), wired to `POST /api/sessions`, opened from the `+` on each sidebar
-project group. `Sidebar` already takes an optional `onNewSession(projectId)`
-that the workspace page does not pass yet; that is the hook to fill in. This is
-what makes the app self-sufficient — right now a session still cannot be created
-from the browser. Slice 3 is layouts (needs a `Layout` contract type, still
-undefined) plus the grid, headless hidden panes, and WebGL-on-focused-only.
+- **Slice 2 — the app is usable from a browser.** `AppConfig` + `GET /api/config`
+  so the new-project form knows the project root; `Dialog` on the native
+  `<dialog>` element; `NewProjectDialog` and `NewSessionDialog`; empty states
+  that lead somewhere. Verified cold from an empty database all the way to a
+  live shell — no curl, no SQL.
+
+**Next concrete step:** slice 3 — layouts and the grid. It needs a `Layout`
+contract type, which does not exist yet, so design that first: it has to carry
+the mode (1 / 2 / 2×2 / tabs) and which session sits in which slot. Then
+`GET`/`PUT /api/layouts` (the `layouts` table already exists, keyed by user with
+a `json_valid` CHECK), then the grid itself with hidden panes holding a headless
+`Terminal` that never calls `open()` and WebGL only on the focused pane.
+Deleting a project or session from the UI is still missing — the API supports
+both, nothing calls it.
 
 **Landmines:**
 - `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
@@ -74,6 +81,9 @@ undefined) plus the grid, headless hidden panes, and WebGL-on-focused-only.
 - The database is chmod 0600 and a data directory *we create* is 0700. An
   existing directory is deliberately left alone.
 
-**Uncommitted:** everything in the slice-1 list above. Validation scripts live
-in the session scratchpad (`e2e.mjs`, `e2e-projects.mjs`, `seam.mjs`) and are
-not in the repo.
+**Uncommitted:** everything in slices 1 and 2 above. Validation scripts live in
+the session scratchpad and are **not** in the repo — `e2e.mjs` (phase 1 exit
+criteria), `e2e-projects.mjs` (projects CRUD, containment, symlink escapes),
+`e2e-flow.mjs` (cold start to a live shell), `seam.mjs` (the two frame codecs
+against each other). They are worth rewriting into the repo as real integration
+tests; nothing in `pnpm test` covers the HTTP+WS+tmux path end to end.

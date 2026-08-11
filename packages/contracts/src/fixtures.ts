@@ -7,7 +7,7 @@ import type {
   Session,
 } from './core.js'
 import type { ErrorCode } from './errors.js'
-import type { ApiErr, ApiError, ApiOk, HealthData } from './http.js'
+import type { ApiErr, ApiError, ApiOk, AppConfig, HealthData } from './http.js'
 import { BINARY_SID_BYTES } from './transport.js'
 import type {
   ClientFrame,
@@ -167,6 +167,8 @@ export const createSessionInputFixture: CreateSessionInput = {
 export const errorCodeFixture: ErrorCode = 'session_not_found'
 
 export const healthDataFixture: HealthData = { version: '0.0.0' }
+
+export const appConfigFixture: AppConfig = { projectRoot: '/srv/projects' }
 
 export const apiErrorFixture: ApiError = {
   code: 'session_not_found',

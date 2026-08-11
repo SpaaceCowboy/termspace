@@ -1,6 +1,7 @@
 import { CLIENT_ERROR_PREFIX } from '@termspace/contracts'
 import type {
   ApiResponse,
+  AppConfig,
   CreateProjectInput,
   CreateSessionInput,
   HealthData,
@@ -70,6 +71,7 @@ const UserSchema = z.object({
 })
 
 const HealthSchema = z.object({ version: z.string() })
+const AppConfigSchema = z.object({ projectRoot: z.string() })
 const UserEnvelopeSchema = z.object({ user: UserSchema })
 const WsTicketSchema = z.object({ ticket: z.string(), expiresAt: z.number() })
 const EmptySchema = z.object({}).strict()
@@ -131,6 +133,9 @@ export const httpSource: DataSource = {
   kind: 'http',
   health(signal?: AbortSignal): Promise<ApiResponse<HealthData>> {
     return request('/api/health', HealthSchema, { signal })
+  },
+  config(signal?: AbortSignal): Promise<ApiResponse<AppConfig>> {
+    return request('/api/config', AppConfigSchema, { signal })
   },
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>> {
     return request('/api/projects', z.array(ProjectSchema), { signal })

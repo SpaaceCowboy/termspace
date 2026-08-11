@@ -1,9 +1,11 @@
 import {
+  appConfigFixture,
   healthDataFixture,
   projectFixtures,
   sessionFixtures,
   userFixture,
   type ApiResponse,
+  type AppConfig,
   type CreateProjectInput,
   type CreateSessionInput,
   type HealthData,
@@ -34,6 +36,9 @@ export const fixtureSource: DataSource = {
   kind: 'fixtures',
   health(): Promise<ApiResponse<HealthData>> {
     return ok(healthDataFixture)
+  },
+  config(): Promise<ApiResponse<AppConfig>> {
+    return ok(appConfigFixture)
   },
   listProjects(): Promise<ApiResponse<Project[]>> {
     return ok([...liveProjects])
