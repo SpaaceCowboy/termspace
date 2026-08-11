@@ -234,3 +234,39 @@ contexts and a blown context renders blank.
 `next.config.ts` takes `TERMSPACE_DIST_DIR`. A `pnpm build` run while a
 `next dev` is up on the same checkout leaves both with a half-written `.next`,
 and the symptom is a dev server serving HTML for chunks that 404.
+
+### 2026-08-11T16:25:00+03:30 · SOLO · 2 · CONTRACT
+Add `CreateProjectInput.createDirectory` and `AppConfig.projectRootWritable`,
+both additive. A project can now come from three places, not two: adopt a
+directory that exists, clone a repo into one that does not, or **start empty**
+and have the server make the directory. `createDirectory` and `repoUrl` are
+mutually exclusive — a clone makes the directory itself.
+
+### 2026-08-11T16:25:00+03:30 · SOLO · 2 · DONE
+Fix "add a project" being impossible without a shell. Three failures stacked up:
+
+1. Starting a new empty project was never a supported path — only adopt or
+   clone — so the obvious flow (type a name, take the suggested directory,
+   submit) always failed. The dialog now asks where the code comes from
+   instead of inferring it from whether the repo field is blank.
+2. `TERMSPACE_PROJECT_ROOT` defaults to `/srv/projects`, which on a dev box
+   does not exist and cannot be created by an unprivileged user. The server now
+   creates the root at startup when it can, and logs a loud, actionable error
+   when it cannot, rather than leaving every create to fail at the far end of a
+   form. `GET /api/config` reports `projectRootWritable` so the dialog says so
+   before you type anything.
+3. The advice in the error was wrong: it told you to clone into a root that
+   would have rejected a clone too.
+
+The created directory is 0700, and containment is re-checked *after* the mkdir
+— the check before it cannot be a lock, and a symlink swapped in between would
+otherwise land a project outside the root. If that check fails, the directory
+this process just made is removed again.
+
+Verified against a real gateway and a real disk, 10/10: a gateway pointed at a
+root that does not exist creates it and boots; the exact request that used to
+fail now succeeds with `createDirectory`; the directory really is on disk at
+0700; a second project cannot claim it; clone-and-create together is refused
+with nothing written; `createDirectory` cannot escape the root; and a session
+starts in the directory that was just made. Against an unwritable root, the
+boot log, `GET /api/config`, and the create error all say the same thing.

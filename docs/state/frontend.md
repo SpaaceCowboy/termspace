@@ -33,6 +33,13 @@ stack before the next, so every slice is usable when it lands.
   a headless terminal and rehost through a serialized snapshot. Verified 15/15
   against the real gateway on the layouts API.
 
+**Also landed:** creating a project no longer needs a shell. Three sources
+instead of two — adopt, clone, or start empty (`createDirectory`) — plus the
+server creating its project root at startup and reporting
+`projectRootWritable` through `GET /api/config`. This came out of testing: the
+default root `/srv/projects` does not exist on a dev box, so every create
+failed with advice that would also have failed.
+
 **Next concrete step:** drive the grid in a real browser. Everything below the
 UI is verified live, but the rendered app was **not** exercised this session —
 the headless-Chrome run was abandoned part way. Start the gateway and
@@ -92,7 +99,8 @@ missing (the API supports both, nothing calls it).
 **Uncommitted:** nothing — slice 3 is committed. Validation scripts live in the
 session scratchpad and are **not** in the repo: `e2e-layouts.mjs` (the 15 checks
 above), `e2e-setup.mjs` (seeds two projects and four sessions over the API), and
-an abandoned `e2e-grid.mjs` that drives headless Chrome over CDP and gets as far
-as the login form. Nothing in `pnpm test` covers the HTTP+WS+tmux path end to
+`e2e-newproject.mjs` (10 checks on project creation from nothing), and an
+abandoned `e2e-grid.mjs` that drives headless Chrome over CDP and gets as far as
+the login form. Nothing in `pnpm test` covers the HTTP+WS+tmux path end to
 end; those scripts are still worth rewriting into the repo as real integration
 tests.

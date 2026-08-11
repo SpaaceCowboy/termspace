@@ -59,6 +59,9 @@ export const fixtureSource: DataSource = {
     if (liveProjects.some((project) => project.path === input.path)) {
       return fail('validation_failed', 'A project already uses that directory.')
     }
+    if (input.repoUrl !== undefined && input.createDirectory === true) {
+      return fail('validation_failed', 'A clone makes the directory itself.')
+    }
     const created: Project = {
       id: `prj_fixture${String(liveProjects.length).padStart(4, '0')}`,
       slug: slug === '' ? 'project' : slug,

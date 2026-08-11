@@ -30,6 +30,7 @@ import {
   ProjectConflictError,
   ProjectHasSessionsError,
   ProjectPathMissingError,
+  ProjectPathNotCreatableError,
   ProjectPathOccupiedError,
 } from '../projects/project-manager.js'
 import {
@@ -80,6 +81,7 @@ const CreateProjectInputSchema = z
     name: z.string().min(1).max(128),
     path: z.string().min(1).max(4_096),
     repoUrl: RepoUrlSchema.optional(),
+    createDirectory: z.boolean().optional(),
     defaultBranch: z
       .string()
       .min(1)
@@ -90,6 +92,10 @@ const CreateProjectInputSchema = z
     setupCommand: z.string().min(1).max(4_096).optional(),
   })
   .strict()
+  .refine(
+    (value) => value.repoUrl === undefined || value.createDirectory !== true,
+    { message: 'A clone makes the directory itself', path: ['createDirectory'] },
+  )
 
 const SessionIdSchema = z.string().length(BINARY_SID_BYTES).regex(/^[A-Za-z0-9_-]+$/)
 
@@ -141,6 +147,7 @@ interface SessionOperations {
 
 interface ProjectOperations {
   readonly projectRoot: string
+  projectRootWritable(): Promise<boolean>
   create(input: CreateProjectInput): Promise<Project>
   delete(projectId: string): boolean
   list(): readonly Project[]
@@ -257,7 +264,10 @@ export function registerPhase1Routes(
     if (resolveAuthenticatedUser(request, services) === null) {
       return sendError(reply, 401, 'unauthorized', 'Authentication required.')
     }
-    return ok<AppConfig>({ projectRoot: services.projects.projectRoot })
+    return ok<AppConfig>({
+      projectRoot: services.projects.projectRoot,
+      projectRootWritable: await services.projects.projectRootWritable(),
+    })
   })
 
   app.get('/api/projects', async (request, reply) => {
@@ -290,6 +300,9 @@ export function registerPhase1Routes(
       name: parsed.data.name,
       path: parsed.data.path,
       ...(parsed.data.repoUrl === undefined ? {} : { repoUrl: parsed.data.repoUrl }),
+      ...(parsed.data.createDirectory === undefined
+        ? {}
+        : { createDirectory: parsed.data.createDirectory }),
       ...(parsed.data.defaultBranch === undefined
         ? {}
         : { defaultBranch: parsed.data.defaultBranch }),
@@ -311,7 +324,17 @@ export function registerPhase1Routes(
           reply,
           400,
           'validation_failed',
-          'That directory was not found. Give a repo URL to clone it instead.',
+          'That directory was not found. Create it, or give a repo URL to clone into it.',
+          'path',
+        )
+      }
+      if (error instanceof ProjectPathNotCreatableError) {
+        request.log.error({ err: error }, 'Project directory could not be created')
+        return sendError(
+          reply,
+          400,
+          'validation_failed',
+          `Could not create that directory. Check that ${services.projects.projectRoot} exists and the server can write to it.`,
           'path',
         )
       }

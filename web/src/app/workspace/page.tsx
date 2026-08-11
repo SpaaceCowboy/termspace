@@ -37,6 +37,7 @@ export default function WorkspacePage() {
   const [notice, setNotice] = useState<string | null>(null)
   const [deadSessions, setDeadSessions] = useState<ReadonlySet<string>>(new Set())
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
+  const [projectRootWritable, setProjectRootWritable] = useState(true)
   const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
@@ -148,6 +149,9 @@ export default function WorkspacePage() {
           return
         }
         setProjectRoot(configResponse.ok ? configResponse.data.projectRoot : null)
+        setProjectRootWritable(
+          configResponse.ok ? configResponse.data.projectRootWritable : true,
+        )
         setError(projectResponse.ok ? null : projectResponse.error.message)
         setProjects(projectResponse.ok ? projectResponse.data : [])
         setSessions(sessionResponse.data)
@@ -338,6 +342,7 @@ export default function WorkspacePage() {
       <NewProjectDialog
         open={projectDialogOpen}
         projectRoot={projectRoot}
+        projectRootWritable={projectRootWritable}
         onClose={() => {
           setProjectDialogOpen(false)
         }}

@@ -28,6 +28,13 @@ export interface HealthData {
  */
 export interface AppConfig {
   projectRoot: string
+  /**
+   * False when the server cannot write to `projectRoot` — it is missing and
+   * could not be created, or it is not writable by the app user. Every project
+   * creation will fail until that is fixed, so the UI says so up front rather
+   * than after a submit.
+   */
+  projectRootWritable: boolean
 }
 
 export function isApiOk<T>(response: ApiResponse<T>): response is ApiOk<T> {

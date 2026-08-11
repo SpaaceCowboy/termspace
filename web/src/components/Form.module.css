@@ -99,3 +99,37 @@
   font-size: 13px;
   color: var(--ts-text-dim);
 }
+
+.fieldset {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin: 0;
+  padding: 0;
+  border: 0;
+}
+
+.choice {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 6px 8px;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.choice:hover {
+  border-color: var(--ts-accent);
+}
+
+.choice:has(input:checked) {
+  border-color: var(--ts-accent);
+  background: var(--ts-bg-sunken);
+}
+
+.choice input {
+  margin: 3px 0 0;
+  accent-color: var(--ts-accent);
+}

@@ -26,6 +26,7 @@ import {
   ProjectConflictError,
   ProjectHasSessionsError,
   ProjectPathMissingError,
+  ProjectPathNotCreatableError,
   ProjectPathOccupiedError,
 } from '../projects/project-manager.js'
 import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
@@ -125,11 +126,16 @@ class FakeSessions {
 
 class FakeProjects {
   readonly projectRoot = '/srv/projects'
+  rootWritable = true
   createdInput: CreateProjectInput | undefined
   createError: Error | undefined
   deleteError: Error | undefined
   deleteResult = true
   readonly deleted: string[] = []
+
+  async projectRootWritable(): Promise<boolean> {
+    return this.rootWritable
+  }
 
   async create(input: CreateProjectInput): Promise<Project> {
     this.createdInput = input
@@ -509,6 +515,7 @@ describe('Phase 1 HTTP routes', () => {
       [new ProjectPathOccupiedError('occupied'), 'validation_failed', 'path'],
       [new ProjectConflictError('conflict'), 'validation_failed', 'path'],
       [new ProjectCloneFailedError('clone'), 'validation_failed', 'repoUrl'],
+      [new ProjectPathNotCreatableError('denied'), 'validation_failed', 'path'],
     ]
     for (const [error, code, field] of cases) {
       projects.createError = error
@@ -541,6 +548,57 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.equal(busy.statusCode, 400)
     assert.equal(busy.json().error.code, 'validation_failed')
+  })
+
+  it('passes createDirectory through and refuses it alongside a repo URL', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { name: 'Portal UI', path: '/srv/projects/portal-ui', createDirectory: true },
+    })
+    assert.equal(created.statusCode, 201)
+    assert.equal(projects.createdInput?.createDirectory, true)
+
+    projects.forget()
+    const contradictory = await app.inject({
+      method: 'POST',
+      url: '/api/projects',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        name: 'Portal UI',
+        path: '/srv/projects/portal-ui',
+        repoUrl: 'https://github.com/example/portal-ui.git',
+        createDirectory: true,
+      },
+    })
+    assert.equal(contradictory.statusCode, 400)
+    assert.equal(contradictory.json().error.code, 'validation_failed')
+    assert.equal(
+      projects.createdInput,
+      undefined,
+      'a clone that also asks for a directory never reaches the manager',
+    )
+  })
+
+  it('reports whether the server can actually write to the project root', async () => {
+    const writable = await app.inject({
+      method: 'GET',
+      url: '/api/config',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(writable.json(), {
+      ok: true,
+      data: { projectRoot: '/srv/projects', projectRootWritable: true },
+    })
+
+    projects.rootWritable = false
+    const readOnly = await app.inject({
+      method: 'GET',
+      url: '/api/config',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(readOnly.json().data.projectRootWritable, false)
   })
 
   it('returns the stored layout for the caller, not for anyone else', async () => {

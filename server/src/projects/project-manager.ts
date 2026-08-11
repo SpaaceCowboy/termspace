@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto'
-import { stat } from 'node:fs/promises'
+import { constants } from 'node:fs'
+import { access, mkdir, rmdir, stat } from 'node:fs/promises'
 
 import type { CreateProjectInput, Project } from '@termspace/contracts'
 
@@ -24,6 +25,7 @@ interface ProjectRepositoryPort {
 export { PathInvalidError as ProjectPathInvalidError } from '../fs/contained-path.js'
 export { PathOutsideRootError as ProjectPathOutsideRootError } from '../fs/contained-path.js'
 export class ProjectPathMissingError extends Error {}
+export class ProjectPathNotCreatableError extends Error {}
 export class ProjectPathOccupiedError extends Error {}
 export class ProjectConflictError extends Error {}
 export class ProjectCloneFailedError extends Error {}
@@ -33,6 +35,9 @@ interface ProjectManagerOptions {
   readonly createId?: () => string
   readonly now?: () => number
   readonly pathExists?: (path: string) => Promise<boolean>
+  readonly makeDirectory?: (path: string) => Promise<void>
+  readonly removeDirectory?: (path: string) => Promise<void>
+  readonly isWritable?: (path: string) => Promise<boolean>
   readonly realPath?: RealPath
 }
 
@@ -42,6 +47,9 @@ export class ProjectManager {
   readonly #createId: () => string
   readonly #now: () => number
   readonly #pathExists: (path: string) => Promise<boolean>
+  readonly #makeDirectory: (path: string) => Promise<void>
+  readonly #removeDirectory: (path: string) => Promise<void>
+  readonly #isWritable: (path: string) => Promise<boolean>
   readonly #processes: ProcessRunner
   readonly #realPath: RealPath | undefined
   readonly #projectRoot: string
@@ -59,6 +67,9 @@ export class ProjectManager {
     this.#createId = options.createId ?? randomUUID
     this.#now = options.now ?? Date.now
     this.#pathExists = options.pathExists ?? pathExists
+    this.#makeDirectory = options.makeDirectory ?? makeDirectory
+    this.#removeDirectory = options.removeDirectory ?? removeDirectory
+    this.#isWritable = options.isWritable ?? isWritable
     this.#realPath = options.realPath
   }
 
@@ -72,6 +83,33 @@ export class ProjectManager {
 
   get projectRoot(): string {
     return this.#projectRoot
+  }
+
+  /**
+   * Whether the root can take a new project directory at all. Checked on demand
+   * rather than cached: it is a mount and a permission bit, both of which can
+   * change under a running server.
+   */
+  async projectRootWritable(): Promise<boolean> {
+    return this.#isWritable(this.#projectRoot)
+  }
+
+  /**
+   * Called once at startup. A missing root is the difference between "every
+   * project creation fails with a confusing message" and a server that works,
+   * so it is worth one `mkdir` — but never worth refusing to boot, since
+   * sessions in projects that already exist are unaffected.
+   */
+  async ensureProjectRoot(): Promise<{ created: boolean; writable: boolean }> {
+    if (!(await this.#pathExists(this.#projectRoot))) {
+      try {
+        await this.#makeDirectory(this.#projectRoot)
+        return { created: true, writable: await this.#isWritable(this.#projectRoot) }
+      } catch {
+        return { created: false, writable: false }
+      }
+    }
+    return { created: false, writable: await this.#isWritable(this.#projectRoot) }
   }
 
   async create(input: CreateProjectInput): Promise<Project> {
@@ -91,7 +129,10 @@ export class ProjectManager {
     const exists = await this.#pathExists(path)
     if (input.repoUrl === undefined) {
       if (!exists) {
-        throw new ProjectPathMissingError(`Directory ${path} was not found`)
+        if (input.createDirectory !== true) {
+          throw new ProjectPathMissingError(`Directory ${path} was not found`)
+        }
+        await this.#makeProjectDirectory(path)
       }
     } else if (exists) {
       // Cloning onto an existing directory would either fail deep inside git or
@@ -131,6 +172,29 @@ export class ProjectManager {
     return this.#repository.delete(projectId)
   }
 
+  /**
+   * Creating the directory reopens the containment question: the string check
+   * and the symlink check both ran against a path that did not exist yet, and
+   * the parent could be a link out of the root. Verify what actually landed on
+   * disk, and take back only what we just made if it is wrong.
+   */
+  async #makeProjectDirectory(path: string): Promise<void> {
+    try {
+      await this.#makeDirectory(path)
+    } catch (error) {
+      const detail = error instanceof Error ? error.message : String(error)
+      throw new ProjectPathNotCreatableError(detail)
+    }
+    try {
+      await assertRealPathWithinRoot(this.#projectRoot, path, {
+        ...(this.#realPath === undefined ? {} : { realPath: this.#realPath }),
+      })
+    } catch (error) {
+      await this.#removeDirectory(path).catch(() => undefined)
+      throw error
+    }
+  }
+
   async #clone(repoUrl: string, path: string, branch: string): Promise<void> {
     try {
       await this.#processes.run('git', [
@@ -162,6 +226,25 @@ export function slugify(name: string): string {
 async function pathExists(path: string): Promise<boolean> {
   try {
     await stat(path)
+    return true
+  } catch {
+    return false
+  }
+}
+
+/** 0700: a project directory is this user's working copy, nobody else's. */
+async function makeDirectory(path: string): Promise<void> {
+  await mkdir(path, { recursive: true, mode: 0o700 })
+}
+
+/** Only ever used to undo a directory this process just made, so never recursive. */
+async function removeDirectory(path: string): Promise<void> {
+  await rmdir(path)
+}
+
+async function isWritable(path: string): Promise<boolean> {
+  try {
+    await access(path, constants.W_OK | constants.X_OK)
     return true
   } catch {
     return false

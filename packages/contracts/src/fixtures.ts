@@ -187,7 +187,10 @@ export const errorCodeFixture: ErrorCode = 'session_not_found'
 
 export const healthDataFixture: HealthData = { version: '0.0.0' }
 
-export const appConfigFixture: AppConfig = { projectRoot: '/srv/projects' }
+export const appConfigFixture: AppConfig = {
+  projectRoot: '/srv/projects',
+  projectRootWritable: true,
+}
 
 export const apiErrorFixture: ApiError = {
   code: 'session_not_found',

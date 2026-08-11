@@ -14,6 +14,7 @@ import {
   ProjectConflictError,
   ProjectHasSessionsError,
   ProjectPathMissingError,
+  ProjectPathNotCreatableError,
   ProjectPathOccupiedError,
   ProjectManager,
   slugify,
@@ -81,15 +82,40 @@ class FakeRepository {
   }
 }
 
-function build(existingPaths: readonly string[] = []) {
+function build(existingPaths: readonly string[] = [], options: BuildOptions = {}) {
   const repository = new FakeRepository()
   const runner = new FakeRunner()
+  const paths = [...existingPaths]
+  const made: string[] = []
+  const removed: string[] = []
   const manager = new ProjectManager(repository, runner, ROOT, {
     createId: () => 'prj_fixed',
     now: () => 1_000,
-    pathExists: async (path) => existingPaths.includes(path),
+    pathExists: async (path) => paths.includes(path),
+    makeDirectory: async (path) => {
+      if (options.makeFails === true) {
+        throw new Error('EACCES: permission denied')
+      }
+      made.push(path)
+      paths.push(path)
+    },
+    removeDirectory: async (path) => {
+      removed.push(path)
+      const index = paths.indexOf(path)
+      if (index !== -1) {
+        paths.splice(index, 1)
+      }
+    },
+    isWritable: async () => options.writable ?? true,
+    ...(options.realPath === undefined ? {} : { realPath: options.realPath }),
   })
-  return { manager, repository, runner }
+  return { manager, repository, runner, made, removed }
+}
+
+interface BuildOptions {
+  readonly makeFails?: boolean
+  readonly writable?: boolean
+  readonly realPath?: (path: string) => Promise<string>
 }
 
 describe('normalizeAbsolutePath', () => {
@@ -147,6 +173,92 @@ describe('ProjectManager', () => {
       manager.create({ name: 'Portal UI', path: '/srv/projects/portal-ui' }),
       ProjectPathMissingError,
     )
+  })
+
+  it('creates the directory when asked, and starts an empty project in it', async () => {
+    const { manager, made, runner } = build()
+    const project = await manager.create({
+      name: 'Portal UI',
+      path: '/srv/projects/portal-ui',
+      createDirectory: true,
+    })
+
+    assert.deepEqual(made, ['/srv/projects/portal-ui'])
+    assert.equal(project.path, '/srv/projects/portal-ui')
+    assert.equal(project.repoUrl, null)
+    assert.deepEqual(runner.calls, [], 'an empty project never touches git')
+  })
+
+  it('adopts an existing directory rather than failing when asked to create it', async () => {
+    const { manager, made } = build(['/srv/projects/portal-ui'])
+    const project = await manager.create({
+      name: 'Portal UI',
+      path: '/srv/projects/portal-ui',
+      createDirectory: true,
+    })
+
+    assert.equal(project.path, '/srv/projects/portal-ui')
+    assert.deepEqual(made, [], 'nothing was created over the top of it')
+  })
+
+  it('reports a directory it could not create rather than a missing one', async () => {
+    const { manager } = build([], { makeFails: true })
+    await assert.rejects(
+      manager.create({
+        name: 'Portal UI',
+        path: '/srv/projects/portal-ui',
+        createDirectory: true,
+      }),
+      ProjectPathNotCreatableError,
+    )
+  })
+
+  it('takes back a directory it created if that directory resolves outside the root', async () => {
+    // The containment check before the mkdir cannot be a lock: a symlink can be
+    // swapped under us between the check and the create. Here the first
+    // resolution is inside the root and the one after the mkdir is not.
+    let resolvedOnce = false
+    const { manager, made, removed } = build([], {
+      realPath: async (path) => {
+        if (path !== '/srv/projects/portal-ui') {
+          return path
+        }
+        if (!resolvedOnce) {
+          resolvedOnce = true
+          return path
+        }
+        return '/etc/portal-ui'
+      },
+    })
+
+    await assert.rejects(
+      manager.create({
+        name: 'Portal UI',
+        path: '/srv/projects/portal-ui',
+        createDirectory: true,
+      }),
+      PathOutsideRootError,
+    )
+    assert.deepEqual(made, ['/srv/projects/portal-ui'])
+    assert.deepEqual(removed, ['/srv/projects/portal-ui'], 'it cleaned up after itself')
+  })
+
+  it('creates a missing project root at startup and reports whether it is writable', async () => {
+    const { manager, made } = build()
+    assert.deepEqual(await manager.ensureProjectRoot(), { created: true, writable: true })
+    assert.deepEqual(made, [ROOT])
+
+    const readOnly = build([ROOT], { writable: false })
+    assert.deepEqual(await readOnly.manager.ensureProjectRoot(), {
+      created: false,
+      writable: false,
+    })
+    assert.equal(await readOnly.manager.projectRootWritable(), false)
+  })
+
+  it('does not claim the root is writable when it could not be created', async () => {
+    const { manager } = build([], { makeFails: true })
+    assert.deepEqual(await manager.ensureProjectRoot(), { created: false, writable: false })
   })
 
   it('clones into a path that does not exist yet', async () => {

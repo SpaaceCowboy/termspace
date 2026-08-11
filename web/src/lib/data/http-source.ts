@@ -80,7 +80,10 @@ const LayoutSchema = z.object({
 })
 
 const HealthSchema = z.object({ version: z.string() })
-const AppConfigSchema = z.object({ projectRoot: z.string() })
+const AppConfigSchema = z.object({
+  projectRoot: z.string(),
+  projectRootWritable: z.boolean(),
+})
 const UserEnvelopeSchema = z.object({ user: UserSchema })
 const WsTicketSchema = z.object({ ticket: z.string(), expiresAt: z.number() })
 const EmptySchema = z.object({}).strict()

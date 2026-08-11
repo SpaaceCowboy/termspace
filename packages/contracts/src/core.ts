@@ -12,14 +12,21 @@ export interface Project {
 }
 
 /**
- * Either adopt a directory that is already on the box (`path`) or clone
- * `repoUrl` into it. Exactly one of the two must say where the code comes from:
- * with no `repoUrl` the path must already exist, and with one it must not.
+ * Where a project's code comes from. Exactly one of three:
+ *
+ * - adopt a directory already on the box — no `repoUrl`, the path must exist
+ * - clone `repoUrl` into it — the path must not exist
+ * - start empty — `createDirectory`, and the server makes the directory
+ *
+ * `createDirectory` and `repoUrl` are mutually exclusive: a clone makes the
+ * directory itself, and asking for both says nothing coherent about what should
+ * end up on disk.
  */
 export interface CreateProjectInput {
   name: string
   path: string
   repoUrl?: string
+  createDirectory?: boolean
   defaultBranch?: string
   setupCommand?: string
 }
