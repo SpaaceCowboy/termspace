@@ -43,7 +43,7 @@ function envelopeSchema<T extends z.ZodTypeAny>(data: T) {
 
 const SessionStateSchema = z.enum(['working', 'idle', 'needs-you', 'dead'])
 
-const ProjectSchema = z.object({
+export const ProjectSchema = z.object({
   id: z.string(),
   slug: z.string(),
   name: z.string(),
@@ -51,7 +51,12 @@ const ProjectSchema = z.object({
   repoUrl: z.string().nullable(),
   defaultBranch: z.string(),
   setupCommand: z.string().nullable(),
-  agentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
+  /**
+   * `partialRecord`, not `record`: in zod 4 a record keyed by an enum is
+   * exhaustive and demands every key, so a project overriding nothing — the
+   * normal case — failed validation and took the whole project list with it.
+   */
+  agentCommands: z.partialRecord(z.enum(AGENT_KINDS), z.array(z.string())),
   createdAt: z.number(),
 })
 
@@ -82,7 +87,8 @@ const LayoutSchema = z.object({
 })
 
 const HealthSchema = z.object({ version: z.string() })
-const AppConfigSchema = z.object({
+/** Exhaustive on purpose here — the server sends a command for every kind. */
+export const AppConfigSchema = z.object({
   projectRoot: z.string(),
   projectRootWritable: z.boolean(),
   defaultAgentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),

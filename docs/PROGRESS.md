@@ -465,3 +465,36 @@ first person to use them saw neither. Two causes, both mine:
 
 The lesson is the second one: a control that is invisible at rest is a control
 that does not exist, and "reveal on hover" is a decoration, not an affordance.
+
+### 2026-08-11T16:04:00+03:30 · SOLO · 2 · FIXED
+The project list was rejected by its own client schema, which emptied the
+sidebar and reported "the server sent a response that does not match the
+contract for /api/projects" — pointing squarely at the wrong half of the system.
+The server was correct throughout.
+
+In zod 4 a record keyed by an enum is **exhaustive**: `z.record(z.enum(KINDS), v)`
+demands every key. `agentCommands: {}` — the normal case for a project that
+overrides nothing — was therefore invalid, so every project failed to parse and
+the list came back empty. With no projects there are no project headers, and
+with no headers there is nowhere to hang the gear or delete buttons, which is
+why they looked missing rather than broken. `z.partialRecord` is the right
+constructor and is what it uses now.
+
+`AppConfig.defaultAgentCommands` deliberately stays exhaustive: the server does
+send a command for every kind there, and it should fail if it ever stops.
+
+`ProjectSchema` and `AppConfigSchema` are now exported and covered by
+`http-source.test.ts`, which parses the shared fixtures — including a project
+overriding nothing, and one overriding exactly one kind — and still rejects a
+project missing a required field or carrying a command that is not an array of
+strings. Verified against a real server response as well as the fixtures: the
+gateway sends `{}` and the client now accepts it.
+
+Two process failures worth keeping, because each cost a round trip:
+1. This shipped because every check was made against fixtures whose one project
+   had an override. The empty map — the common case — was never parsed.
+2. Three wrong diagnoses preceded the right one (stale bundle, then old
+   gateway), each stated with more confidence than the evidence carried. The DOM
+   counts that "proved" the code was compiled-but-not-rendering were equally
+   consistent with old code. The fix each time was to reproduce the failure
+   directly rather than reason about it.
