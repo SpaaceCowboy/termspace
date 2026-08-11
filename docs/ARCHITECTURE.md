@@ -80,7 +80,21 @@ and the trailing line of the headless buffer.
 | `idle` | no output for >3 s, no prompt match |
 
 Prompt patterns live in `server/src/activity/patterns.ts` and are per-agent
-(Claude Code's numbered permission prompt, Codex's confirm, a bare shell `$`).
+(Claude Code's numbered permission prompt, Codex's confirm).
+
+Two corrections to the table above, both found while implementing it:
+
+- **A bare shell prompt is not `needs-you`.** It was listed as a pattern here,
+  but a shell sitting at its prompt is resting, not asking, and that rule would
+  put every idle terminal into the one state meant to buzz a phone. `shell` has
+  no patterns and only moves between `working` and `idle`.
+- **The match is against the trailing *block*, not the trailing line.** A real
+  permission prompt is a question, then numbered options, then a footer, so the
+  literal last line is usually the final option and carries no signal. The last
+  six non-empty lines are matched.
+
+`dead` is not derived: it is set when the viewer reports an exit, and outranks
+whatever the last line said.
 
 ## Security model
 

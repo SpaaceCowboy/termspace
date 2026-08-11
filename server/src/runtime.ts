@@ -20,6 +20,7 @@ import { createFocusedOutputCoalescer } from './terminal/output-coalescer.js'
 import { ExecFileProcessRunner } from './tmux/process-runner.js'
 import { TmuxClient } from './tmux/tmux-client.js'
 import { GatewayConnection } from './ws/gateway-connection.js'
+import { SessionActivityTracker } from './activity/activity-tracker.js'
 import { SessionFeedCoordinator } from './ws/session-feed-coordinator.js'
 import { TicketStore } from './ws/ticket-store.js'
 import { WebSocketGatewayServer } from './ws/websocket-server.js'
@@ -83,6 +84,21 @@ export function createServerRuntime(
   const onGatewayError = (error: unknown): void => {
     app.log.error({ err: error }, 'WebSocket gateway failure')
   }
+
+  /*
+   * One tracker for the process, not one per connection: session state must
+   * keep advancing while nobody is watching, and two tabs on the same session
+   * have to agree about it.
+   */
+  const activity = new SessionActivityTracker({ onError: onGatewayError })
+  activity.listen((change) => {
+    try {
+      sessionRepository.updateState(change.sessionId, change.state, change.since)
+    } catch (error) {
+      // A write failure must not stop the frame reaching the browser.
+      onGatewayError(error)
+    }
+  })
   const gateway = new WebSocketGatewayServer(app.server, {
     allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN,
     tickets,
@@ -105,6 +121,7 @@ export function createServerRuntime(
         buffers,
         capture: (sessionId) => tmux.capture(sessionId),
         feeds,
+        activity,
         createCoalescer: createFocusedOutputCoalescer,
         transport,
         onError: onGatewayError,

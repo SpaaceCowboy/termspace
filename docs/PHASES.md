@@ -98,13 +98,13 @@ switching a hidden pane to visible shows correct up-to-date content instantly.
 ## Phase 3 — It knows what is happening
 
 **Backend (Codex)**
-- [ ] Activity tracker per session, states per `docs/ARCHITECTURE.md`
-- [ ] `status` frames pushed on state change only, not on a timer
+- [x] Activity tracker per session, states per `docs/ARCHITECTURE.md`
+- [x] `status` frames pushed on state change only, not on a timer
 - [ ] Auto-title: derive a short label from recent output, push as `title` frame
 - [ ] Web Push subscription endpoints + notify on transition into `needs-you`
 
 **Frontend (Claude Code)**
-- [ ] Status pill per pane, sidebar dots, document title reflects worst state
+- [x] Status pill per pane, sidebar dots, document title reflects worst state
 - [ ] Service worker, push permission flow, notification click focuses the pane
 - [ ] Output coalescing tiers by visibility (16 / 50 / 250 ms)
 

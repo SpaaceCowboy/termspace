@@ -8,6 +8,7 @@ import type {
   GatewayCoalescer,
   GatewayConnectionDependencies,
 } from './gateway-connection.js'
+import { SessionActivityTracker } from '../activity/activity-tracker.js'
 import { GatewayConnection } from './gateway-connection.js'
 import { SessionFeedCoordinator } from './session-feed-coordinator.js'
 
@@ -71,6 +72,7 @@ function createHarness(session: Session | null = SESSION): {
   binaries: Buffer[]
   bufferWrites: string[]
   errors: unknown[]
+  activity: SessionActivityTracker
 } {
   const attachment = new FakeAttachment()
   const callbacks: {
@@ -81,7 +83,14 @@ function createHarness(session: Session | null = SESSION): {
   const binaries: Buffer[] = []
   const bufferWrites: string[] = []
   const errors: unknown[] = []
+  const activity = new SessionActivityTracker({
+    now: () => 1_000,
+    // Never fires on its own: these tests drive transitions explicitly, and a
+    // real 3 s timer would make the suite wait for wall-clock time.
+    schedule: () => () => undefined,
+  })
   const dependencies: GatewayConnectionDependencies = {
+    activity,
     sessions: { find: () => session },
     attachments: {
       attach: (_sessionId, viewerCallbacks) => {
@@ -112,6 +121,7 @@ function createHarness(session: Session | null = SESSION): {
     binaries,
     bufferWrites,
     errors,
+    activity,
   }
 }
 
@@ -125,10 +135,26 @@ describe('GatewayConnection', () => {
 
     assert.deepEqual(harness.frames, [
       { t: 'restore', sid: SID, data: 'restored-screen' },
+      // A subscriber is told the state it is joining. Status frames are
+      // edge-triggered, so without this the pane would show nothing until the
+      // next transition, which could be minutes away.
+      { t: 'status', sid: SID, state: 'idle', since: 1_000 },
+      { t: 'status', sid: SID, state: 'working', since: 1_000 },
     ])
     assert.deepEqual(harness.bufferWrites, ['ready'])
     assert.equal(harness.binaries[0]?.subarray(0, 16).toString('ascii'), SID)
     assert.equal(harness.binaries[0]?.subarray(16).toString('utf8'), 'ready')
+  })
+
+  it('stops forwarding status once the connection is closed', async () => {
+    const harness = createHarness()
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+    harness.connection.close()
+    const before = harness.frames.length
+
+    harness.activity.observe(SID, 'more output')
+
+    assert.equal(harness.frames.length, before, 'a closed connection is deaf')
   })
 
   it('routes input, resize, ping, unsubscribe, and close to owned resources', async () => {

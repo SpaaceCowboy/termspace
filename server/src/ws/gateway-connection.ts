@@ -2,6 +2,7 @@ import type { ServerFrame, Session } from '@termspace/contracts'
 
 import { encodeTerminalOutput } from './frame-codec.js'
 import { decodeClientFrame } from './frame-codec.js'
+import type { SessionActivityTracker } from '../activity/activity-tracker.js'
 import type { SessionFeedCoordinator, SessionFeedLease } from './session-feed-coordinator.js'
 
 export interface GatewayAttachment {
@@ -38,6 +39,7 @@ export interface GatewayConnectionDependencies {
   }
   readonly capture: (sessionId: string) => Promise<string>
   readonly feeds: SessionFeedCoordinator
+  readonly activity: SessionActivityTracker
   readonly createCoalescer: (
     onFlush: (data: string) => void,
     onTruncated: () => void,
@@ -52,10 +54,27 @@ export interface GatewayConnectionDependencies {
 export class GatewayConnection {
   readonly #dependencies: GatewayConnectionDependencies
   readonly #subscriptions = new Map<string, GatewaySubscription>()
+  readonly #stopListening: () => void
   #closed = false
 
   constructor(dependencies: GatewayConnectionDependencies) {
     this.#dependencies = dependencies
+    /*
+     * One listener for the connection rather than one per subscription: state
+     * belongs to the session, and a connection simply forwards the changes for
+     * whatever it happens to be watching at the time.
+     */
+    this.#stopListening = dependencies.activity.listen((change) => {
+      if (this.#closed || !this.#subscriptions.has(change.sessionId)) {
+        return
+      }
+      this.#dependencies.transport.sendFrame({
+        t: 'status',
+        sid: change.sessionId,
+        state: change.state,
+        since: change.since,
+      })
+    })
   }
 
   async handleText(payload: string): Promise<void> {
@@ -97,6 +116,7 @@ export class GatewayConnection {
       return
     }
     this.#closed = true
+    this.#stopListening()
     for (const sessionId of [...this.#subscriptions.keys()]) {
       this.#unsubscribe(sessionId)
     }
@@ -106,10 +126,15 @@ export class GatewayConnection {
     if (this.#subscriptions.has(sessionId)) {
       return
     }
-    if (this.#dependencies.sessions.find(sessionId) === null) {
+    const session = this.#dependencies.sessions.find(sessionId)
+    if (session === null) {
       this.#sendError(sessionId, 'session_not_found', 'Session was not found.')
       return
     }
+    // The tracker needs the agent kind to know what a question looks like, and
+    // the persisted state so a freshly started gateway does not claim every
+    // session is idle before any output arrives.
+    this.#dependencies.activity.register(sessionId, session.agent, session.state)
 
     let feedLease: SessionFeedLease | undefined
     let coalescer: GatewayCoalescer | undefined
@@ -126,6 +151,18 @@ export class GatewayConnection {
         sid: sessionId,
         data: restore,
       })
+      // A client that subscribes mid-session must be told the state it is
+      // already in; status frames are edge-triggered and the next edge could
+      // be minutes away.
+      const known = this.#dependencies.activity.snapshot(sessionId)
+      if (known !== null) {
+        this.#dependencies.transport.sendFrame({
+          t: 'status',
+          sid: sessionId,
+          state: known.state,
+          since: known.since,
+        })
+      }
 
       const acquiredFeedLease = this.#dependencies.feeds.acquire(sessionId)
       feedLease = acquiredFeedLease
@@ -148,10 +185,14 @@ export class GatewayConnection {
             void this.#dependencies.buffers
               .write(sessionId, data)
               .catch(this.#dependencies.onError)
+            // Only the writer observes, or every extra viewer would double-count
+            // the same bytes into the same tracker.
+            this.#dependencies.activity.observe(sessionId, data)
           }
           outputCoalescer.push(data)
         },
         onExit: ({ exitCode }) => {
+          this.#dependencies.activity.markDead(sessionId)
           if (!this.#subscriptions.has(sessionId)) {
             earlyExitCode = exitCode
             return

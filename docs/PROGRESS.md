@@ -555,3 +555,48 @@ under AA for normal text and it carries real text — session metadata, hints,
 placeholders — so it moved from #6b7383 to #7b8394 (4.96 on bg, 4.52 on raised).
 
 82/82 web tests pass and the app typechecks. Phase 3 has not been started.
+
+### 2026-08-11T17:30:00+03:30 · SOLO · 3 · DONE
+Phase 3, first slice: sessions report what they are doing. Three boxes — the
+activity tracker, `status` frames on change only, and the client reflecting
+state — the last of which was already half built, since the pills and dots
+rendered from `session.state` and nothing ever changed it.
+
+`SessionActivityTracker` is one per process, not one per connection: state
+belongs to the session, so two tabs must agree and the state has to keep
+advancing while nobody is watching. It is edge-triggered — entering `working`
+is caused by output, and a single timer, reset by further output, fires once 3 s
+after the last byte to choose between `idle` and `needs-you`. It never emits
+unless the derived state actually differs, which is what the box meant by "not
+on a timer". Verified: a session left alone emits nothing at all.
+
+Two deliberate deviations from `docs/ARCHITECTURE.md`, both now corrected in
+that document rather than left as a surprise:
+
+1. **A bare shell prompt does not mean `needs-you`.** The doc listed it as a
+   pattern. A shell at its prompt is resting, not asking, and that rule puts
+   every idle terminal into the one state meant to buzz a phone — which makes
+   the phase 3 exit criteria meaningless. `shell` has no patterns at all.
+2. **Matching is against the trailing block, not the trailing line.** A real
+   permission prompt is a question, then numbered options, then a footer, so the
+   last line is usually "2. No, exit" and carries none of the signal. This was
+   not a guess: the first version matched the trailing line and failed against
+   Claude's actual trust prompt.
+
+State is persisted on change, because status frames are edge-triggered and a
+client connecting between two edges would otherwise show whatever the row said
+at creation. A subscriber is also sent the current state immediately after
+`restore`, for the same reason.
+
+The document title carries the worst state across all sessions, with
+`needs-you` outranking `dead` — a dead session is over, a prompt is a person
+blocked right now — and leads with a count, which is what survives a narrow tab.
+
+Verified 7/7 against a real gateway, PTY and WebSocket: subscribing announces
+the current state, output moves it to `working`, it settles to `idle`, a shell
+never reaches `needs-you`, a command producing many chunks yields exactly one
+`working` and one `idle` rather than a frame per chunk, a quiet session emits
+nothing, and the derived state survives into the database. 163/163 server,
+87/87 web, 25/25 contracts.
+
+Not done in this slice: auto-title, Web Push, and the output coalescing tiers.

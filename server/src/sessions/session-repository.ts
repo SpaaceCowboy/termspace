@@ -1,4 +1,4 @@
-import type { Session } from '@termspace/contracts'
+import type { Session, SessionState } from '@termspace/contracts'
 import type Database from 'better-sqlite3'
 import { z } from 'zod'
 
@@ -58,6 +58,19 @@ export class SessionRepository {
       .prepare('SELECT id, path, agent_commands FROM projects WHERE id = ?')
       .get(projectId)
     return row === undefined ? null : ProjectRowSchema.parse(row)
+  }
+
+  /**
+   * Persisted so a page load shows the state the session is actually in.
+   * Status frames are edge-triggered, so without this a client that connects
+   * between two edges would show whatever the row said when it was created.
+   */
+  updateState(sessionId: string, state: SessionState, lastActivityAt: number): boolean {
+    return (
+      this.#database
+        .prepare('UPDATE sessions SET state = ?, last_activity_at = ? WHERE id = ?')
+        .run(state, lastActivityAt, sessionId).changes > 0
+    )
   }
 
   insert(session: Session): void {

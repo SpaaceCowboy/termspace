@@ -29,6 +29,7 @@ import {
   withoutSession,
 } from '@/lib/layout/layout-actions.ts'
 import { useLayout } from '@/lib/layout/useLayout.ts'
+import { documentTitle } from '@/lib/session-summary.ts'
 import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
 import { useSocket } from '@/lib/socket/useSocket.ts'
 
@@ -263,6 +264,18 @@ export default function WorkspacePage() {
     // time this runs there are none to clean up.
     setProjects((current) => current.filter((project) => project.id !== projectId))
   }, [])
+
+  /*
+   * The tab title is the only signal that reaches someone who has switched
+   * away, so it carries the worst state across every session, not the focused
+   * one. Restored on unmount so a navigation away does not leave it shouting.
+   */
+  useEffect(() => {
+    document.title = documentTitle(sessions)
+    return () => {
+      document.title = 'Termspace'
+    }
+  }, [sessions])
 
   const onSelectSession = useCallback(
     (sid: string) => {
