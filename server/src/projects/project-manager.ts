@@ -2,7 +2,12 @@ import { randomUUID } from 'node:crypto'
 import { constants } from 'node:fs'
 import { access, mkdir, rmdir, stat } from 'node:fs/promises'
 
-import type { CreateProjectInput, Project } from '@termspace/contracts'
+import type {
+  AgentCommandOverrides,
+  CreateProjectInput,
+  Project,
+  UpdateProjectInput,
+} from '@termspace/contracts'
 
 import {
   assertRealPathWithinRoot,
@@ -17,6 +22,10 @@ interface ProjectRepositoryPort {
   countSessions(projectId: string): number
   delete(projectId: string): boolean
   find(projectId: string): Project | null
+  updateAgentCommands(
+    projectId: string,
+    agentCommands: AgentCommandOverrides,
+  ): Project | null
   findConflict(slug: string, path: string): Project | null
   insert(project: Project): void
   list(): readonly Project[]
@@ -153,6 +162,7 @@ export class ProjectManager {
       repoUrl: input.repoUrl ?? null,
       defaultBranch,
       setupCommand: input.setupCommand ?? null,
+      agentCommands: input.agentCommands ?? {},
       createdAt: this.#now(),
     }
     this.#repository.insert(project)
@@ -160,6 +170,18 @@ export class ProjectManager {
   }
 
   /** Refuses while sessions still reference it; the FK is RESTRICT anyway. */
+  /**
+   * Null when the project is gone. Overrides replace wholesale rather than
+   * merge: an agent kind is removed from the map by omitting it, and a merge
+   * would make that impossible to express.
+   */
+  update(projectId: string, input: UpdateProjectInput): Project | null {
+    if (input.agentCommands === undefined) {
+      return this.#repository.find(projectId)
+    }
+    return this.#repository.updateAgentCommands(projectId, input.agentCommands)
+  }
+
   delete(projectId: string): boolean {
     if (this.#repository.find(projectId) === null) {
       return false

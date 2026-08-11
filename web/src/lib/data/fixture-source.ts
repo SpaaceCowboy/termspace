@@ -16,6 +16,7 @@ import {
   type LoginInput,
   type Project,
   type Session,
+  type UpdateProjectInput,
   type User,
   type WsTicket,
 } from '@termspace/contracts'
@@ -70,10 +71,27 @@ export const fixtureSource: DataSource = {
       repoUrl: input.repoUrl ?? null,
       defaultBranch: input.defaultBranch ?? 'main',
       setupCommand: input.setupCommand ?? null,
+      agentCommands: input.agentCommands ?? {},
       createdAt: Date.now(),
     }
     liveProjects.push(created)
     return ok(created)
+  },
+  updateProject(
+    projectId: string,
+    input: UpdateProjectInput,
+  ): Promise<ApiResponse<Project>> {
+    const index = liveProjects.findIndex((entry) => entry.id === projectId)
+    const project = liveProjects[index]
+    if (project === undefined) {
+      return fail('project_not_found', 'Project was not found.')
+    }
+    const updated: Project = {
+      ...project,
+      ...(input.agentCommands === undefined ? {} : { agentCommands: input.agentCommands }),
+    }
+    liveProjects[index] = updated
+    return ok(updated)
   },
   deleteProject(projectId: string): Promise<ApiResponse<Empty>> {
     const index = liveProjects.findIndex((project) => project.id === projectId)

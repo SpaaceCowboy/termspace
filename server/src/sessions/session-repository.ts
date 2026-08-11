@@ -2,10 +2,19 @@ import type { Session } from '@termspace/contracts'
 import type Database from 'better-sqlite3'
 import { z } from 'zod'
 
-const ProjectRowSchema = z.object({
-  id: z.string(),
-  path: z.string(),
-})
+import { parseAgentCommands } from '../projects/agent-commands.js'
+
+const ProjectRowSchema = z
+  .object({
+    id: z.string(),
+    path: z.string(),
+    agent_commands: z.string(),
+  })
+  .transform((row) => ({
+    id: row.id,
+    path: row.path,
+    agentCommands: parseAgentCommands(row.agent_commands),
+  }))
 
 const SessionRowSchema = z
   .object({
@@ -46,7 +55,7 @@ export class SessionRepository {
 
   findProject(projectId: string): SessionProject | null {
     const row = this.#database
-      .prepare('SELECT id, path FROM projects WHERE id = ?')
+      .prepare('SELECT id, path, agent_commands FROM projects WHERE id = ?')
       .get(projectId)
     return row === undefined ? null : ProjectRowSchema.parse(row)
   }

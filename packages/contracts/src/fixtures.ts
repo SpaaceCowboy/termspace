@@ -1,4 +1,5 @@
 import type { LoginInput, User, WsTicket } from './auth.js'
+import { DEFAULT_AGENT_COMMANDS } from './core.js'
 import type {
   AgentKind,
   CreateProjectInput,
@@ -30,6 +31,9 @@ export const projectFixture: Project = {
   repoUrl: 'git@github.com:example/portal-ui.git',
   defaultBranch: 'main',
   setupCommand: 'pnpm install',
+  // Overridden here so the UI's "this project differs from the default" path is
+  // exercised by a fixture rather than only against a real server.
+  agentCommands: { claude: ['claude', '--model', 'opus'] },
   createdAt: FIXED_NOW - 86_400_000,
 }
 
@@ -43,6 +47,7 @@ export const projectFixtures: readonly Project[] = [
     repoUrl: null,
     defaultBranch: 'main',
     setupCommand: null,
+    agentCommands: {},
     createdAt: FIXED_NOW - 172_800_000,
   },
 ]
@@ -190,6 +195,7 @@ export const healthDataFixture: HealthData = { version: '0.0.0' }
 export const appConfigFixture: AppConfig = {
   projectRoot: '/srv/projects',
   projectRootWritable: true,
+  defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
 }
 
 export const apiErrorFixture: ApiError = {

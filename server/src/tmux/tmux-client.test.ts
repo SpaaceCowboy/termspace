@@ -51,13 +51,24 @@ describe('TmuxClient', () => {
     ])
   })
 
-  it('launches only a typed agent command when requested', async () => {
+  it('passes a launch command through as separate argv elements', async () => {
     const runner = new RecordingRunner()
     const tmux = new TmuxClient(runner, '/config/tmux.conf')
 
-    await tmux.createDetached(SID, '/srv/project', 'claude')
+    await tmux.createDetached(SID, '/srv/project', ['claude', '--model', 'opus'])
 
-    assert.equal(runner.calls[0]?.arguments_.at(-1), 'claude')
+    // Separate elements, not one string: tmux execs this directly, so a joined
+    // string would be looked up as a binary with spaces in its name.
+    assert.deepEqual(runner.calls[0]?.arguments_.slice(-3), ['claude', '--model', 'opus'])
+  })
+
+  it('passes no command at all when the argv is empty', async () => {
+    const runner = new RecordingRunner()
+    const tmux = new TmuxClient(runner, '/config/tmux.conf')
+
+    await tmux.createDetached(SID, '/srv/project', [])
+
+    assert.equal(runner.calls[0]?.arguments_.at(-1), '50', 'the last argument is still -y 50')
   })
 
   it('kills only the named Termspace session', async () => {

@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import type { AgentKind, Session } from '@termspace/contracts'
+import type { AgentCommand, AgentKind, Session } from '@termspace/contracts'
 
 import type { SessionProject } from './session-repository.js'
 import { SessionManager, SessionProjectNotFoundError } from './session-manager.js'
@@ -11,10 +11,19 @@ const SID = 'ses_portalui0001'
 class FakeRepository {
   readonly sessions: Session[] = []
   failInsert = false
-  project: SessionProject | null = { id: 'project-1', path: '/srv/project' }
+  project: SessionProject | null = {
+    id: 'project-1',
+    path: '/srv/project',
+    agentCommands: {},
+  }
 
   findProject(): SessionProject | null {
     return this.project
+  }
+
+  /** A method, not an assignment: assigning would narrow the field. */
+  setProject(project: SessionProject): void {
+    this.project = project
   }
 
   insert(session: Session): void {
@@ -46,15 +55,11 @@ class FakeTmux {
   readonly created: {
     id: string
     cwd: string
-    launchCommand: 'claude' | 'codex' | undefined
+    launchCommand: AgentCommand
   }[] = []
   readonly killed: string[] = []
 
-  async createDetached(
-    id: string,
-    cwd: string,
-    launchCommand?: 'claude' | 'codex',
-  ): Promise<void> {
+  async createDetached(id: string, cwd: string, launchCommand: AgentCommand): Promise<void> {
     this.created.push({ id, cwd, launchCommand })
   }
 
@@ -80,7 +85,7 @@ describe('SessionManager', () => {
     const session = await manager.create('project-1', 'Portal', 'claude')
 
     assert.deepEqual(tmux.created, [
-      { id: SID, cwd: '/srv/project', launchCommand: 'claude' },
+      { id: SID, cwd: '/srv/project', launchCommand: ['claude'] },
     ])
     assert.deepEqual(repository.sessions, [session])
     assert.equal(session.state, 'idle')
@@ -96,8 +101,54 @@ describe('SessionManager', () => {
     assert.deepEqual(tmux.created[0], {
       id: SID,
       cwd: '/srv/project/web',
-      launchCommand: undefined,
+      launchCommand: [],
     })
+  })
+
+  it("launches a project's override instead of the default for that agent", async () => {
+    const repository = new FakeRepository()
+    repository.setProject({
+      id: 'project-1',
+      path: '/srv/project',
+      agentCommands: { claude: ['claude', '--model', 'opus'] },
+    })
+    const tmux = new FakeTmux()
+    const manager = createManager(repository, tmux)
+
+    await manager.create('project-1', 'Portal', 'claude')
+
+    assert.deepEqual(tmux.created[0]?.launchCommand, ['claude', '--model', 'opus'])
+  })
+
+  it('leaves the other agent kinds on their defaults when one is overridden', async () => {
+    const repository = new FakeRepository()
+    repository.setProject({
+      id: 'project-1',
+      path: '/srv/project',
+      agentCommands: { claude: ['claude', '--resume'] },
+    })
+    const tmux = new FakeTmux()
+    const manager = createManager(repository, tmux)
+
+    await manager.create('project-1', 'Codex', 'codex')
+
+    assert.deepEqual(tmux.created[0]?.launchCommand, ['codex'])
+  })
+
+  it('honours an override that is deliberately empty', async () => {
+    const repository = new FakeRepository()
+    repository.setProject({
+      id: 'project-1',
+      path: '/srv/project',
+      // An empty argv is not "unset": it means start this kind at a bare shell.
+      agentCommands: { claude: [] },
+    })
+    const tmux = new FakeTmux()
+    const manager = createManager(repository, tmux)
+
+    await manager.create('project-1', 'Portal', 'claude')
+
+    assert.deepEqual(tmux.created[0]?.launchCommand, [])
   })
 
   it('refuses a cwd outside its own project, before creating anything', async () => {

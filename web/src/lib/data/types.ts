@@ -9,6 +9,7 @@ import type {
   LoginInput,
   Project,
   Session,
+  UpdateProjectInput,
   User,
   WsTicket,
 } from '@termspace/contracts'
@@ -22,6 +23,11 @@ export interface DataSource {
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>>
   createProject(
     input: CreateProjectInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Project>>
+  updateProject(
+    projectId: string,
+    input: UpdateProjectInput,
     signal?: AbortSignal,
   ): Promise<ApiResponse<Project>>
   deleteProject(projectId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>>

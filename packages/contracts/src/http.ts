@@ -1,3 +1,5 @@
+import type { AgentCommand, AgentKind } from './core.js'
+
 export interface ApiError {
   code: string
   message: string
@@ -35,6 +37,11 @@ export interface AppConfig {
    * than after a submit.
    */
   projectRootWritable: boolean
+  /**
+   * What each agent kind launches when a project overrides nothing. Sent so the
+   * UI can show the real command as a placeholder instead of inventing one.
+   */
+  defaultAgentCommands: Record<AgentKind, AgentCommand>
 }
 
 export function isApiOk<T>(response: ApiResponse<T>): response is ApiOk<T> {

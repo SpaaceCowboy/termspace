@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import type { Project } from '@termspace/contracts'
+import type { AgentCommandOverrides, Project } from '@termspace/contracts'
 
 import type { CommandResult, ProcessRunner } from '../tmux/process-runner.js'
 import {
@@ -54,6 +54,17 @@ class FakeRepository {
 
   countSessions(): number {
     return this.sessionCount
+  }
+
+  updateAgentCommands(projectId: string, agentCommands: AgentCommandOverrides): Project | null {
+    const project = this.find(projectId)
+    if (project === null) {
+      return null
+    }
+    const updated: Project = { ...project, agentCommands }
+    const index = this.rows.findIndex((entry) => entry.id === projectId)
+    this.rows[index] = updated
+    return updated
   }
 
   delete(projectId: string): boolean {
@@ -162,6 +173,7 @@ describe('ProjectManager', () => {
       repoUrl: null,
       defaultBranch: 'main',
       setupCommand: null,
+      agentCommands: {},
       createdAt: 1_000,
     })
     assert.deepEqual(runner.calls, [])

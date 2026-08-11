@@ -1,6 +1,12 @@
 'use client'
 
-import type { LayoutMode, Project, ServerFrame, Session } from '@termspace/contracts'
+import type {
+  AgentKind,
+  LayoutMode,
+  Project,
+  ServerFrame,
+  Session,
+} from '@termspace/contracts'
 import { normalizeLayout } from '@termspace/contracts'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -8,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionBadge } from '@/components/ConnectionBadge'
 import { LayoutToolbar } from '@/components/LayoutToolbar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
+import { ProjectSettingsDialog } from '@/components/ProjectSettingsDialog'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { Sidebar } from '@/components/Sidebar'
 import { TerminalGrid } from '@/components/TerminalGrid'
@@ -38,6 +45,12 @@ export default function WorkspacePage() {
   const [deadSessions, setDeadSessions] = useState<ReadonlySet<string>>(new Set())
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
   const [projectRootWritable, setProjectRootWritable] = useState(true)
+  const [defaultAgentCommands, setDefaultAgentCommands] = useState<Record<
+    AgentKind,
+    readonly string[]
+  > | null>(null)
+  /** The project whose launch commands are being edited, if any. */
+  const [settingsFor, setSettingsFor] = useState<string | null>(null)
   const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
@@ -159,6 +172,9 @@ export default function WorkspacePage() {
           return
         }
         setProjectRoot(configResponse.ok ? configResponse.data.projectRoot : null)
+        setDefaultAgentCommands(
+          configResponse.ok ? configResponse.data.defaultAgentCommands : null,
+        )
         setProjectRootWritable(
           configResponse.ok ? configResponse.data.projectRootWritable : true,
         )
@@ -278,6 +294,9 @@ export default function WorkspacePage() {
         onNewProject={() => {
           setProjectDialogOpen(true)
         }}
+        onEditProject={(projectId) => {
+          setSettingsFor(projectId)
+        }}
         loading={loading}
         error={error}
         sourceKind={dataSource.kind}
@@ -348,6 +367,20 @@ export default function WorkspacePage() {
           setSessionDialogOpen(false)
         }}
         onCreated={onSessionCreated}
+      />
+      <ProjectSettingsDialog
+        open={settingsFor !== null}
+        project={projects.find((entry) => entry.id === settingsFor) ?? null}
+        defaultAgentCommands={defaultAgentCommands}
+        onClose={() => {
+          setSettingsFor(null)
+        }}
+        onSaved={(updated) => {
+          setProjects((current) =>
+            current.map((entry) => (entry.id === updated.id ? updated : entry)),
+          )
+          setSettingsFor(null)
+        }}
       />
       <NewProjectDialog
         open={projectDialogOpen}

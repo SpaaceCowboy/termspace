@@ -60,6 +60,21 @@ const migrations: readonly Migration[] = [
       ) STRICT;
     `,
   },
+  {
+    version: 2,
+    name: 'project_agent_commands',
+    /**
+     * Per-agent launch overrides, as a JSON object of `kind -> argv array`. An
+     * absent key means "use the server default", which is why the column
+     * defaults to an empty object rather than to the defaults themselves —
+     * baking them in here would freeze today's defaults into every existing row.
+     */
+    sql: `
+      ALTER TABLE projects
+        ADD COLUMN agent_commands TEXT NOT NULL DEFAULT '{}'
+        CHECK (json_valid(agent_commands));
+    `,
+  },
 ]
 
 export interface MigrationResult {

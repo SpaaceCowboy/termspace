@@ -1,6 +1,8 @@
-import type { Project } from '@termspace/contracts'
+import type { AgentCommandOverrides, Project } from '@termspace/contracts'
 import type Database from 'better-sqlite3'
 import { z } from 'zod'
+
+import { parseAgentCommands, serializeAgentCommands } from './agent-commands.js'
 
 const ProjectRowSchema = z
   .object({
@@ -11,6 +13,7 @@ const ProjectRowSchema = z
     repo_url: z.string().nullable(),
     default_branch: z.string(),
     setup_command: z.string().nullable(),
+    agent_commands: z.string(),
     created_at: z.number().int(),
   })
   .transform(
@@ -22,11 +25,12 @@ const ProjectRowSchema = z
       repoUrl: row.repo_url,
       defaultBranch: row.default_branch,
       setupCommand: row.setup_command,
+      agentCommands: parseAgentCommands(row.agent_commands),
       createdAt: row.created_at,
     }),
   )
 
-const COLUMNS = `id, slug, name, path, repo_url, default_branch, setup_command, created_at`
+const COLUMNS = `id, slug, name, path, repo_url, default_branch, setup_command, agent_commands, created_at`
 
 export class ProjectRepository {
   readonly #database: Database.Database
@@ -38,7 +42,7 @@ export class ProjectRepository {
   insert(project: Project): void {
     this.#database
       .prepare(
-        `INSERT INTO projects (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        `INSERT INTO projects (${COLUMNS}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         project.id,
@@ -48,6 +52,7 @@ export class ProjectRepository {
         project.repoUrl,
         project.defaultBranch,
         project.setupCommand,
+        serializeAgentCommands(project.agentCommands),
         project.createdAt,
       )
   }
@@ -67,6 +72,21 @@ export class ProjectRepository {
           .prepare(`SELECT ${COLUMNS} FROM projects ORDER BY created_at, id`)
           .all(),
       )
+  }
+
+  /**
+   * Returns the project as it now stands, or null if it is gone. Only the
+   * override map is writable — a project's path and slug are identity, and
+   * changing either would orphan its sessions.
+   */
+  updateAgentCommands(
+    projectId: string,
+    agentCommands: AgentCommandOverrides,
+  ): Project | null {
+    const changed = this.#database
+      .prepare('UPDATE projects SET agent_commands = ? WHERE id = ?')
+      .run(serializeAgentCommands(agentCommands), projectId).changes
+    return changed > 0 ? this.find(projectId) : null
   }
 
   /** `slug` and `path` are both UNIQUE, so this is what makes a conflict legible. */

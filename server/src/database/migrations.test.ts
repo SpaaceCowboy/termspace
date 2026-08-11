@@ -22,8 +22,8 @@ describe('migrateDatabase', () => {
 
   it('creates every Phase 0 table in one ordered migration', () => {
     assert.deepEqual(migrateDatabase(database), {
-      applied: ['initial_schema'],
-      currentVersion: 1,
+      applied: ['initial_schema', 'project_agent_commands'],
+      currentVersion: 2,
     })
 
     const rows = database
@@ -46,8 +46,38 @@ describe('migrateDatabase', () => {
     migrateDatabase(database)
     assert.deepEqual(migrateDatabase(database), {
       applied: [],
-      currentVersion: 1,
+      currentVersion: 2,
     })
+  })
+
+  it('gives existing projects an empty override map, not the current defaults', () => {
+    migrateDatabase(database)
+    database
+      .prepare(
+        `INSERT INTO projects (id, slug, name, path, default_branch, created_at)
+         VALUES ('p1', 'p', 'P', '/srv/projects/p', 'main', 1)`,
+      )
+      .run()
+
+    const row = database.prepare('SELECT agent_commands FROM projects WHERE id = ?').get('p1')
+
+    // Baking the defaults into the column would freeze today's commands into
+    // every row that predates the feature; absent must keep meaning "default".
+    assert.deepEqual(z.object({ agent_commands: z.string() }).parse(row), {
+      agent_commands: '{}',
+    })
+  })
+
+  it('rejects an agent_commands value that is not JSON', () => {
+    migrateDatabase(database)
+    assert.throws(() =>
+      database
+        .prepare(
+          `INSERT INTO projects (id, slug, name, path, default_branch, created_at, agent_commands)
+           VALUES ('p2', 'q', 'Q', '/srv/projects/q', 'main', 1, 'not json')`,
+        )
+        .run(),
+    )
   })
 
   it('enforces the session agent constraint', () => {

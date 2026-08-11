@@ -9,13 +9,21 @@ export type {
 export { BINARY_SID_BYTES, SESSION_STATES, VISIBILITY_LEVELS } from './transport.js'
 
 export type {
+  AgentCommand,
+  AgentCommandOverrides,
   AgentKind,
   CreateProjectInput,
   CreateSessionInput,
   Project,
   Session,
+  UpdateProjectInput,
 } from './core.js'
-export { AGENT_KINDS } from './core.js'
+export {
+  AGENT_COMMAND_MAX_ARG_LENGTH,
+  AGENT_COMMAND_MAX_ARGS,
+  AGENT_KINDS,
+  DEFAULT_AGENT_COMMANDS,
+} from './core.js'
 
 export type { Layout, LayoutInput, LayoutMode, NormalizeLayoutOptions } from './layout.js'
 export {

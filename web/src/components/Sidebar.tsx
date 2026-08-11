@@ -30,6 +30,7 @@ export interface SidebarProps {
   onSelect: (sessionId: string) => void
   onNewSession?: (projectId: string | null) => void
   onNewProject?: () => void
+  onEditProject?: (projectId: string) => void
   loading: boolean
   error: string | null
   sourceKind: string
@@ -43,6 +44,7 @@ export function Sidebar({
   onSelect,
   onNewSession,
   onNewProject,
+  onEditProject,
   loading,
   error,
   sourceKind,
@@ -71,6 +73,7 @@ export function Sidebar({
           onSelect={onSelect}
           {...(onNewSession === undefined ? {} : { onNewSession })}
           {...(onNewProject === undefined ? {} : { onNewProject })}
+          {...(onEditProject === undefined ? {} : { onEditProject })}
           loading={loading}
           error={error}
         />
@@ -91,6 +94,7 @@ function SidebarBody({
   onScreenIds,
   onSelect,
   onNewSession,
+  onEditProject,
   loading,
   error,
 }: Omit<SidebarProps, 'sourceKind'>) {
@@ -123,18 +127,35 @@ function SidebarBody({
             <span className={styles.groupName} title={group.detail ?? undefined}>
               {group.name}
             </span>
-            {onNewSession !== undefined && group.id !== ORPHAN_GROUP_ID ? (
-              <button
-                type="button"
-                className={styles.groupAction}
-                onClick={() => {
-                  onNewSession(group.id)
-                }}
-                aria-label={`New session in ${group.name}`}
-              >
-                +
-              </button>
-            ) : null}
+            {group.id === ORPHAN_GROUP_ID ? null : (
+              <>
+                {onEditProject === undefined ? null : (
+                  <button
+                    type="button"
+                    className={styles.groupAction}
+                    onClick={() => {
+                      onEditProject(group.id)
+                    }}
+                    aria-label={`Launch commands for ${group.name}`}
+                    title="Launch commands"
+                  >
+                    ⚙
+                  </button>
+                )}
+                {onNewSession === undefined ? null : (
+                  <button
+                    type="button"
+                    className={styles.groupAction}
+                    onClick={() => {
+                      onNewSession(group.id)
+                    }}
+                    aria-label={`New session in ${group.name}`}
+                  >
+                    +
+                  </button>
+                )}
+              </>
+            )}
           </h2>
           {group.sessions.length === 0 ? (
             <p className={styles.groupEmpty}>No sessions.</p>

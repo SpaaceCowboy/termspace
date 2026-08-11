@@ -71,7 +71,7 @@ miniature — do not move on until it is true.
 **Backend (Codex)**
 - [x] Projects CRUD; `POST /api/projects` accepts an existing path or a git URL to clone
 - [x] Sessions belong to a project; `agent` field (`claude` | `codex` | `shell`)
-- [ ] Launch command per agent type, configurable per project
+- [x] Launch command per agent type, configurable per project
 - [x] `GET /api/layouts` / `PUT /api/layouts` per user
 
 **Frontend (Claude Code)**

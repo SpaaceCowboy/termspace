@@ -1,5 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
+import type { AgentCommand } from '@termspace/contracts'
+
 import { parseSessionId } from '../sessions/session-id.js'
 import type { ProcessRunner } from './process-runner.js'
 
@@ -12,7 +14,6 @@ export interface TmuxAttachCommand {
   readonly command: 'tmux'
 }
 
-export type TmuxLaunchCommand = 'claude' | 'codex'
 
 export class TmuxClient {
   readonly #configPath: string
@@ -29,7 +30,7 @@ export class TmuxClient {
   async createDetached(
     untrustedId: unknown,
     cwd: string,
-    launchCommand?: TmuxLaunchCommand,
+    launchCommand: AgentCommand = [],
   ): Promise<void> {
     const sessionName = toTmuxSessionName(untrustedId)
     const arguments_: string[] = [
@@ -46,9 +47,10 @@ export class TmuxClient {
       '-y',
       '50',
     ]
-    if (launchCommand !== undefined) {
-      arguments_.push(launchCommand)
-    }
+    // tmux takes the command as separate argv elements and execs it directly,
+    // so a flag is just another element and no shell ever sees this. An empty
+    // command means tmux starts the login shell, which is what `shell` wants.
+    arguments_.push(...launchCommand)
     await this.#runner.run('tmux', arguments_)
   }
 

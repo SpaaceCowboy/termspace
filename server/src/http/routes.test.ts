@@ -7,10 +7,12 @@ import type {
   LayoutInput,
   Project,
   Session,
+  UpdateProjectInput,
   User,
   WsTicket,
 } from '@termspace/contracts'
 import {
+  DEFAULT_AGENT_COMMANDS,
   EMPTY_LAYOUT,
   LAYOUT_MAX_SLOTS,
   layoutFixture,
@@ -128,6 +130,7 @@ class FakeProjects {
   readonly projectRoot = '/srv/projects'
   rootWritable = true
   createdInput: CreateProjectInput | undefined
+  updatedInput: UpdateProjectInput | undefined
   createError: Error | undefined
   deleteError: Error | undefined
   deleteResult = true
@@ -149,9 +152,18 @@ class FakeProjects {
     return projectFixtures
   }
 
+  update(projectId: string, input: UpdateProjectInput): Project | null {
+    this.updatedInput = input
+    if (projectId !== projectFixture.id) {
+      return null
+    }
+    return { ...projectFixture, ...input }
+  }
+
   /** A method, not an assignment: assigning would narrow the field to `undefined`. */
   forget(): void {
     this.createdInput = undefined
+    this.updatedInput = undefined
   }
 
   delete(projectId: string): boolean {
@@ -550,6 +562,53 @@ describe('Phase 1 HTTP routes', () => {
     assert.equal(busy.json().error.code, 'validation_failed')
   })
 
+  it('updates a project\'s agent commands and rejects a bad one', async () => {
+    const updated = await app.inject({
+      method: 'PATCH',
+      url: `/api/projects/${projectFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+      payload: { agentCommands: { claude: ['claude', '--model', 'opus'] } },
+    })
+    assert.equal(updated.statusCode, 200)
+    assert.deepEqual(projects.updatedInput, {
+      agentCommands: { claude: ['claude', '--model', 'opus'] },
+    })
+
+    projects.forget()
+    const missing = await app.inject({
+      method: 'PATCH',
+      url: '/api/projects/prj_missing',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { agentCommands: {} },
+    })
+    assert.equal(missing.statusCode, 404)
+    assert.equal(missing.json().error.code, 'project_not_found')
+
+    // A NUL would let the stored command and the executed one differ, and an
+    // unknown kind would otherwise be silently dropped.
+    for (const agentCommands of [{ claude: ['a\0b'] }, { gemini: ['gemini'] }, { claude: [''] }]) {
+      projects.forget()
+      const rejected = await app.inject({
+        method: 'PATCH',
+        url: `/api/projects/${projectFixture.id}`,
+        headers: { cookie: SESSION_COOKIE },
+        payload: { agentCommands },
+      })
+      assert.equal(rejected.statusCode, 400, JSON.stringify(agentCommands))
+      assert.equal(rejected.json().error.code, 'validation_failed')
+      assert.equal(projects.updatedInput, undefined, 'nothing may be written')
+    }
+  })
+
+  it('requires authentication to update a project', async () => {
+    const response = await app.inject({
+      method: 'PATCH',
+      url: `/api/projects/${projectFixture.id}`,
+      payload: { agentCommands: {} },
+    })
+    assert.equal(response.statusCode, 401)
+  })
+
   it('passes createDirectory through and refuses it alongside a repo URL', async () => {
     const created = await app.inject({
       method: 'POST',
@@ -589,7 +648,11 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.deepEqual(writable.json(), {
       ok: true,
-      data: { projectRoot: '/srv/projects', projectRootWritable: true },
+      data: {
+        projectRoot: '/srv/projects',
+        projectRootWritable: true,
+        defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+      },
     })
 
     projects.rootWritable = false

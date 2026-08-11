@@ -1,4 +1,4 @@
-import { CLIENT_ERROR_PREFIX, LAYOUT_MODES } from '@termspace/contracts'
+import { AGENT_KINDS, CLIENT_ERROR_PREFIX, LAYOUT_MODES } from '@termspace/contracts'
 import type {
   ApiResponse,
   AppConfig,
@@ -10,6 +10,7 @@ import type {
   LoginInput,
   Project,
   Session,
+  UpdateProjectInput,
   User,
   WsTicket,
 } from '@termspace/contracts'
@@ -50,6 +51,7 @@ const ProjectSchema = z.object({
   repoUrl: z.string().nullable(),
   defaultBranch: z.string(),
   setupCommand: z.string().nullable(),
+  agentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
   createdAt: z.number(),
 })
 
@@ -83,6 +85,7 @@ const HealthSchema = z.object({ version: z.string() })
 const AppConfigSchema = z.object({
   projectRoot: z.string(),
   projectRootWritable: z.boolean(),
+  defaultAgentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
 })
 const UserEnvelopeSchema = z.object({ user: UserSchema })
 const WsTicketSchema = z.object({ ticket: z.string(), expiresAt: z.number() })
@@ -91,7 +94,7 @@ const EmptySchema = z.object({}).strict()
 const apiBase = process.env.NEXT_PUBLIC_TERMSPACE_API_BASE ?? ''
 
 interface RequestOptions {
-  method?: 'GET' | 'POST' | 'PUT' | 'DELETE'
+  method?: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE'
   json?: unknown
   signal?: AbortSignal | undefined
 }
@@ -158,6 +161,17 @@ export const httpSource: DataSource = {
   ): Promise<ApiResponse<Project>> {
     return request('/api/projects', ProjectSchema, {
       method: 'POST',
+      json: input,
+      signal,
+    })
+  },
+  updateProject(
+    projectId: string,
+    input: UpdateProjectInput,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Project>> {
+    return request(`/api/projects/${encodeURIComponent(projectId)}`, ProjectSchema, {
+      method: 'PATCH',
       json: input,
       signal,
     })

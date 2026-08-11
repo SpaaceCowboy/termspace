@@ -355,3 +355,54 @@ without its environment.
 `seed:user` load `.env` through Node's own `--env-file-if-exists` — no dotenv
 dependency, no import-order trap, and the shell still wins over the file. `.env`
 was already gitignored.
+
+### 2026-08-11T15:12:00+03:30 · SOLO · 2 · DONE
+Launch commands are per agent kind and configurable per project — the last
+phase 2 box. `claude` and `codex` were previously hardcoded as the literal
+command name, so there was no way to pass a flag to either.
+
+A command is **argv, never a shell string**. tmux is already spawned with an
+argument vector and no shell, so keeping the stored form an array means there is
+no quoting layer and no metacharacter to escape — a flag is just another
+element. Validation therefore bounds size rather than sanitising content, with
+one exception: an argument may not contain a NUL, because `execve` truncates
+there and the stored command and the executed command would silently differ.
+
+- Contracts: `AgentCommand`, `AgentCommandOverrides`, `UpdateProjectInput`,
+  `DEFAULT_AGENT_COMMANDS`, `Project.agentCommands`, and
+  `AppConfig.defaultAgentCommands` so the UI can show the real default rather
+  than inventing one.
+- Migration 2 adds `projects.agent_commands`, defaulting to `'{}'` and not to
+  the defaults themselves — baking those in would freeze today's commands into
+  every row that predates the feature. An absent key keeps meaning "default".
+- `PATCH /api/projects/:id`, deliberately limited to the override map: path and
+  slug are identity, and changing either would orphan a project's sessions.
+- The override schema is `.strict()`. zod strips unknown keys by default, which
+  would have silently discarded a misspelled agent kind.
+- Reads are lenient about shape: an unparseable stored value falls back to the
+  default instead of taking the whole project list down.
+- UI: a ⚙ per project in the sidebar opens a launch-commands dialog. A blank
+  field means "use the default", shown as the placeholder. Argv is typed as
+  text, so `web/src/lib/agent-command-text.ts` does quote-aware tokenising and
+  the inverse — it exists to let an argument contain a space, not to emulate a
+  shell, and refuses an unclosed quote rather than guessing.
+
+Verified live, 16/16, against a real gateway, a real database and a real tmux on
+a throwaway port and user: the defaults are reported, a NUL / unknown kind /
+empty argument / non-array are each refused with nothing written, an override
+round-trips through the database, **the overridden command is what the process
+actually ran** (checked by capturing the pane, not by trusting the API), a kind
+with no override still gets its default, and clearing an override restores it.
+150/150 server, 76/76 web, 25/25 contracts, all three typecheck.
+
+### 2026-08-11T15:12:00+03:30 · SOLO · 2 · GATE
+Every phase 2 box is ticked. The exit criteria are the part a test cannot
+settle: four sessions across two projects visible at once, the layout surviving
+a reload, and a hidden pane showing correct up-to-date content the instant it is
+shown. That needs a human at a browser, and until today it could not be checked
+at all — the WebSocket never connected, and once it did the pane painted
+nothing. Both are fixed, so this is now checkable for the first time.
+
+Not started, and deliberately: phase 3. Also still missing, though no box claims
+them — deleting a project or a session from the UI (both APIs exist and nothing
+calls them), and `server/e2e-ws.mjs` has still never been run.

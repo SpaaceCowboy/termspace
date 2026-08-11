@@ -1,6 +1,11 @@
 import { stat } from 'node:fs/promises'
 
-import type { AgentKind, Session } from '@termspace/contracts'
+import type {
+  AgentCommand,
+  AgentCommandOverrides,
+  AgentKind,
+  Session,
+} from '@termspace/contracts'
 
 import { createSessionId } from './session-id.js'
 import {
@@ -9,22 +14,22 @@ import {
   normalizeAbsolutePath,
   type RealPath,
 } from '../fs/contained-path.js'
-import type { TmuxLaunchCommand } from '../tmux/tmux-client.js'
+import { resolveAgentCommand } from '../projects/agent-commands.js'
 
 interface SessionRepositoryPort {
   delete(sessionId: string): boolean
   find(sessionId: string): Session | null
-  findProject(projectId: string): { readonly id: string; readonly path: string } | null
+  findProject(projectId: string): {
+    readonly id: string
+    readonly path: string
+    readonly agentCommands: AgentCommandOverrides
+  } | null
   insert(session: Session): void
   list(): readonly Session[]
 }
 
 interface TmuxPort {
-  createDetached(
-    id: string,
-    cwd: string,
-    launchCommand?: TmuxLaunchCommand,
-  ): Promise<void>
+  createDetached(id: string, cwd: string, launchCommand: AgentCommand): Promise<void>
   kill(id: string): Promise<void>
 }
 
@@ -102,7 +107,11 @@ export class SessionManager {
       createdAt,
     }
 
-    await this.#tmux.createDetached(id, cwd, toLaunchCommand(agent))
+    await this.#tmux.createDetached(
+      id,
+      cwd,
+      resolveAgentCommand(agent, project.agentCommands),
+    )
     try {
       this.#repository.insert(session)
     } catch (error) {
@@ -134,10 +143,6 @@ export class SessionManager {
     await this.#tmux.kill(sessionId)
     return this.#repository.delete(sessionId)
   }
-}
-
-function toLaunchCommand(agent: AgentKind): TmuxLaunchCommand | undefined {
-  return agent === 'shell' ? undefined : agent
 }
 
 async function isDirectory(path: string): Promise<boolean> {

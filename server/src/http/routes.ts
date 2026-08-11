@@ -10,12 +10,14 @@ import type {
   LoginInput,
   Project,
   Session,
+  UpdateProjectInput,
   User,
   WsTicket,
 } from '@termspace/contracts'
 import {
   AGENT_KINDS,
   BINARY_SID_BYTES,
+  DEFAULT_AGENT_COMMANDS,
   LAYOUT_MAX_SLOTS,
   LAYOUT_MODES,
   normalizeLayout,
@@ -24,6 +26,10 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
 import { clearAuthCookie, readAuthCookie, serializeAuthCookie } from '../auth/cookie.js'
+import {
+  AgentCommandSchema,
+  parseAgentCommandOverrides,
+} from '../projects/agent-commands.js'
 import { PathInvalidError, PathOutsideRootError } from '../fs/contained-path.js'
 import {
   ProjectCloneFailedError,
@@ -76,6 +82,18 @@ const RepoUrlSchema = z
     'Must be an https, ssh, or git URL, user@host:path, or an absolute path',
   )
 
+/**
+ * Every agent kind is optional; an absent one means the project defers to the
+ * server default. Declared once so create and update cannot drift apart.
+ */
+const AgentCommandOverridesInputSchema = z
+  .object(Object.fromEntries(AGENT_KINDS.map((kind) => [kind, AgentCommandSchema.optional()])))
+  .strict()
+
+const UpdateProjectInputSchema = z.object({
+  agentCommands: AgentCommandOverridesInputSchema.optional(),
+})
+
 const CreateProjectInputSchema = z
   .object({
     name: z.string().min(1).max(128),
@@ -90,6 +108,7 @@ const CreateProjectInputSchema = z
       .refine((value) => !value.startsWith('-'), 'Must not start with a dash')
       .optional(),
     setupCommand: z.string().min(1).max(4_096).optional(),
+    agentCommands: AgentCommandOverridesInputSchema.optional(),
   })
   .strict()
   .refine(
@@ -149,6 +168,7 @@ interface ProjectOperations {
   readonly projectRoot: string
   projectRootWritable(): Promise<boolean>
   create(input: CreateProjectInput): Promise<Project>
+  update(projectId: string, input: UpdateProjectInput): Project | null
   delete(projectId: string): boolean
   list(): readonly Project[]
 }
@@ -267,6 +287,7 @@ export function registerPhase1Routes(
     return ok<AppConfig>({
       projectRoot: services.projects.projectRoot,
       projectRootWritable: await services.projects.projectRootWritable(),
+      defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
     })
   })
 
@@ -309,6 +330,9 @@ export function registerPhase1Routes(
       ...(parsed.data.setupCommand === undefined
         ? {}
         : { setupCommand: parsed.data.setupCommand }),
+      ...(parsed.data.agentCommands === undefined
+        ? {}
+        : { agentCommands: parseAgentCommandOverrides(parsed.data.agentCommands) }),
     }
 
     try {
@@ -367,6 +391,46 @@ export function registerPhase1Routes(
         )
       }
       request.log.error({ err: error }, 'Project creation failed')
+      return sendError(reply, 500, 'internal_error', 'Internal server error.')
+    }
+  })
+
+  /**
+   * Only the launch overrides are editable. Path and slug are identity: changing
+   * either would leave every existing session pointing at a directory its
+   * project no longer claims.
+   */
+  app.patch('/api/projects/:id', async (request, reply) => {
+    if (resolveAuthenticatedUser(request, services) === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    const params = ProjectParamsSchema.safeParse(request.params)
+    if (!params.success) {
+      return sendError(reply, 400, 'validation_failed', 'Invalid project id.', 'id')
+    }
+    const parsed = UpdateProjectInputSchema.safeParse(request.body)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return sendError(
+        reply,
+        400,
+        'validation_failed',
+        'Invalid project input.',
+        issue?.path[0] === undefined ? undefined : String(issue.path[0]),
+      )
+    }
+    const input: UpdateProjectInput =
+      parsed.data.agentCommands === undefined
+        ? {}
+        : { agentCommands: parseAgentCommandOverrides(parsed.data.agentCommands) }
+    try {
+      const project = services.projects.update(params.data.id, input)
+      if (project === null) {
+        return sendError(reply, 404, 'project_not_found', 'Project was not found.')
+      }
+      return ok<Project>(project)
+    } catch (error) {
+      request.log.error({ err: error }, 'Project update failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })

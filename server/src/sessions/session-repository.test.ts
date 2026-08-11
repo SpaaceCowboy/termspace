@@ -46,6 +46,7 @@ describe('SessionRepository', () => {
     assert.deepEqual(repository.findProject('project-1'), {
       id: 'project-1',
       path: '/srv/project',
+      agentCommands: {},
     })
 
     repository.insert(SESSION)
