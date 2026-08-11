@@ -498,3 +498,17 @@ Two process failures worth keeping, because each cost a round trip:
    counts that "proved" the code was compiled-but-not-rendering were equally
    consistent with old code. The fix each time was to reproduce the failure
    directly rather than reason about it.
+
+### 2026-08-11T16:20:00+03:30 · SOLO · 2 · GATE
+Phase 2 exit criteria met, confirmed by hand in a browser by the owner:
+- Panes attach, restore, and take input; switching modes and tabs behaves, and a
+  reload comes back with the same mode, panes, and focus.
+- The project and session controls are present and work.
+
+Phase 2 is therefore complete. Next: a UI pass over the whole app before phase 3
+starts — the owner's words were that it works but is "messy and ugly". This is
+deliberate sequencing, not scope creep: phase 3 adds status pills, sidebar dots,
+a document title, and notification affordances, all of which are visual, and
+laying them on an unresolved design means doing that work twice.
+
+Nothing about the phase 3 checklist has been started.

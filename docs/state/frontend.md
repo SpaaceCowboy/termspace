@@ -9,12 +9,15 @@ Overwritten, never appended. Read it first at every session start.
 
 ---
 
-**Phase:** 2 — it becomes a workspace. **Every box is ticked and the phase is
-gated.** What remains is the exit criteria, which only a human at a browser can
-settle. Do not start phase 3.
+**Phase:** 2 is **complete** — every box ticked and the exit criteria confirmed
+in a browser by the owner. Phase 3 is **not** started and must not be started
+until the UI pass below is done.
 
-**Working on:** phase 2 in vertical slices — each feature through the whole
-stack before the next, so every slice is usable when it lands.
+**Working on:** a visual pass over the whole UI, before phase 3. The app works
+and looks unfinished — the owner's words were "messy and ugly". Phase 3 is all
+status pills, sidebar dots, document title and notification affordances, so
+doing it on an unresolved design means doing it twice. Design direction is being
+agreed with the owner before any code is written.
 
 **Done so far:**
 - Phase 1 re-validated from scratch: SIGKILL the gateway, restart, reattach, and
@@ -51,13 +54,12 @@ and a session from the sidebar, behind confirmations that state what is actually
 destroyed — a project keeps its files, a session loses its process and
 scrollback — verified 18/18 the same way.
 
-**Next concrete step:** the phase 2 exit criteria, by hand in a browser —
-nothing else can settle them. `cd server && pnpm start`, `cd web && pnpm dev`,
-log in, then check: four panes attach and restore, WebGL lands
-only on the focused pane, switching a tab paints the hidden pane's current
-screen with no flash of an empty terminal, and a reload comes back with the same
-mode, panes, and focus. Then append the phase 2 exit result and only then look
-at phase 3.
+**Next concrete step:** agree the visual direction with the owner, then work
+screen by screen — sidebar, then pane chrome and toolbar, then the dialogs and
+the login page. No component library and no CSS framework: plain CSS modules,
+and the design tokens already in `web/src/app/globals.css` are the place to
+start. Keep RTL, reduced-motion, focus-visible and touch target sizes in scope
+from the first commit rather than as a pass at the end.
 
 Also unrun: `server/e2e-ws.mjs` needs `SECRET`, the operator's TOTP secret.
 `e2e-agent-commands.mjs` and `e2e-delete.mjs` are in the repo and both seed
