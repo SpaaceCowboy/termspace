@@ -147,7 +147,7 @@ function SidebarBody({
                     aria-label={`Launch commands for ${group.name}`}
                     title="Launch commands"
                   >
-                    ⚙
+                    <GearIcon />
                   </button>
                 )}
                 {onNewSession === undefined ? null : (
@@ -172,7 +172,7 @@ function SidebarBody({
                     aria-label={`Delete project ${group.name}`}
                     title="Delete project"
                   >
-                    ×
+                    <TrashIcon />
                   </button>
                 )}
               </>
@@ -217,7 +217,7 @@ function SidebarBody({
                       aria-label={`Delete session ${session.name}`}
                       title="Delete session"
                     >
-                      ×
+                      <TrashIcon />
                     </button>
                   )}
                 </li>
@@ -227,5 +227,40 @@ function SidebarBody({
         </section>
       ))}
     </>
+  )
+}
+
+/**
+ * Drawn rather than typed. A dingbat depends on the user's font having the
+ * glyph, and when it does not the button is a silent blank square — which is
+ * exactly how these two went unnoticed the first time.
+ */
+function GearIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+      <circle cx="8" cy="8" r="2.4" fill="none" stroke="currentColor" strokeWidth="1.4" />
+      <path
+        d="M8 1.4v1.8M8 12.8v1.8M14.6 8h-1.8M3.2 8H1.4M12.7 3.3l-1.3 1.3M4.6 11.4l-1.3 1.3M12.7 12.7l-1.3-1.3M4.6 4.6L3.3 3.3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.4"
+        strokeLinecap="round"
+      />
+    </svg>
+  )
+}
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+      <path
+        d="M3 4.2h10M6.4 4.2V2.9h3.2v1.3M4.4 4.2l.6 8.5h6l.6-8.5M6.7 6.4v4.3M9.3 6.4v4.3"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
   )
 }

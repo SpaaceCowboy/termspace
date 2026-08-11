@@ -78,6 +78,7 @@
 
 .groupAction {
   flex: none;
+  color: var(--ts-text-dim);
   width: 20px;
   height: 20px;
   display: grid;
@@ -97,8 +98,9 @@
 }
 
 /*
- * Revealed on hover or focus rather than always shown, so a list of sessions is
- * not a row of delete buttons — but never hidden from the keyboard.
+ * Dimmed at rest rather than hidden. Hiding it until hover made it undiscoverable
+ * — the first person to use this could not find it at all — and there is no hover
+ * on a touch screen to reveal it with.
  */
 .itemDelete {
   flex: none;
@@ -114,7 +116,7 @@
   font-size: 14px;
   line-height: 1;
   cursor: pointer;
-  opacity: 0;
+  opacity: 0.45;
 }
 
 .row:hover .itemDelete,
@@ -125,13 +127,6 @@
 .itemDelete:hover {
   background: var(--ts-bg-raised);
   color: var(--ts-danger);
-}
-
-@media (hover: none) {
-  /* No hover to reveal it on a touch screen. */
-  .itemDelete {
-    opacity: 1;
-  }
 }
 
 .groupAction:hover {

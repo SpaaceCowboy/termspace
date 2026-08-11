@@ -451,3 +451,17 @@ does. Nothing reconciles the two, so the sidebar shows a session that cannot be
 attached to. This is phase 3's `dead` state and activity tracker, not a phase 2
 fix; noted here so it is not rediscovered as a mystery. The new delete button at
 least makes it removable by hand.
+
+### 2026-08-11T16:31:00+03:30 · SOLO · 2 · FIXED
+The delete and launch-command controls existed but could not be found — the
+first person to use them saw neither. Two causes, both mine:
+
+1. They were dingbats (`⚙`, `×`). A font without U+2699 renders an invisible
+   20px button, and there is no way to tell that from a missing feature. Both
+   are now drawn as inline SVG, which depends on nothing.
+2. The session delete was `opacity: 0` until `:hover`. That is undiscoverable,
+   and there is no hover at all on a touch screen. It now sits at 0.45 and comes
+   to full opacity on hover or `:focus-visible`.
+
+The lesson is the second one: a control that is invisible at rest is a control
+that does not exist, and "reveal on hover" is a decoration, not an affordance.
