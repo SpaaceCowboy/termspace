@@ -512,3 +512,46 @@ a document title, and notification affordances, all of which are visual, and
 laying them on an unresolved design means doing that work twice.
 
 Nothing about the phase 3 checklist has been started.
+
+### 2026-08-11T16:52:00+03:30 · SOLO · 2 · DONE
+A visual pass over the whole app, before phase 3 rather than after. Direction
+agreed with the owner first: "calm editor" (roomy, sans UI against mono content,
+8px radii), cool slate with an indigo accent, and dark only.
+
+**Dark only** is a deliberate subtraction. The light palette existed, was never
+used, and made every colour decision a compromise between two themes. Dropping
+it halves the surface and the tokens stay indirection, so a light theme can be
+added later without touching a component.
+
+**Indigo, not green.** The old accent (#4fd1a5) sat directly next to ANSI green
+in the terminal output it was framing, so the chrome and the content competed.
+Indigo appears in almost no terminal palette, which is exactly what chrome
+wants.
+
+What actually changed, beyond colour:
+- One spacing scale (4/8/12/16/24/32) and one type scale (11/12/13/15). Every
+  padding and font-size in the app is now a step on those rather than whatever
+  number was typed at the time — most of the "messy" was inconsistent rhythm,
+  not bad colour.
+- Elevation is a step up a surface scale, never a shadow. Shadows read as
+  smudges against a near-black ground.
+- Project names in the sidebar are headings in sentence case, not 11px uppercase
+  labels. They looked like form sections rather than places you go.
+- The selected session is marked with a bar on the leading edge instead of a
+  border box, which no longer competes with the focused pane's own ring.
+- Tabs and the layout toolbar are one segmented control on a single shell, so a
+  set of options reads as one control.
+- "New project" is a real button. Dashed borders read as disabled drop zones,
+  and that is the first thing a new user has to press.
+- The idle pill is almost invisible on purpose: idle is the resting state and
+  badging it puts noise on every pane at once. Only working / needs-you / dead
+  carry colour.
+- xterm's own theme now tracks the surface tokens, so there is no seam between
+  a pane and the terminal inside it.
+
+Contrast checked rather than eyeballed: every foreground/background pair in use
+is AA. `--ts-text-faint` came out at 3.96 against the page background, which is
+under AA for normal text and it carries real text — session metadata, hints,
+placeholders — so it moved from #6b7383 to #7b8394 (4.96 on bg, 4.52 on raised).
+
+82/82 web tests pass and the app typechecks. Phase 3 has not been started.

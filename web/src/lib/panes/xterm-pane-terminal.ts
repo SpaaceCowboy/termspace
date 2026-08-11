@@ -6,8 +6,19 @@ const SCROLLBACK_LINES = 5_000
 
 const FONT_FAMILY = 'ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace'
 
-const DARK_THEME = { background: '#0e1013', foreground: '#e6e6e3', cursor: '#4fd1a5' }
-const LIGHT_THEME = { background: '#ecebe7', foreground: '#1c1b19', cursor: '#1f6f5c' }
+/**
+ * Must track `--ts-bg-sunken`, `--ts-text` and `--ts-accent` in `globals.css`.
+ * xterm paints its own background, so a mismatch here shows up as a seam
+ * between the pane and the terminal inside it. The app is dark only, so there
+ * is one theme rather than a pair.
+ */
+const TERMINAL_THEME = {
+  background: '#0b0d12',
+  foreground: '#e4e6eb',
+  cursor: '#7c8cf8',
+  cursorAccent: '#0b0d12',
+  selectionBackground: '#2b3350',
+}
 
 /**
  * The real `xterm.js` behind `PaneTerminal`. Everything here is browser-only —
@@ -25,13 +36,13 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
     import('@xterm/addon-serialize'),
   ])
 
-  const dark = globalThis.matchMedia?.('(prefers-color-scheme: dark)').matches ?? true
   const terminal = new Terminal({
     cursorBlink: true,
     fontFamily: FONT_FAMILY,
     fontSize: 13,
+    lineHeight: 1.2,
     scrollback: SCROLLBACK_LINES,
-    theme: dark ? DARK_THEME : LIGHT_THEME,
+    theme: TERMINAL_THEME,
   })
 
   const fitAddon = new FitAddon()

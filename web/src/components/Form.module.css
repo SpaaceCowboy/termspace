@@ -1,147 +1,191 @@
 .form {
   display: flex;
   flex-direction: column;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-4);
 }
 
 .field {
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--ts-space-2);
 }
 
 .label {
-  font-size: 12px;
+  font-size: var(--ts-text-sm);
+  font-weight: 500;
   color: var(--ts-text-dim);
 }
 
+/*
+ * Inputs sit on the sunken surface inside a raised dialog, so the field reads
+ * as a well you type into rather than another panel floating on a panel.
+ */
 .input,
 .select {
   width: 100%;
-  padding: 7px 9px;
-  background: var(--ts-bg);
+  padding: var(--ts-space-2) var(--ts-space-3);
+  background: var(--ts-bg-sunken);
   color: var(--ts-text);
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius);
   font: inherit;
-  font-size: 13px;
+  font-size: var(--ts-text-base);
+  transition: border-color var(--ts-ease), background var(--ts-ease);
+}
+
+.input::placeholder {
+  color: var(--ts-text-faint);
+}
+
+.input:hover:not(:disabled),
+.select:hover:not(:disabled) {
+  border-color: var(--ts-border-strong);
 }
 
 .mono {
   font-family: var(--ts-mono);
+  font-size: var(--ts-text-sm);
 }
 
 .input:focus-visible,
 .select:focus-visible {
   outline: 2px solid var(--ts-focus);
   outline-offset: 1px;
+  border-color: transparent;
 }
 
 .input:disabled,
 .select:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .hint {
-  font-size: 11px;
-  color: var(--ts-text-dim);
+  margin: 0;
+  font-size: var(--ts-text-sm);
+  line-height: 1.55;
+  color: var(--ts-text-faint);
 }
 
 .actions {
   display: flex;
   justify-content: flex-end;
-  gap: 8px;
-  margin-top: 4px;
+  gap: var(--ts-space-2);
+  margin-top: var(--ts-space-1);
 }
 
 .button {
-  padding: 7px 12px;
+  padding: var(--ts-space-2) var(--ts-space-4);
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius);
-  background: var(--ts-bg);
+  background: var(--ts-bg-hover);
   color: var(--ts-text);
   font: inherit;
-  font-size: 13px;
-  cursor: pointer;
+  font-size: var(--ts-text-base);
+  font-weight: 500;
+  transition: background var(--ts-ease), border-color var(--ts-ease);
 }
 
 .button:hover:not(:disabled) {
-  background: var(--ts-bg-sunken);
+  background: var(--ts-bg-active);
+  border-color: var(--ts-border-strong);
 }
 
-.primary {
-  background: var(--ts-accent);
+.primary,
+.primary:hover:not(:disabled) {
   border-color: var(--ts-accent);
   color: var(--ts-accent-text);
 }
 
-.primary:hover:not(:disabled) {
+.primary {
   background: var(--ts-accent);
-  filter: brightness(1.06);
+}
+
+.primary:hover:not(:disabled) {
+  background: var(--ts-accent-hover);
 }
 
 /* Destructive actions read as destructive before the click, not after. */
-.danger {
-  background: var(--ts-danger);
+.danger,
+.danger:hover:not(:disabled) {
   border-color: var(--ts-danger);
   color: var(--ts-accent-text);
 }
 
-.danger:hover:not(:disabled) {
+.danger {
   background: var(--ts-danger);
-  filter: brightness(1.06);
+}
+
+.danger:hover:not(:disabled) {
+  filter: brightness(1.07);
 }
 
 .button:disabled {
-  opacity: 0.6;
+  opacity: 0.5;
   cursor: default;
 }
 
 .error {
   margin: 0;
-  padding: 8px 10px;
+  padding: var(--ts-space-3);
   border: 1px solid var(--ts-danger);
   border-radius: var(--ts-radius);
+  background: var(--ts-danger-quiet);
   color: var(--ts-danger);
-  font-size: 12px;
+  font-size: var(--ts-text-sm);
+  line-height: 1.5;
 }
 
 .empty {
   margin: 0;
-  font-size: 13px;
+  font-size: var(--ts-text-base);
+  line-height: 1.55;
   color: var(--ts-text-dim);
 }
 
 .fieldset {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: var(--ts-space-2);
   margin: 0;
   padding: 0;
   border: 0;
 }
 
+/*
+ * A whole-row target, not a bare radio: the label, its description and the
+ * control are one 40px-tall thing you can hit on a touch screen.
+ */
 .choice {
   display: flex;
   align-items: flex-start;
-  gap: 8px;
-  padding: 6px 8px;
+  gap: var(--ts-space-3);
+  padding: var(--ts-space-3);
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius);
-  font-size: 13px;
+  background: var(--ts-bg-sunken);
+  font-size: var(--ts-text-base);
+  line-height: 1.5;
   cursor: pointer;
+  transition: border-color var(--ts-ease), background var(--ts-ease);
 }
 
 .choice:hover {
-  border-color: var(--ts-accent);
+  border-color: var(--ts-border-strong);
+  background: var(--ts-bg-hover);
 }
 
 .choice:has(input:checked) {
   border-color: var(--ts-accent);
-  background: var(--ts-bg-sunken);
+  background: var(--ts-accent-quiet);
+}
+
+.choice:has(input:focus-visible) {
+  outline: 2px solid var(--ts-focus);
+  outline-offset: 2px;
 }
 
 .choice input {
-  margin: 3px 0 0;
+  margin: 2px 0 0;
   accent-color: var(--ts-accent);
 }

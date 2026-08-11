@@ -1,35 +1,37 @@
+/* One segmented control, matching the tab strip: same shell, same active fill. */
 .toolbar {
   display: inline-flex;
-  gap: 2px;
-  padding: 2px;
+  gap: var(--ts-space-1);
+  padding: var(--ts-space-1);
   background: var(--ts-bg-sunken);
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius);
 }
 
 .mode {
-  min-width: 34px;
-  padding: 3px 8px;
-  border: 1px solid transparent;
-  border-radius: calc(var(--ts-radius) - 2px);
+  min-width: 36px;
+  padding: var(--ts-space-1) var(--ts-space-2);
+  border: 0;
+  border-radius: var(--ts-radius-sm);
   background: transparent;
   color: var(--ts-text-dim);
-  font-family: var(--ts-mono);
-  font-size: 12px;
-  cursor: pointer;
+  font-size: var(--ts-text-sm);
+  transition: background var(--ts-ease), color var(--ts-ease);
 }
 
 .mode:hover:not(:disabled) {
+  background: var(--ts-bg-raised);
   color: var(--ts-text);
 }
 
 .mode:disabled {
   cursor: not-allowed;
-  opacity: 0.5;
+  opacity: 0.4;
 }
 
-.modeActive {
-  background: var(--ts-bg-raised);
-  border-color: var(--ts-border);
+.modeActive,
+.modeActive:hover:not(:disabled) {
+  background: var(--ts-bg-active);
   color: var(--ts-text);
+  font-weight: 500;
 }

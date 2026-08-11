@@ -3,45 +3,63 @@
   min-height: 0;
   display: flex;
   flex-direction: column;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-3);
 }
 
+/*
+ * Tabs are a segmented strip on one raised surface rather than a row of loose
+ * outlined chips, so the set reads as one control and the active tab is the
+ * only thing carrying weight.
+ */
 .tabs {
   display: flex;
   flex-wrap: wrap;
-  gap: 4px;
+  gap: var(--ts-space-1);
+  padding: var(--ts-space-1);
+  background: var(--ts-bg-sunken);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  align-self: flex-start;
+  max-width: 100%;
 }
 
 .tabsEmpty {
-  font-size: 12px;
-  color: var(--ts-text-dim);
+  padding: var(--ts-space-1) var(--ts-space-2);
+  font-size: var(--ts-text-sm);
+  color: var(--ts-text-faint);
 }
 
 .tab {
-  padding: 4px 10px;
-  border: 1px solid var(--ts-border);
-  border-radius: var(--ts-radius);
-  background: var(--ts-bg-sunken);
+  padding: var(--ts-space-1) var(--ts-space-3);
+  border: 0;
+  border-radius: var(--ts-radius-sm);
+  background: transparent;
   color: var(--ts-text-dim);
-  font-size: 12px;
-  cursor: pointer;
+  font-size: var(--ts-text-sm);
   max-width: 220px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  transition: background var(--ts-ease), color var(--ts-ease);
 }
 
-.tabActive {
+.tab:hover {
   background: var(--ts-bg-raised);
-  border-color: var(--ts-accent);
   color: var(--ts-text);
+}
+
+.tabActive,
+.tabActive:hover {
+  background: var(--ts-bg-active);
+  color: var(--ts-text);
+  font-weight: 500;
 }
 
 .grid {
   flex: 1;
   min-height: 0;
   display: grid;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-3);
   grid-template-columns: 1fr;
   grid-template-rows: 1fr;
 }
@@ -57,80 +75,99 @@
   grid-template-rows: 1fr 1fr;
 }
 
+/*
+ * A pane is one solid block: the chrome and the terminal share a background so
+ * there is no seam, and the whole thing is defined by its outer edge. The
+ * focused pane is marked by border colour plus a ring, never by a shadow —
+ * shadows smudge against a near-black ground.
+ */
 .pane {
+  position: relative;
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  background: var(--ts-bg-raised);
+  background: var(--ts-bg-sunken);
   border: 1px solid var(--ts-border);
-  border-radius: var(--ts-radius);
+  border-radius: var(--ts-radius-lg);
   overflow: hidden;
+  transition: border-color var(--ts-ease);
 }
 
 .paneFocused {
-  border-color: var(--ts-accent);
+  border-color: var(--ts-border-strong);
+}
+
+.paneFocused::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  border: 1px solid var(--ts-accent);
+  pointer-events: none;
 }
 
 .paneEmpty {
   align-items: center;
   justify-content: center;
-  gap: 10px;
+  gap: var(--ts-space-3);
   border-style: dashed;
   background: transparent;
-  padding: 20px;
+  padding: var(--ts-space-5);
   text-align: center;
 }
 
 .emptyText {
   margin: 0;
-  font-size: 13px;
-  color: var(--ts-text-dim);
+  max-width: 34ch;
+  font-size: var(--ts-text-base);
+  color: var(--ts-text-faint);
+  line-height: 1.55;
 }
 
 .emptyActions {
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: var(--ts-space-2);
   justify-content: center;
 }
 
 .emptyButton {
-  padding: 5px 10px;
+  padding: var(--ts-space-2) var(--ts-space-3);
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius);
   background: var(--ts-bg-raised);
   color: var(--ts-text);
-  font-size: 12px;
-  cursor: pointer;
+  font-size: var(--ts-text-sm);
+  transition: background var(--ts-ease), border-color var(--ts-ease);
 }
 
 .emptyButton:hover {
-  border-color: var(--ts-accent);
+  background: var(--ts-bg-hover);
+  border-color: var(--ts-border-strong);
 }
 
 .chrome {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--ts-bg-sunken);
+  gap: var(--ts-space-2);
+  padding: var(--ts-space-2) var(--ts-space-2) var(--ts-space-2) var(--ts-space-3);
   border-bottom: 1px solid var(--ts-border);
 }
 
 .name {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
+  align-items: baseline;
+  gap: var(--ts-space-2);
+  font-size: var(--ts-text-sm);
   font-weight: 600;
   min-width: 0;
 }
 
 .title {
   font-weight: 400;
-  color: var(--ts-text-dim);
+  color: var(--ts-text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -139,59 +176,62 @@
 .chromeRight {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
+  gap: var(--ts-space-1);
   flex: none;
 }
 
+/*
+ * The idle pill is deliberately almost invisible: idle is the resting state and
+ * a badge for it is noise on every pane at once. The states that matter carry
+ * their own colour.
+ */
 .pill {
-  padding: 1px 7px;
+  padding: 2px var(--ts-space-2);
   border-radius: 999px;
-  border: 1px solid var(--ts-border);
-  font-size: 10px;
-  font-family: var(--ts-mono);
-  color: var(--ts-text-dim);
+  font-size: var(--ts-text-xs);
+  color: var(--ts-text-faint);
+  background: var(--ts-bg-raised);
 }
 
 .pillWorking {
   color: var(--ts-state-working);
-  border-color: currentColor;
+  background: color-mix(in srgb, var(--ts-state-working) 14%, transparent);
 }
 
 .pillNeedsYou {
   color: var(--ts-state-needs-you);
-  border-color: currentColor;
+  background: color-mix(in srgb, var(--ts-state-needs-you) 16%, transparent);
 }
 
 .pillDead {
   color: var(--ts-state-dead);
-  border-color: currentColor;
+  background: var(--ts-danger-quiet);
 }
 
 .close {
-  width: 20px;
-  height: 20px;
+  width: 24px;
+  height: 24px;
   display: grid;
   place-items: center;
   padding: 0;
-  border: 1px solid transparent;
-  border-radius: var(--ts-radius);
+  border: 0;
+  border-radius: var(--ts-radius-sm);
   background: transparent;
-  color: var(--ts-text-dim);
-  font-size: 15px;
+  color: var(--ts-text-faint);
+  font-size: var(--ts-text-lg);
   line-height: 1;
-  cursor: pointer;
+  transition: background var(--ts-ease), color var(--ts-ease);
 }
 
 .close:hover {
-  color: var(--ts-danger);
-  border-color: var(--ts-border);
+  background: var(--ts-bg-hover);
+  color: var(--ts-text);
 }
 
 .screen {
   flex: 1;
   min-height: 0;
-  padding: 6px 8px;
-  background: var(--ts-bg-sunken);
+  padding: var(--ts-space-2) 0 var(--ts-space-2) var(--ts-space-3);
   overflow: hidden;
 }
 
@@ -201,15 +241,15 @@
 
 .notice {
   margin: 0;
-  padding: 5px 10px;
-  background: var(--ts-bg-sunken);
+  padding: var(--ts-space-2) var(--ts-space-3);
   border-top: 1px solid var(--ts-border);
-  font-family: var(--ts-mono);
-  font-size: 11px;
+  background: color-mix(in srgb, var(--ts-state-needs-you) 10%, transparent);
+  font-size: var(--ts-text-sm);
   color: var(--ts-state-needs-you);
 }
 
 .noticeDead {
+  background: var(--ts-danger-quiet);
   color: var(--ts-state-dead);
 }
 

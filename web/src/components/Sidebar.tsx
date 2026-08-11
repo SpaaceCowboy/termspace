@@ -63,7 +63,10 @@ export function Sidebar({
       {onNewProject !== undefined ? (
         <div className={styles.toolbar}>
           <button type="button" className={styles.newProject} onClick={onNewProject}>
-            + New project
+            <span className={styles.newProjectGlyph} aria-hidden="true">
+              +
+            </span>
+            New project
           </button>
         </div>
       ) : null}

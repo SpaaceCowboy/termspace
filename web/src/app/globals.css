@@ -1,46 +1,72 @@
+/*
+ * Dark only, deliberately. A second theme is surface area that was never going
+ * to be used here, and dropping it buys a palette that can be tuned properly
+ * rather than twice-compromised. The tokens are all indirection, so a light
+ * theme can be added later without touching a component.
+ *
+ * Cool slate with an indigo accent: terminals bring their own colours, and the
+ * old green accent competed directly with ANSI green in the content it framed.
+ * Indigo appears in almost no terminal palette, so the chrome stays chrome.
+ */
 :root {
-  --ts-bg: #f6f6f4;
-  --ts-bg-raised: #ffffff;
-  --ts-bg-sunken: #ecebe7;
-  --ts-border: #d7d5cf;
-  --ts-text: #1c1b19;
-  --ts-text-dim: #6a675f;
-  --ts-accent: #1f6f5c;
-  --ts-accent-text: #ffffff;
-  --ts-danger: #a3342a;
-  --ts-focus: #1f6f5c;
+  /* Surfaces, darkest to lightest. Elevation is a step up this scale, never a
+     shadow — shadows read as smudges against a near-black background. */
+  --ts-bg-sunken: #0b0d12;
+  --ts-bg: #0f1117;
+  --ts-bg-raised: #181b23;
+  --ts-bg-hover: #1f232d;
+  --ts-bg-active: #262b37;
 
-  --ts-state-working: #1f6f5c;
-  --ts-state-idle: #6a675f;
-  --ts-state-needs-you: #b4741a;
-  --ts-state-dead: #a3342a;
+  --ts-border: #262b36;
+  --ts-border-strong: #363d4c;
 
-  --ts-radius: 6px;
-  --ts-gap: 12px;
+  --ts-text: #e4e6eb;
+  --ts-text-dim: #9aa1b1;
+  /* 4.96:1 on --ts-bg and 4.52:1 on --ts-raised, so it clears AA everywhere it
+     is used. The obvious-looking #6b7383 was 3.96 and this carries real text. */
+  --ts-text-faint: #7b8394;
+
+  --ts-accent: #7c8cf8;
+  --ts-accent-hover: #8f9dfa;
+  --ts-accent-quiet: #1b1f34;
+  --ts-accent-text: #0b0d12;
+  --ts-danger: #f2827a;
+  --ts-danger-quiet: #2a1a1c;
+  --ts-focus: #7c8cf8;
+
+  --ts-state-working: #6ee7b7;
+  --ts-state-idle: #7b8394;
+  --ts-state-needs-you: #f0b45f;
+  --ts-state-dead: #f2827a;
+
+  /*
+   * One spacing scale. Every margin and padding in the app is a step on it, so
+   * rhythm is a property of the system rather than of whoever typed the number.
+   */
+  --ts-space-1: 4px;
+  --ts-space-2: 8px;
+  --ts-space-3: 12px;
+  --ts-space-4: 16px;
+  --ts-space-5: 24px;
+  --ts-space-6: 32px;
+
+  --ts-radius-sm: 6px;
+  --ts-radius: 8px;
+  --ts-radius-lg: 12px;
+
   --ts-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
   --ts-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
 
-  color-scheme: light dark;
-}
+  /* Sans for the interface, mono only for content and for things that are
+     literally commands or paths. */
+  --ts-text-xs: 11px;
+  --ts-text-sm: 12px;
+  --ts-text-base: 13px;
+  --ts-text-lg: 15px;
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --ts-bg: #14161a;
-    --ts-bg-raised: #1c1f25;
-    --ts-bg-sunken: #0e1013;
-    --ts-border: #2c313a;
-    --ts-text: #e6e6e3;
-    --ts-text-dim: #969ba6;
-    --ts-accent: #4fd1a5;
-    --ts-accent-text: #0e1013;
-    --ts-danger: #f2827a;
-    --ts-focus: #4fd1a5;
+  --ts-ease: 120ms cubic-bezier(0.2, 0, 0.2, 1);
 
-    --ts-state-working: #4fd1a5;
-    --ts-state-idle: #969ba6;
-    --ts-state-needs-you: #e8b04b;
-    --ts-state-dead: #f2827a;
-  }
+  color-scheme: dark;
 }
 
 *,
@@ -60,14 +86,20 @@ body {
   background: var(--ts-bg);
   color: var(--ts-text);
   font-family: var(--ts-sans);
-  font-size: 15px;
+  font-size: var(--ts-text-base);
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
+/*
+ * One focus ring for the whole app, offset so it never sits on top of the thing
+ * it is marking. Keyboard users are not a second pass here.
+ */
 :focus-visible {
   outline: 2px solid var(--ts-focus);
   outline-offset: 2px;
+  border-radius: var(--ts-radius-sm);
 }
 
 button,
@@ -78,8 +110,51 @@ textarea {
   color: inherit;
 }
 
+button {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: default;
+}
+
 a {
   color: var(--ts-accent);
+}
+
+code,
+kbd,
+samp {
+  font-family: var(--ts-mono);
+  font-size: 0.92em;
+}
+
+/* Scrollbars, so a pane's own scrollbar does not arrive as a bright system slab. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--ts-border-strong) transparent;
+}
+
+*::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+*::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+*::-webkit-scrollbar-thumb {
+  background: var(--ts-border-strong);
+  border: 3px solid transparent;
+  background-clip: content-box;
+  border-radius: 999px;
+}
+
+*::-webkit-scrollbar-thumb:hover {
+  background: var(--ts-text-faint);
+  border: 3px solid transparent;
+  background-clip: content-box;
 }
 
 .ts-skip-link {
@@ -87,15 +162,15 @@ a {
   left: -9999px;
   top: 0;
   z-index: 100;
-  padding: 8px 12px;
+  padding: var(--ts-space-2) var(--ts-space-3);
   background: var(--ts-bg-raised);
-  border: 1px solid var(--ts-border);
+  border: 1px solid var(--ts-border-strong);
   border-radius: var(--ts-radius);
 }
 
 .ts-skip-link:focus {
-  left: 8px;
-  top: 8px;
+  left: var(--ts-space-2);
+  top: var(--ts-space-2);
 }
 
 /* Read by a screen reader, invisible on screen: for controls whose visible

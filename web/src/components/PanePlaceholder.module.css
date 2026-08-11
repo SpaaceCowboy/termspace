@@ -1,11 +1,13 @@
+/* Mirrors the real pane chrome in TerminalGrid.module.css — if one changes, so
+   does the other, or the fixture view stops looking like the app. */
 .pane {
   display: flex;
   flex-direction: column;
   min-height: 0;
   min-width: 0;
-  background: var(--ts-bg-raised);
+  background: var(--ts-bg-sunken);
   border: 1px solid var(--ts-border);
-  border-radius: var(--ts-radius);
+  border-radius: var(--ts-radius-lg);
   overflow: hidden;
 }
 
@@ -13,24 +15,23 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 8px;
-  padding: 6px 10px;
-  background: var(--ts-bg-sunken);
+  gap: var(--ts-space-2);
+  padding: var(--ts-space-2) var(--ts-space-3);
   border-bottom: 1px solid var(--ts-border);
 }
 
 .name {
   display: flex;
-  align-items: center;
-  gap: 7px;
-  font-size: 12px;
+  align-items: baseline;
+  gap: var(--ts-space-2);
+  font-size: var(--ts-text-sm);
   font-weight: 600;
   min-width: 0;
 }
 
 .title {
   font-weight: 400;
-  color: var(--ts-text-dim);
+  color: var(--ts-text-faint);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -38,40 +39,38 @@
 
 .pill {
   flex: none;
-  padding: 1px 7px;
+  padding: 2px var(--ts-space-2);
   border-radius: 999px;
-  border: 1px solid var(--ts-border);
-  font-size: 10px;
-  font-family: var(--ts-mono);
+  font-size: var(--ts-text-xs);
   text-transform: lowercase;
-  color: var(--ts-text-dim);
+  color: var(--ts-text-faint);
+  background: var(--ts-bg-raised);
 }
 
 .pillWorking {
   color: var(--ts-state-working);
-  border-color: currentColor;
+  background: color-mix(in srgb, var(--ts-state-working) 14%, transparent);
 }
 
 .pillNeedsYou {
   color: var(--ts-state-needs-you);
-  border-color: currentColor;
+  background: color-mix(in srgb, var(--ts-state-needs-you) 16%, transparent);
 }
 
 .pillDead {
   color: var(--ts-state-dead);
-  border-color: currentColor;
+  background: var(--ts-danger-quiet);
 }
 
 .screen {
   flex: 1;
   min-height: 0;
   margin: 0;
-  padding: 10px 12px;
-  background: var(--ts-bg-sunken);
+  padding: var(--ts-space-3);
   color: var(--ts-text-dim);
   font-family: var(--ts-mono);
-  font-size: 12.5px;
-  line-height: 1.45;
+  font-size: var(--ts-text-sm);
+  line-height: 1.5;
   overflow: auto;
   white-space: pre-wrap;
 }

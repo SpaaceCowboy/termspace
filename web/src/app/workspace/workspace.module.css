@@ -1,6 +1,6 @@
 .shell {
   display: grid;
-  grid-template-columns: 260px 1fr;
+  grid-template-columns: 264px 1fr;
   grid-template-rows: 100dvh;
   background: var(--ts-bg);
 }
@@ -9,22 +9,27 @@
   display: flex;
   flex-direction: column;
   min-width: 0;
-  padding: var(--ts-gap);
-  gap: var(--ts-gap);
+  padding: var(--ts-space-4) var(--ts-space-4) var(--ts-space-4) var(--ts-space-3);
+  gap: var(--ts-space-3);
 }
 
 .topbar {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: var(--ts-gap);
-  min-height: 28px;
+  gap: var(--ts-space-4);
+  min-height: 32px;
+  padding: 0 var(--ts-space-1);
 }
 
 .crumbs {
   margin: 0;
-  font-size: 13px;
-  color: var(--ts-text-dim);
+  min-width: 0;
+  font-size: var(--ts-text-base);
+  color: var(--ts-text-faint);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .crumbCurrent {
@@ -35,23 +40,27 @@
 .topbarRight {
   display: inline-flex;
   align-items: center;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-4);
 }
 
+/*
+ * Connection state is ambient: it should be findable when something is wrong
+ * and ignorable when it is not. Sans rather than mono, and dim until it has
+ * something to say.
+ */
 .connection {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  font-size: 12px;
-  color: var(--ts-text-dim);
-  font-family: var(--ts-mono);
+  gap: var(--ts-space-2);
+  font-size: var(--ts-text-sm);
+  color: var(--ts-text-faint);
 }
 
 .connectionDot {
-  width: 7px;
-  height: 7px;
+  width: 6px;
+  height: 6px;
   border-radius: 50%;
-  background: var(--ts-text-dim);
+  background: currentColor;
 }
 
 .grid {
@@ -59,7 +68,7 @@
   min-height: 0;
   display: grid;
   grid-template-columns: 1fr;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-3);
 }
 
 .empty {
@@ -67,38 +76,46 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--ts-gap);
+  gap: var(--ts-space-4);
   height: 100%;
-  border: 1px dashed var(--ts-border);
-  border-radius: var(--ts-radius);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-lg);
+  background: var(--ts-bg-raised);
   color: var(--ts-text-dim);
   text-align: center;
-  padding: 24px;
+  padding: var(--ts-space-6);
 }
 
 .empty p {
   margin: 0;
+  max-width: 42ch;
+  line-height: 1.55;
 }
 
 .emptyAction {
-  padding: 7px 12px;
+  padding: var(--ts-space-2) var(--ts-space-4);
   border: 1px solid var(--ts-accent);
   border-radius: var(--ts-radius);
   background: var(--ts-accent);
   color: var(--ts-accent-text);
   font: inherit;
-  font-size: 13px;
-  cursor: pointer;
+  font-size: var(--ts-text-base);
+  font-weight: 500;
+  transition: background var(--ts-ease);
 }
 
 .emptyAction:hover {
-  filter: brightness(1.06);
+  background: var(--ts-accent-hover);
 }
 
 @media (max-width: 720px) {
   .shell {
     grid-template-columns: 1fr;
     grid-template-rows: auto 1fr;
+  }
+
+  .main {
+    padding: var(--ts-space-3);
   }
 }
 
@@ -107,18 +124,22 @@
   display: grid;
   place-items: center;
   color: var(--ts-text-dim);
-  font-size: 14px;
+  font-size: var(--ts-text-base);
 }
 
 .confirmText {
   margin: 0;
-  font-size: 13px;
-  line-height: 1.5;
+  font-size: var(--ts-text-base);
+  line-height: 1.55;
+  color: var(--ts-text-dim);
+}
+
+.confirmText strong {
   color: var(--ts-text);
+  font-weight: 600;
 }
 
 .confirmPath {
-  font-size: 12px;
-  color: var(--ts-text-dim);
+  color: var(--ts-text-faint);
   overflow-wrap: anywhere;
 }
