@@ -87,6 +87,17 @@ export function createServerRuntime(
     allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN,
     tickets,
     onError: onGatewayError,
+    onRejected: (rejection) => {
+      if (rejection.reason === 'origin_rejected') {
+        app.log.error(
+          rejection,
+          'WebSocket upgrade rejected: the browser\'s Origin is not the configured one. ' +
+            'Set TERMSPACE_ALLOWED_ORIGIN to the origin you load the app from.',
+        )
+        return
+      }
+      app.log.warn(rejection, 'WebSocket upgrade rejected')
+    },
     createConnection: (transport) =>
       new GatewayConnection({
         sessions,

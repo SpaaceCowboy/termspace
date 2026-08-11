@@ -10,7 +10,8 @@
     "build": "tsc -p tsconfig.build.json",
     "db:migrate": "tsc -p tsconfig.build.json && node dist/database/migrate-cli.js",
     "dev": "tsc -p tsconfig.build.json --watch",
-    "seed:user": "tsc -p tsconfig.build.json && node dist/seed/seed-user-cli.js",
+    "seed:user": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env dist/seed/seed-user-cli.js",
+    "start": "node --env-file-if-exists=.env dist/index.js",
     "test": "tsc -p tsconfig.build.json && node --test dist/*.test.js dist/**/*.test.js",
     "typecheck": "tsc --noEmit"
   },

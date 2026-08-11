@@ -21,6 +21,7 @@ class FakeTerminal implements PaneTerminal {
   readonly writes: (string | Uint8Array)[] = []
   readonly renderers: RendererKind[] = []
   opened: HTMLElement | null = null
+  focusCount = 0
   resets = 0
   disposed = false
   inputHandler: ((data: string) => void) | null = null
@@ -50,6 +51,10 @@ class FakeTerminal implements PaneTerminal {
 
   open(container: HTMLElement): void {
     this.opened = container
+  }
+
+  focus(): void {
+    this.focusCount += 1
   }
 
   setRenderer(kind: RendererKind): void {
@@ -157,6 +162,26 @@ describe('PaneStore', () => {
         assert.fail(`unexpected store error: ${String(error)}`)
       },
     })
+  })
+
+  it('focuses an on-screen terminal and ignores a headless one', async () => {
+    store.sync([
+      { sid: SID_A, visibility: 'focused', container: container('a') },
+      { sid: SID_B, visibility: 'hidden', container: null },
+    ])
+    await settle()
+
+    const [onScreen, headless] = FakeTerminal.instances
+    store.focus(SID_A)
+    store.focus(SID_B)
+    await settle()
+
+    assert.equal(onScreen?.focusCount, 1)
+    assert.equal(
+      headless?.focusCount,
+      0,
+      'a pane with no container has nothing to hand the keyboard to',
+    )
   })
 
   it('subscribes a new pane and opens it only when it has somewhere to render', async () => {

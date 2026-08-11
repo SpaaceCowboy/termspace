@@ -34,6 +34,8 @@ export interface PaneTerminal {
   flush: () => Promise<void>
   reset: () => void
   open: (container: HTMLElement) => void
+  /** Puts DOM focus on the terminal, without which it receives no keystrokes. */
+  focus: () => void
   setRenderer: (kind: RendererKind) => void
   serialize: () => string
   fit: () => PaneSize | null
@@ -160,6 +162,23 @@ export class PaneStore {
       entry.restored = true
       this.#flushInput(entry)
       this.#fit(entry)
+    })
+  }
+
+  /**
+   * Nothing else puts DOM focus on a terminal, and without it xterm's hidden
+   * textarea never receives a keystroke — the pane renders output and swallows
+   * every key. Queued behind the entry's operations so it cannot land on a
+   * terminal that a rehost is about to replace.
+   */
+  focus(sid: string): void {
+    const entry = this.#panes.get(sid)
+    if (entry === undefined || entry.container === null) {
+      return
+    }
+    this.#enqueue(entry, async () => {
+      entry.terminal?.focus()
+      await Promise.resolve()
     })
   }
 

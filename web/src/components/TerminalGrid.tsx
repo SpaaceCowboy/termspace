@@ -8,6 +8,7 @@ import {
 } from '@termspace/contracts'
 import { useCallback, useEffect, useMemo } from 'react'
 
+
 import { cx } from '@/lib/cx'
 import type { PaneSlot, PanesApi } from '@/lib/panes/usePanes.ts'
 
@@ -152,6 +153,7 @@ export function TerminalGrid({
               dead={session !== null && deadSessions.has(session.id)}
               notice={index === layout.focusedSlot ? notice : null}
               setContainer={panes.setContainer}
+              focusTerminal={panes.focus}
               onFocusSlot={onFocusSlot}
               onClearSlot={onClearSlot}
               onNewSession={onNewSession}
@@ -171,6 +173,7 @@ interface PaneSlotFrameProps {
   dead: boolean
   notice: string | null
   setContainer: PanesApi['setContainer']
+  focusTerminal: PanesApi['focus']
   onFocusSlot: (index: number) => void
   onClearSlot: (index: number) => void
   onNewSession: () => void
@@ -184,6 +187,7 @@ function PaneSlotFrame({
   dead,
   notice,
   setContainer,
+  focusTerminal,
   onFocusSlot,
   onClearSlot,
   onNewSession,
@@ -200,6 +204,18 @@ function PaneSlotFrame({
     },
     [sid, setContainer],
   )
+
+  /**
+   * The focused slot owns the keyboard. Without this the terminal renders but
+   * never receives a keystroke, because xterm reads from a hidden textarea that
+   * nothing else ever focuses.
+   */
+  useEffect(() => {
+    if (!live || sid === null || !focused) {
+      return
+    }
+    focusTerminal(sid)
+  }, [focused, focusTerminal, live, sid])
 
   if (session === null) {
     return (
@@ -266,7 +282,16 @@ function PaneSlotFrame({
         </span>
       </div>
       {live ? (
-        <div className={styles.screen} ref={attach} />
+        <div
+          className={styles.screen}
+          ref={attach}
+          onMouseDown={() => {
+            onFocusSlot(index)
+            if (sid !== null) {
+              focusTerminal(sid)
+            }
+          }}
+        />
       ) : (
         <div className={styles.screen}>
           <PanePlaceholder session={session} />

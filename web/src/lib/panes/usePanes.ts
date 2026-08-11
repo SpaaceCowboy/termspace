@@ -22,6 +22,8 @@ export interface PanesApi {
   setSlots: (slots: readonly PaneSlot[]) => void
   restore: (sid: string, data: string) => void
   write: (sid: string, bytes: Uint8Array) => void
+  /** Hands the keyboard to a pane's terminal. */
+  focus: (sid: string) => void
 }
 
 /**
@@ -128,8 +130,12 @@ export function usePanes(socket: SocketApi, enabled: boolean, onError?: (error: 
     storeRef.current?.write(sid, bytes)
   }, [])
 
+  const focus = useCallback((sid: string) => {
+    storeRef.current?.focus(sid)
+  }, [])
+
   return useMemo(
-    () => ({ setContainer, setSlots, restore, write }),
-    [setContainer, setSlots, restore, write],
+    () => ({ setContainer, setSlots, restore, write, focus }),
+    [setContainer, setSlots, restore, write, focus],
   )
 }

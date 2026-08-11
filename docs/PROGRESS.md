@@ -287,3 +287,71 @@ before the restore are held and sent in order once it lands, which keeps what
 the rule was protecting (nothing acts on a buffer the server is about to
 overwrite) without the dead-pane failure mode. Terminal creation errors reach
 the UI instead of being swallowed by an unset `onError`.
+
+### 2026-08-11T13:54:10+03:30 · SOLO · 2 · FIXED
+Every WebSocket upgrade from a browser was rejected, so no pane anywhere could
+accept a keystroke — the symptom looked like a terminal bug and was a config
+default. `TERMSPACE_ALLOWED_ORIGIN` defaulted to `http://localhost:3000` while
+`web` serves on 3002 and `isAllowedOrigin` is an exact string match. There is no
+`.env` in the repo, so the default is what every dev box actually ran. The
+ticket was never examined; each 403 burned a fresh ticket for nothing.
+
+Three changes, and the second is the one that matters long term:
+1. The default is now `http://localhost:3002`, with a test asserting it matches
+   the port `web/package.json` serves on so the two cannot drift apart again.
+2. A rejected upgrade is no longer invisible. `WebSocketGatewayServer` takes an
+   `onRejected` hook reporting reason, received Origin, and configured Origin;
+   `origin_rejected` logs at `error` with the exact remedy, everything else at
+   `warn`. Previously the server said nothing and the browser said `403` with an
+   empty body, which is indistinguishable from an expired ticket.
+3. The accepted Origin is logged once at boot.
+
+Verified live against a real gateway: with a deliberately bogus ticket, Origin
+`http://localhost:3002` reaches the ticket check and returns 401, while
+`http://localhost:3000` is refused at 403 and logs the actionable error. That
+second case is the old default, so it is also a reproduction of the bug. 133/133
+server unit tests pass.
+
+Not covered: `server/e2e-ws.mjs` drives the whole path including a real login
+and a keystroke round-tripping through tmux, and still has not been run — it
+needs the operator's TOTP secret.
+
+### 2026-08-11T14:26:00+03:30 · SOLO · 2 · FIXED
+A pane rendered nothing and accepted no input even with the socket connected and
+the session alive. Two independent client bugs, either of which alone produces
+"the terminal is broken":
+
+1. `@xterm/xterm/css/xterm.css` was never imported anywhere. That stylesheet is
+   not cosmetic — it is what moves `.xterm-helper-textarea` off-screen
+   (`position: absolute; opacity: 0; left: -9999em`) and positions the rows and
+   viewport. Without it nothing paints and the bare textarea renders as a small
+   box in the pane's top-left corner. Imported in the root layout.
+2. Nothing in `web/**` ever called `terminal.focus()`; `PaneTerminal` did not
+   expose it. `focusedSlot` only ever decided which pane got WebGL. xterm reads
+   keystrokes from that hidden textarea, so with no DOM focus the pane was
+   permanently deaf. `PaneTerminal.focus`, `PaneStore.focus(sid)`, and
+   `PanesApi.focus` now exist; the grid focuses the focused slot on mount and on
+   change, and on mouse-down anywhere in a pane body.
+
+`PaneStore.focus` queues behind the entry's operations so it cannot land on a
+terminal a rehost is about to replace, and is a no-op for a headless pane, which
+has nothing to hand the keyboard to. Covered by a test asserting exactly that.
+133/133 server and 68/68 web tests pass; both packages typecheck.
+
+Diagnosed by capturing the tmux pane server-side: the session was alive at 94x32
+running `claude` on its trust-folder prompt with a full screen of content, while
+the browser showed an empty pane. That split — healthy server, blank client —
+is what named the bug as rendering rather than transport.
+
+### 2026-08-11T14:26:00+03:30 · SOLO · 2 · FIXED
+Server config no longer has to be remembered by hand. There was no `.env` and no
+loader, so a bare `node dist/index.js` silently took every production-shaped
+default: `/srv/projects` as the project root (which no dev box has, so every
+project creation failed) and the wrong allowed Origin. Both had already been
+diagnosed once each and both came back the moment the gateway was restarted
+without its environment.
+
+`server/.env.example` documents the two that bite and why, and `pnpm start` and
+`seed:user` load `.env` through Node's own `--env-file-if-exists` — no dotenv
+dependency, no import-order trap, and the shell still wins over the file. `.env`
+was already gitignored.

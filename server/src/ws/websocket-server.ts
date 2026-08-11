@@ -25,7 +25,14 @@ interface WebSocketGatewayOptions {
     userId: string,
   ) => WebSocketConnectionPort
   readonly onError: (error: unknown) => void
+  readonly onRejected?: (rejection: UpgradeRejection) => void
   readonly tickets: TicketStore
+}
+
+export interface UpgradeRejection {
+  readonly reason: string
+  readonly receivedOrigin: string | null
+  readonly allowedOrigin: string
 }
 
 export class WebSocketGatewayServer {
@@ -77,6 +84,15 @@ export class WebSocketGatewayServer {
           : authorization.reason === 'origin_rejected'
             ? 403
             : 401
+      // A rejected upgrade is otherwise invisible from the server side: the
+      // browser reports a bare 403 with no body, and a misconfigured origin
+      // looks exactly like an expired ticket from there.
+      this.#options.onRejected?.({
+        reason: authorization.reason,
+        receivedOrigin:
+          typeof request.headers.origin === 'string' ? request.headers.origin : null,
+        allowedOrigin: this.#options.allowedOrigin,
+      })
       rejectUpgrade(socket, statusCode)
       return
     }

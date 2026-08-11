@@ -28,6 +28,11 @@ async function start(): Promise<void> {
       )
     }
 
+    runtime.app.log.info(
+      { allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN },
+      'WebSocket upgrades are accepted only from this exact Origin',
+    )
+
     await runtime.app.listen({
       host: environment.TERMSPACE_HOST,
       port: environment.TERMSPACE_PORT,

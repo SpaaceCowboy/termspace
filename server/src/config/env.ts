@@ -47,8 +47,13 @@ const EnvironmentSchema = z
   })
   .transform((environment) => ({
     ...environment,
+    /**
+     * The dev default has to match what `web` actually serves on, or every
+     * WebSocket upgrade is rejected with a bare 403 and nothing says why. That
+     * package defaults to `PORT=3002`; keep the two in step.
+     */
     TERMSPACE_ALLOWED_ORIGIN:
-      environment.TERMSPACE_ALLOWED_ORIGIN ?? 'http://localhost:3000',
+      environment.TERMSPACE_ALLOWED_ORIGIN ?? 'http://localhost:3002',
   }))
 
 export type Environment = z.output<typeof EnvironmentSchema>

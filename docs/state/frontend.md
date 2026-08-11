@@ -40,15 +40,34 @@ server creating its project root at startup and reporting
 default root `/srv/projects` does not exist on a dev box, so every create
 failed with advice that would also have failed.
 
-**Next concrete step:** drive the grid in a real browser. Everything below the
-UI is verified live, but the rendered app was **not** exercised this session —
-the headless-Chrome run was abandoned part way. Start the gateway and
-`pnpm start`, then check by hand: four panes attach and restore, WebGL lands
+**Also landed (uncommitted):** every browser WebSocket upgrade was 403ing, so no
+pane could take a keystroke. `TERMSPACE_ALLOWED_ORIGIN` defaulted to port 3000
+while `web` serves on 3002 and the check is an exact string match, and there is
+no `.env` in the repo. Default corrected and pinned by a test; a rejected
+upgrade now logs reason, received Origin, and configured Origin, because
+previously the server logged nothing and an origin mismatch was
+indistinguishable from an expired ticket. Verified live both ways with a bogus
+ticket: 3002 gets to the ticket check (401), 3000 is refused (403) with the
+actionable log.
+
+**Also landed (uncommitted):** a pane rendered nothing and took no input even
+with the socket connected. `xterm.css` was never imported (it is what hides the
+helper textarea and positions the rows — without it the pane is blank with a
+stray textarea in the corner), and nothing ever called `terminal.focus()`, so
+xterm's hidden textarea never had the keyboard. Both fixed; `PaneStore.focus`
+has a test. Server config moved into `.env` via `--env-file-if-exists` so the
+Origin and project root stop reverting to production defaults on every restart.
+
+**Next concrete step:** log in and drive the grid in a real browser — now
+actually possible, since until this the WS never connected and then the pane
+never painted. `cd server && pnpm start`, `cd web && pnpm dev`, then check by
+hand: four panes attach and restore, WebGL lands
 only on the focused pane, switching a tab paints the hidden pane's current
 screen with no flash of an empty terminal, and a reload comes back with the same
-mode, panes, and focus. After that, the last phase 2 box is the backend's
-per-agent launch command; deleting a project or session from the UI is still
-missing (the API supports both, nothing calls it).
+mode, panes, and focus. Also run `server/e2e-ws.mjs` (needs `SECRET`, the
+operator's TOTP secret) — it has never been run. After that, the last phase 2
+box is the per-agent launch command; deleting a project or session from the UI
+is still missing (the API supports both, nothing calls it).
 
 **Landmines:**
 - `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
@@ -68,8 +87,12 @@ missing (the API supports both, nothing calls it).
   page whose chunks all 404 and whose React never hydrates. Build with
   `TERMSPACE_DIST_DIR=.next-e2e` to keep them apart, and note that `next build`
   rewrites `web/tsconfig.json` to match — revert that file afterwards.
-- Whatever port the browser uses must match `TERMSPACE_ALLOWED_ORIGIN` or the WS
-  upgrade fails. The gateway reads it once at startup.
+- Whatever port the browser uses must match `TERMSPACE_ALLOWED_ORIGIN` exactly
+  or the WS upgrade fails with a bare 403. The gateway reads it once at startup
+  and logs it at boot. The default assumes `web` is on 3002 — if you start it on
+  any other port (`PORT=3003 pnpm dev`), set `TERMSPACE_ALLOWED_ORIGIN` to match
+  or you are back in the same hole. A 403 is always the Origin; a bad ticket is
+  a 401.
 - The login form's field ids come from `useId()`. Select by `name`, not `id`.
 - `otplib` v13 exports `generate({ secret })`, not `authenticator.generate`.
 - Auth sessions are in memory, so a gateway restart forces a re-login. The
@@ -87,7 +110,12 @@ missing (the API supports both, nothing calls it).
   the real `xterm` adapter lives in a file no test imports.
 - `TERMSPACE_PROJECT_ROOT` (default `/srv/projects`) must exist and be writable
   by the app user or every project creation fails. Any test that creates a
-  project must set this env var to a directory it owns.
+  project must set this env var to a directory it owns. Locally this now lives
+  in `server/.env` (loaded by `pnpm start`); a bare `node dist/index.js` still
+  bypasses it and takes the production defaults.
+- `xterm.css` must stay imported in `web/src/app/layout.tsx`. Dropping it does
+  not error — the pane just renders blank with a stray textarea in the corner,
+  which reads as a backend or socket bug and is not one.
 - Containment resolves symlinks (`assertRealPathWithinRoot`). It is still a
   check, not a lock: TOCTOU remains, and only the phase 5 systemd work makes it
   binding. Before writing that unit, read the ⚠ note on phase 5 in
@@ -96,7 +124,14 @@ missing (the API supports both, nothing calls it).
 - The database is chmod 0600 and a data directory *we create* is 0700. An
   existing directory is deliberately left alone.
 
-**Uncommitted:** nothing — slice 3 is committed. Validation scripts live in the
+**Uncommitted:** three fixes, all green (133/133 server, 68/68 web, both
+typecheck). Origin: `server/src/config/env.ts`, `env.test.ts`, `index.ts`,
+`runtime.ts`, `ws/websocket-server.ts`. Rendering and focus:
+`web/src/app/layout.tsx`, `lib/panes/{pane-store,xterm-pane-terminal,usePanes}.ts`,
+`pane-store.test.ts`, `components/TerminalGrid.tsx`. Config:
+`server/package.json`, untracked `server/.env.example` (and a local `.env`,
+gitignored). Also untracked: `server/e2e-ws.mjs`, still never run.
+Validation scripts live in the
 session scratchpad and are **not** in the repo: `e2e-layouts.mjs` (the 15 checks
 above), `e2e-setup.mjs` (seeds two projects and four sessions over the API), and
 `e2e-newproject.mjs` (10 checks on project creation from nothing), and an

@@ -7,13 +7,21 @@ describe('readEnvironment', () => {
   it('supplies local defaults', () => {
     assert.deepEqual(readEnvironment({}), {
       NODE_ENV: 'development',
-      TERMSPACE_ALLOWED_ORIGIN: 'http://localhost:3000',
+      TERMSPACE_ALLOWED_ORIGIN: 'http://localhost:3002',
       TERMSPACE_AUTH_SESSION_TTL_MS: 28_800_000,
       TERMSPACE_DATABASE_PATH: './data/termspace.db',
       TERMSPACE_HOST: '127.0.0.1',
       TERMSPACE_PORT: 3001,
       TERMSPACE_PROJECT_ROOT: '/srv/projects',
     })
+  })
+
+  /**
+   * The two defaults have to agree or every WebSocket upgrade is rejected with
+   * a bare 403: `web` serves on 3002 unless `PORT` says otherwise.
+   */
+  it('defaults the allowed Origin to the port the web package serves on', () => {
+    assert.equal(readEnvironment({}).TERMSPACE_ALLOWED_ORIGIN, 'http://localhost:3002')
   })
 
   it('rejects an invalid port', () => {

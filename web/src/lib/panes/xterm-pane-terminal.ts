@@ -70,6 +70,12 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
       terminal.open(container)
       opened = true
     },
+    focus(): void {
+      if (disposed || !opened) {
+        return
+      }
+      terminal.focus()
+    },
     setRenderer(kind: RendererKind): void {
       if (disposed || !opened || kind === renderer) {
         return
