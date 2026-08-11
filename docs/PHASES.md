@@ -83,6 +83,11 @@ miniature — do not move on until it is true.
 - [x] New-session dialog: project + agent picker
 - [x] New-project dialog (not originally listed, but without it the app cannot
       be used from a browser at all)
+- [x] Delete a session and delete a project, from the sidebar, behind a
+      confirmation that states what is actually destroyed. Deleting a project
+      leaves its directory on disk; deleting a session kills its tmux session
+      and its scrollback with it. The API for both has existed since slice 1
+      with nothing calling it, so a project could be created and never removed.
 
 **Exit criteria**
 Four sessions across two projects visible at once, layout survives a reload,

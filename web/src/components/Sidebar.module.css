@@ -92,6 +92,48 @@
   cursor: pointer;
 }
 
+.groupActionDanger:hover {
+  color: var(--ts-danger);
+}
+
+/*
+ * Revealed on hover or focus rather than always shown, so a list of sessions is
+ * not a row of delete buttons — but never hidden from the keyboard.
+ */
+.itemDelete {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  background: none;
+  border: 1px solid transparent;
+  border-radius: var(--ts-radius);
+  color: var(--ts-text-dim);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  opacity: 0;
+}
+
+.row:hover .itemDelete,
+.itemDelete:focus-visible {
+  opacity: 1;
+}
+
+.itemDelete:hover {
+  background: var(--ts-bg-raised);
+  color: var(--ts-danger);
+}
+
+@media (hover: none) {
+  /* No hover to reveal it on a touch screen. */
+  .itemDelete {
+    opacity: 1;
+  }
+}
+
 .groupAction:hover {
   background: var(--ts-bg-raised);
   border-color: var(--ts-border);
@@ -111,8 +153,20 @@
   padding: 0;
 }
 
+/*
+ * The row holds the session button and its delete button as siblings. Nesting
+ * the second inside the first would be invalid, and would make the whole row
+ * un-clickable for a keyboard user.
+ */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
 .item {
-  width: 100%;
+  min-width: 0;
+  flex: 1;
   display: flex;
   align-items: center;
   gap: 8px;

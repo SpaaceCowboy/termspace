@@ -109,3 +109,16 @@
   color: var(--ts-text-dim);
   font-size: 14px;
 }
+
+.confirmText {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--ts-text);
+}
+
+.confirmPath {
+  font-size: 12px;
+  color: var(--ts-text-dim);
+  overflow-wrap: anywhere;
+}

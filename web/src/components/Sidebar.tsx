@@ -31,6 +31,8 @@ export interface SidebarProps {
   onNewSession?: (projectId: string | null) => void
   onNewProject?: () => void
   onEditProject?: (projectId: string) => void
+  onDeleteProject?: (projectId: string) => void
+  onDeleteSession?: (sessionId: string) => void
   loading: boolean
   error: string | null
   sourceKind: string
@@ -45,6 +47,8 @@ export function Sidebar({
   onNewSession,
   onNewProject,
   onEditProject,
+  onDeleteProject,
+  onDeleteSession,
   loading,
   error,
   sourceKind,
@@ -74,6 +78,8 @@ export function Sidebar({
           {...(onNewSession === undefined ? {} : { onNewSession })}
           {...(onNewProject === undefined ? {} : { onNewProject })}
           {...(onEditProject === undefined ? {} : { onEditProject })}
+          {...(onDeleteProject === undefined ? {} : { onDeleteProject })}
+          {...(onDeleteSession === undefined ? {} : { onDeleteSession })}
           loading={loading}
           error={error}
         />
@@ -95,6 +101,8 @@ function SidebarBody({
   onSelect,
   onNewSession,
   onEditProject,
+  onDeleteProject,
+  onDeleteSession,
   loading,
   error,
 }: Omit<SidebarProps, 'sourceKind'>) {
@@ -154,6 +162,19 @@ function SidebarBody({
                     +
                   </button>
                 )}
+                {onDeleteProject === undefined ? null : (
+                  <button
+                    type="button"
+                    className={cx(styles.groupAction, styles.groupActionDanger)}
+                    onClick={() => {
+                      onDeleteProject(group.id)
+                    }}
+                    aria-label={`Delete project ${group.name}`}
+                    title="Delete project"
+                  >
+                    ×
+                  </button>
+                )}
               </>
             )}
           </h2>
@@ -162,7 +183,7 @@ function SidebarBody({
           ) : (
             <ul className={styles.list}>
               {group.sessions.map((session) => (
-                <li key={session.id}>
+                <li className={styles.row} key={session.id}>
                   <button
                     type="button"
                     className={cx(
@@ -186,6 +207,19 @@ function SidebarBody({
                       </span>
                     </span>
                   </button>
+                  {onDeleteSession === undefined ? null : (
+                    <button
+                      type="button"
+                      className={styles.itemDelete}
+                      onClick={() => {
+                        onDeleteSession(session.id)
+                      }}
+                      aria-label={`Delete session ${session.name}`}
+                      title="Delete session"
+                    >
+                      ×
+                    </button>
+                  )}
                 </li>
               ))}
             </ul>

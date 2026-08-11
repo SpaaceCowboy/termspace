@@ -80,6 +80,18 @@
   filter: brightness(1.06);
 }
 
+/* Destructive actions read as destructive before the click, not after. */
+.danger {
+  background: var(--ts-danger);
+  border-color: var(--ts-danger);
+  color: var(--ts-accent-text);
+}
+
+.danger:hover:not(:disabled) {
+  background: var(--ts-danger);
+  filter: brightness(1.06);
+}
+
 .button:disabled {
   opacity: 0.6;
   cursor: default;

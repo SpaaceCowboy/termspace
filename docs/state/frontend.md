@@ -46,7 +46,10 @@ failed with advice that would also have failed.
 absent `terminal.focus()` call. Plus `server/.env` via `--env-file-if-exists`,
 so the Origin and project root stop reverting to production defaults on every
 restart. And the last phase 2 box: per-agent launch commands, configurable per
-project, verified 16/16 against a real gateway and tmux.
+project, verified 16/16 against a real gateway and tmux. Then deleting a project
+and a session from the sidebar, behind confirmations that state what is actually
+destroyed — a project keeps its files, a session loses its process and
+scrollback — verified 18/18 the same way.
 
 **Next concrete step:** the phase 2 exit criteria, by hand in a browser —
 nothing else can settle them. `cd server && pnpm start`, `cd web && pnpm dev`,
@@ -57,8 +60,9 @@ mode, panes, and focus. Then append the phase 2 exit result and only then look
 at phase 3.
 
 Also unrun: `server/e2e-ws.mjs` needs `SECRET`, the operator's TOTP secret.
-Still missing though no box claims them: deleting a project or a session from
-the UI — both APIs exist and nothing calls them.
+`e2e-agent-commands.mjs` and `e2e-delete.mjs` are in the repo and both seed
+their own throwaway database and user, so they need no secret — see the header
+of each for the env vars.
 
 **Landmines:**
 - `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
@@ -114,6 +118,10 @@ the UI — both APIs exist and nothing calls them.
   agent session.
 - The database is chmod 0600 and a data directory *we create* is 0700. An
   existing directory is deliberately left alone.
+- A session row can outlive its tmux session: tmux ends a session when the
+  command inside it exits, and nothing reconciles the row with that. The sidebar
+  will show it as `idle` and it cannot be attached to. Phase 3 work, not a bug
+  to chase in phase 2.
 
 **Uncommitted:** nothing. Validation scripts live in the
 session scratchpad and are **not** in the repo: `e2e-layouts.mjs` (the 15 checks

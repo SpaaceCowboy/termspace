@@ -406,3 +406,48 @@ nothing. Both are fixed, so this is now checkable for the first time.
 Not started, and deliberately: phase 3. Also still missing, though no box claims
 them — deleting a project or a session from the UI (both APIs exist and nothing
 calls them), and `server/e2e-ws.mjs` has still never been run.
+
+### 2026-08-11T15:58:00+03:30 · SOLO · 2 · DONE
+A project and a session can be deleted from the UI. Both APIs had existed since
+slice 1 with nothing calling them, so a project created by mistake was permanent.
+
+Deleting a project and deleting a session destroy very different things, and the
+confirmations say which:
+
+- Deleting a **project** removes only the database row. Its directory and
+  everything in it are left exactly where they are — `removeDirectory` on the
+  server is only ever used to roll back a failed create. The dialog names the
+  path and says nothing is deleted from it.
+- Deleting a **session** kills its tmux session first, so whatever was running
+  dies and the scrollback goes with it. The dialog says so plainly.
+
+The server refuses to delete a project that still has sessions, which makes
+session deletion a prerequisite rather than a separate nicety — hence both in
+one change. That refusal is surfaced as the error inside the still-open dialog,
+because a failed delete is the moment the user most needs to still be looking at
+what they tried to delete.
+
+Deleting a session clears it from every layout slot through `withoutSession`,
+which is what releases the terminal and unsubscribes the socket. Leaving the
+slot would leave a pane attached to a session id the server no longer knows.
+
+The delete control on a session row is a sibling of the row button, not nested
+inside it — nesting would be invalid markup and would break keyboard access to
+the row. It is revealed on hover, on `:focus-visible`, and always where there is
+no hover at all.
+
+Verified live, 18/18, against a real gateway, database and tmux: a project with
+sessions is refused with the field the form can point at, the session's **tmux
+session is really gone** after deleting it, deleting either twice is a 404
+rather than a 500, an unauthenticated delete is a 401, and — the promise the
+dialog makes — the project directory *and a file written into it* both survive
+the project being deleted. 150/150 server, 76/76 web, 25/25 contracts.
+
+### 2026-08-11T15:58:00+03:30 · SOLO · 2 · FOUND
+A session row can outlive its tmux session with nothing noticing. `test`
+(`qhZHEdvZuGjwNLy7`) is in the database as `idle` while its tmux session is
+gone — its `claude` process exited, and tmux ends a session when its command
+does. Nothing reconciles the two, so the sidebar shows a session that cannot be
+attached to. This is phase 3's `dead` state and activity tracker, not a phase 2
+fix; noted here so it is not rediscovered as a mystery. The new delete button at
+least makes it removable by hand.

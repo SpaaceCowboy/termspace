@@ -14,6 +14,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { ConnectionBadge } from '@/components/ConnectionBadge'
 import { LayoutToolbar } from '@/components/LayoutToolbar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ProjectSettingsDialog } from '@/components/ProjectSettingsDialog'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { Sidebar } from '@/components/Sidebar'
@@ -25,6 +26,7 @@ import {
   liveSessionIds,
   setMode,
   showSession,
+  withoutSession,
 } from '@/lib/layout/layout-actions.ts'
 import { useLayout } from '@/lib/layout/useLayout.ts'
 import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
@@ -51,6 +53,9 @@ export default function WorkspacePage() {
   > | null>(null)
   /** The project whose launch commands are being edited, if any. */
   const [settingsFor, setSettingsFor] = useState<string | null>(null)
+  /** Pending destructive confirmations, by id. */
+  const [deletingProject, setDeletingProject] = useState<string | null>(null)
+  const [deletingSession, setDeletingSession] = useState<string | null>(null)
   const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
@@ -231,6 +236,34 @@ export default function WorkspacePage() {
     setSessionDialogOpen(true)
   }, [])
 
+  /**
+   * Deleting a session kills its tmux session, so the pane must come off screen
+   * in the same beat — `withoutSession` clears every slot holding it, which is
+   * what releases the terminal and unsubscribes the socket. Leaving the slot
+   * would leave a pane attached to a session id the server no longer knows.
+   */
+  const onSessionDeleted = useCallback(
+    (sid: string) => {
+      setSessions((current) => current.filter((session) => session.id !== sid))
+      setDeadSessions((current) => {
+        if (!current.has(sid)) {
+          return current
+        }
+        const next = new Set(current)
+        next.delete(sid)
+        return next
+      })
+      apply((current) => withoutSession(current, sid))
+    },
+    [apply],
+  )
+
+  const onProjectDeleted = useCallback((projectId: string) => {
+    // The server refuses to delete a project that still has sessions, so by the
+    // time this runs there are none to clean up.
+    setProjects((current) => current.filter((project) => project.id !== projectId))
+  }, [])
+
   const onSelectSession = useCallback(
     (sid: string) => {
       apply((current) => showSession(current, sid))
@@ -296,6 +329,12 @@ export default function WorkspacePage() {
         }}
         onEditProject={(projectId) => {
           setSettingsFor(projectId)
+        }}
+        onDeleteProject={(projectId) => {
+          setDeletingProject(projectId)
+        }}
+        onDeleteSession={(sessionId) => {
+          setDeletingSession(sessionId)
         }}
         loading={loading}
         error={error}
@@ -382,6 +421,73 @@ export default function WorkspacePage() {
           setSettingsFor(null)
         }}
       />
+      <ConfirmDialog
+        open={deletingSession !== null}
+        title="Delete session"
+        confirmLabel="Delete session"
+        busyLabel="Deleting…"
+        onClose={() => {
+          setDeletingSession(null)
+        }}
+        onConfirm={async () => {
+          if (deletingSession === null) {
+            return null
+          }
+          const response = await dataSource.deleteSession(deletingSession)
+          if (!response.ok) {
+            return response.error.message
+          }
+          onSessionDeleted(deletingSession)
+          return null
+        }}
+      >
+        <p className={styles.confirmText}>
+          <strong>
+            {sessions.find((session) => session.id === deletingSession)?.name ??
+              'This session'}
+          </strong>{' '}
+          will be stopped and removed. Whatever is running in it is killed and its
+          scrollback goes with it. This cannot be undone.
+        </p>
+      </ConfirmDialog>
+
+      <ConfirmDialog
+        open={deletingProject !== null}
+        title="Delete project"
+        confirmLabel="Delete project"
+        busyLabel="Deleting…"
+        onClose={() => {
+          setDeletingProject(null)
+        }}
+        onConfirm={async () => {
+          if (deletingProject === null) {
+            return null
+          }
+          const response = await dataSource.deleteProject(deletingProject)
+          if (!response.ok) {
+            return response.error.message
+          }
+          onProjectDeleted(deletingProject)
+          return null
+        }}
+      >
+        <p className={styles.confirmText}>
+          <strong>
+            {projects.find((project) => project.id === deletingProject)?.name ??
+              'This project'}
+          </strong>{' '}
+          will be removed from Termspace. Its files are left exactly where they
+          are on disk — nothing is deleted from{' '}
+          <code className={styles.confirmPath}>
+            {projects.find((project) => project.id === deletingProject)?.path ?? ''}
+          </code>
+          .
+        </p>
+        <p className={styles.confirmText}>
+          A project with sessions cannot be deleted. Delete its sessions first.
+        </p>
+      </ConfirmDialog>
+
       <NewProjectDialog
         open={projectDialogOpen}
         projectRoot={projectRoot}
