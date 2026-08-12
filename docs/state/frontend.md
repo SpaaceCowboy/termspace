@@ -9,17 +9,21 @@ Overwritten, never appended. Read it first at every session start.
 
 ---
 
-**Phase:** 3, one box left. Phases 0–2 are complete. The UI pass that phase 3
-was waiting on is done (commit 9a53621).
+**Phase:** 3 is **built** — every box ticked. It is **not gated**: the exit
+criterion is a phone in another room buzzing within five seconds of a permission
+question, and only the owner with a real device can confirm that. Phase 4 should
+not start until they have.
 
-**Working on:** nothing in flight. Auto-title just landed; the next box is the
-last one in phase 3.
+**Working on:** nothing in flight.
 
 **Done so far in phase 3:**
 - Activity tracker + `status` frames on change only (commit 0757b88).
 - Web Push, both halves — subscription endpoints, VAPID, and a notification on
   entering `needs-you` that focuses the pane when tapped (commit 0452d6c).
 - Status pill per pane, sidebar dots, document title reflecting the worst state.
+- **Output coalescing tiers by visibility** — focused 16 ms, visible 50 ms,
+  hidden 250 ms, defaulting to `visible`. The `vis` frame had been arriving
+  since phase 1 and being discarded. Verified 4/4 in `server/e2e-visibility.mjs`.
 - **Auto-title.** Titles come from tmux's `pane_title` — what the program in the
   pane told its terminal via OSC 2 — not from guessing at scrollback. Three new
   server files: `activity/title.ts` (what counts as a title),
@@ -27,17 +31,14 @@ last one in phase 3.
   Verified 6/6 in `server/e2e-title.mjs` and end-to-end against a real `claude`
   session. See the PROGRESS entry for the reasoning.
 
-**Next concrete step:** the last phase 3 box — output coalescing tiers by
-visibility (16 / 50 / 250 ms). The `vis` frame already arrives and is currently
-a no-op: `gateway-connection.ts` has `case 'vis': return`. The coalescer is
-`server/src/terminal/output-coalescer.ts`, today a single
-`createFocusedOutputCoalescer` at a flat 16 ms. The work is to make the interval
-a function of the session's visibility level, keep one coalescer per
-subscription, and switch its interval when a `vis` frame changes the level —
-without dropping buffered output at the moment of the switch. That last part is
-the bit to write a test for first.
+**Next concrete step:** ask the owner to run the phase 3 exit criterion — phone
+locked, another room, an agent hitting a permission prompt — and tick `Verified`
+in the gate table in `docs/PHASES.md`. Do not start phase 4 before that.
 
-Then phase 3 is done and phase 4 (worktrees and diffs) opens.
+Once gated, phase 4 is worktrees and diffs. Its first box is
+`POST /api/sessions` with `worktree: true` doing `git worktree add`; the
+frontend half that will take longest is the diff panel (file list + unified
+diff + syntax highlight), which is the last substantial new UI in the plan.
 
 **Landmines:**
 - `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
@@ -67,6 +68,13 @@ Then phase 3 is done and phase 4 (worktrees and diffs) opens.
   seconds** of a new session. This is not a gateway bug — input lands normally
   once the welcome clears. It cost a wrong diagnosis once already; don't chase
   it again.
+- **Byte totals over the WebSocket are not a stable measurement.** The same
+  60-line command measured 2726 / 3503 / 3987 bytes across runs at the *same*
+  coalescing tier, because tmux chooses how much redraw to emit on its own
+  timing, upstream of anything we control. A first run in a fresh pane differs
+  again, carrying the command echo and initial redraw. Assert on content (line
+  counts) and frame counts, never on byte volume, and always discard a warmup
+  run. An earlier `e2e-visibility.mjs` "failed" purely on this.
 - **State and title only advance while a viewer is subscribed.** `observe()` is
   called from the attachment's `onData`, so with every tab closed nothing is
   derived. Pre-existing for status; auto-title inherits it. If that ever matters,

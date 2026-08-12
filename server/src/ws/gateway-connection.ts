@@ -1,4 +1,4 @@
-import type { ServerFrame, Session } from '@termspace/contracts'
+import type { ServerFrame, Session, VisibilityLevel } from '@termspace/contracts'
 
 import { encodeTerminalOutput } from './frame-codec.js'
 import { decodeClientFrame } from './frame-codec.js'
@@ -15,6 +15,7 @@ export interface GatewayAttachment {
 export interface GatewayCoalescer {
   dispose(): void
   push(data: string): void
+  setVisibility(level: VisibilityLevel): void
 }
 
 interface GatewaySubscription {
@@ -117,6 +118,10 @@ export class GatewayConnection {
           ?.attachment.resize(frame.cols, frame.rows)
         return
       case 'vis':
+        // Visibility is a property of this viewer, not of the session: two tabs
+        // can watch the same session with only one of them focused, and each
+        // gets its own flush cadence.
+        this.#subscriptions.get(frame.sid)?.coalescer.setVisibility(frame.level)
         return
       case 'ping':
         this.#dependencies.transport.sendFrame({ t: 'pong' })

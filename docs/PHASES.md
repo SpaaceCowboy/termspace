@@ -106,7 +106,7 @@ switching a hidden pane to visible shows correct up-to-date content instantly.
 **Frontend (Claude Code)**
 - [x] Status pill per pane, sidebar dots, document title reflects worst state
 - [x] Service worker, push permission flow, notification click focuses the pane
-- [ ] Output coalescing tiers by visibility (16 / 50 / 250 ms)
+- [x] Output coalescing tiers by visibility (16 / 50 / 250 ms)
 
 **Exit criteria**
 Phone locked in another room buzzes within five seconds of an agent asking a
@@ -166,13 +166,20 @@ permission prompt and killing a runaway session.
 
 ## Gate
 
-Fill this in at the end of each phase. Do not edit another agent's line.
+Two columns, not three: this is a solo project, so the old Backend/Frontend
+split recorded a handoff that no longer happens. What still matters is the
+distinction between "the boxes are ticked and the tests pass" and "a human
+watched it work", because only the second one catches a feature that is green
+and useless.
 
-| Phase | Backend (Codex) | Frontend (Claude Code) | Human |
+`Built` is mine to tick. `Verified` is yours, and it means you saw the exit
+criteria happen with your own eyes.
+
+| Phase | Built | Verified | Notes |
 |---|---|---|---|
-| 0 | [x] | [x] | [x] |
-| 1 | [x] | [x] | [ ] |
-| 2 | [ ] | [ ] | [ ] |
-| 3 | [ ] | [ ] | [ ] |
-| 4 | [ ] | [ ] | [ ] |
-| 5 | [ ] | [ ] | [ ] |
+| 0 | [x] | [x] | |
+| 1 | [x] | [x] | Re-validated from scratch: SIGKILL the gateway, restart, reattach, scrollback and backgrounded process both survive. |
+| 2 | [x] | [x] | Confirmed in a browser by the owner. |
+| 3 | [x] | [ ] | Needs the phone test: locked device, another room, buzzes within 5 s of a permission question, tap opens that pane focused. |
+| 4 | [ ] | [ ] | |
+| 5 | [ ] | [ ] | |

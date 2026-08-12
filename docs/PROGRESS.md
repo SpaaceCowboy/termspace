@@ -714,3 +714,55 @@ input is fine — it lands the moment the welcome clears.
 197/197 server, 92/92 web, 25/25 contracts.
 
 Left in phase 3: the output coalescing tiers by visibility.
+
+### 2026-08-12T15:20:00+03:30 · SOLO · 3 · DONE
+Output coalescing tiers by visibility, and phase 3 is built.
+
+The `vis` frame has been arriving since phase 1 and the server has been
+throwing it away — `case 'vis': return`. Every pane, focused or not, flushed at
+16 ms. Now focused is 16 ms, visible 50 ms, hidden 250 ms.
+
+The whole difficulty is what happens to output already buffered at the instant
+the tier changes, and the two directions are not symmetric:
+
+- **Becoming more visible flushes immediately.** Someone just focused this pane,
+  so what is pooled is exactly what they are waiting to see; holding it for the
+  rest of a 250 ms window shows a stale screen at the moment of most attention.
+  It also makes rapid switching safe — cancel-and-reschedule would let a pane
+  flipped back and forth push its deadline out forever and never deliver. There
+  is a test for exactly that starvation case.
+- **Becoming less visible leaves the pending timer alone.** It fires early
+  against the new tier, costing one extra flush and delaying nothing. Only the
+  next window uses the longer interval.
+
+Also: the default is now `visible` (50 ms), not `focused`. A client sends `vis`
+right after `sub` but the first bytes can beat it, and guessing `focused` there
+starts the quiet majority of panes at the expensive tier.
+
+Visibility is per viewer, not per session — two tabs on one session with only
+one focused each get their own cadence, which falls out of the coalescer living
+on the subscription.
+
+Verified 4/4 in `server/e2e-visibility.mjs` against a real gateway, PTY and
+WebSocket, stable across repeated runs: the same 60-line drip arrives in 62
+frames focused and 9 hidden, all 60 lines present at both, and returning to
+focused restores 62.
+
+Worth recording, because it nearly produced a false result: **byte totals are
+not a usable metric here.** Measured across runs at the same tier they ranged
+over 2726, 3503 and 3987 bytes — tmux decides how much cursor positioning and
+redraw to emit on its own timing, upstream of our coalescer. A first
+measurement in a fresh pane is different again, because it carries the command
+echo and the initial redraw. The e2e now discards a warmup run and asserts on
+the sixty lines, which is what was actually written and is exact. The earlier
+version of this test "failed" for reasons that had nothing to do with the
+feature.
+
+205/205 server, 92/92 web, 25/25 contracts.
+
+Phase 3 is built. It is not gated: the exit criterion is a phone in another room
+buzzing within five seconds, and that needs the owner and a real device.
+
+Gate table rewritten while here — two columns (Built, Verified) instead of the
+Codex/Claude Code split, which recorded a handoff that no longer happens, and
+backfilled to reality: phases 0–2 were done and verified but showed blank.

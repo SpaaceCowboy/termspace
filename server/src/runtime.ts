@@ -18,7 +18,7 @@ import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
 import { SessionRepository } from './sessions/session-repository.js'
 import { HeadlessBufferRegistry } from './terminal/headless-buffer.js'
-import { createFocusedOutputCoalescer } from './terminal/output-coalescer.js'
+import { createOutputCoalescer } from './terminal/output-coalescer.js'
 import { ExecFileProcessRunner } from './tmux/process-runner.js'
 import { TmuxClient } from './tmux/tmux-client.js'
 import { GatewayConnection } from './ws/gateway-connection.js'
@@ -182,7 +182,7 @@ export function createServerRuntime(
         feeds,
         activity,
         titles,
-        createCoalescer: createFocusedOutputCoalescer,
+        createCoalescer: createOutputCoalescer,
         transport,
         onError: onGatewayError,
       }),

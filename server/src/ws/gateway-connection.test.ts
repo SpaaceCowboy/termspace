@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import type { ServerFrame, Session } from '@termspace/contracts'
+import type { ServerFrame, Session, VisibilityLevel } from '@termspace/contracts'
 
 import type {
   GatewayAttachment,
@@ -47,6 +47,7 @@ class FakeAttachment implements GatewayAttachment {
 
 class FakeCoalescer implements GatewayCoalescer {
   disposed = false
+  readonly levels: VisibilityLevel[] = []
   readonly #onFlush: (data: string) => void
 
   constructor(onFlush: (data: string) => void) {
@@ -55,6 +56,10 @@ class FakeCoalescer implements GatewayCoalescer {
 
   dispose(): void {
     this.disposed = true
+  }
+
+  setVisibility(level: VisibilityLevel): void {
+    this.levels.push(level)
   }
 
   push(data: string): void {
@@ -78,6 +83,7 @@ function createHarness(
   errors: unknown[]
   activity: SessionActivityTracker
   titles: SessionTitler
+  coalescers: FakeCoalescer[]
 } {
   const attachment = new FakeAttachment()
   const callbacks: {
@@ -88,6 +94,7 @@ function createHarness(
   const binaries: Buffer[] = []
   const bufferWrites: string[] = []
   const errors: unknown[] = []
+  const coalescers: FakeCoalescer[] = []
   const activity = new SessionActivityTracker({
     now: () => 1_000,
     // Never fires on its own: these tests drive transitions explicitly, and a
@@ -118,7 +125,11 @@ function createHarness(
     },
     capture: async () => 'captured-screen',
     feeds: new SessionFeedCoordinator(),
-    createCoalescer: (onFlush) => new FakeCoalescer(onFlush),
+    createCoalescer: (onFlush) => {
+      const coalescer = new FakeCoalescer(onFlush)
+      coalescers.push(coalescer)
+      return coalescer
+    },
     transport: {
       sendBinary: (data) => binaries.push(data),
       sendFrame: (frame) => frames.push(frame),
@@ -135,6 +146,7 @@ function createHarness(
     errors,
     activity,
     titles,
+    coalescers,
   }
 }
 
@@ -259,5 +271,26 @@ describe('GatewayConnection', () => {
     await new Promise((settle) => setImmediate(settle))
 
     assert.equal(harness.frames.some((frame) => frame.t === 'title'), false)
+  })
+
+  it('applies a vis frame to that session\'s coalescer', async () => {
+    const harness = createHarness()
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+
+    await harness.connection.handleText(`{"t":"vis","sid":"${SID}","level":"focused"}`)
+    await harness.connection.handleText(`{"t":"vis","sid":"${SID}","level":"hidden"}`)
+
+    assert.deepEqual(harness.coalescers[0]?.levels, ['focused', 'hidden'])
+  })
+
+  it('ignores a vis frame for a session it is not subscribed to', async () => {
+    const harness = createHarness()
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+
+    await harness.connection.handleText(
+      `{"t":"vis","sid":"ses_somethingelse","level":"focused"}`,
+    )
+
+    assert.deepEqual(harness.coalescers[0]?.levels, [])
   })
 })
