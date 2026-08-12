@@ -9,62 +9,35 @@ Overwritten, never appended. Read it first at every session start.
 
 ---
 
-**Phase:** 2 is **complete** — every box ticked and the exit criteria confirmed
-in a browser by the owner. Phase 3 is **not** started and must not be started
-until the UI pass below is done.
+**Phase:** 3, one box left. Phases 0–2 are complete. The UI pass that phase 3
+was waiting on is done (commit 9a53621).
 
-**Working on:** a visual pass over the whole UI, before phase 3. The app works
-and looks unfinished — the owner's words were "messy and ugly". Phase 3 is all
-status pills, sidebar dots, document title and notification affordances, so
-doing it on an unresolved design means doing it twice. Design direction is being
-agreed with the owner before any code is written.
+**Working on:** nothing in flight. Auto-title just landed; the next box is the
+last one in phase 3.
 
-**Done so far:**
-- Phase 1 re-validated from scratch: SIGKILL the gateway, restart, reattach, and
-  the scrollback marker plus the backgrounded process survive. Single-use
-  tickets, `Origin` rejection, and both frame codecs cross-checked.
-- **Slice 1 — projects.** `CreateProjectInput`, `project_not_found`,
-  `ProjectRepository` + `ProjectManager` (slug uniqueness, adopt-or-clone,
-  refuses to delete a project with sessions), `GET/POST/DELETE /api/projects`,
-  sidebar nesting with an "Unknown project" group.
-- **Slice 2 — the app is usable from a browser.** `AppConfig` +
-  `GET /api/config`, `Dialog` on the native `<dialog>` element, new-project and
-  new-session dialogs, empty states that lead somewhere. Committed as 118443e.
-- **Slice 3 — layouts and the grid.** `Layout`/`LayoutInput`/`normalizeLayout`
-  in contracts; `LayoutRepository` + `GET`/`PUT /api/layouts`; a `PaneStore`
-  that owns one terminal per session outside React; `TerminalGrid` +
-  `LayoutToolbar` for 1 / 2 / 2×2 / tabs, persisted debounced. Hidden panes hold
-  a headless terminal and rehost through a serialized snapshot. Verified 15/15
-  against the real gateway on the layouts API.
+**Done so far in phase 3:**
+- Activity tracker + `status` frames on change only (commit 0757b88).
+- Web Push, both halves — subscription endpoints, VAPID, and a notification on
+  entering `needs-you` that focuses the pane when tapped (commit 0452d6c).
+- Status pill per pane, sidebar dots, document title reflecting the worst state.
+- **Auto-title.** Titles come from tmux's `pane_title` — what the program in the
+  pane told its terminal via OSC 2 — not from guessing at scrollback. Three new
+  server files: `activity/title.ts` (what counts as a title),
+  `activity/session-titler.ts` (when to ask), and `TmuxClient.paneTitle`.
+  Verified 6/6 in `server/e2e-title.mjs` and end-to-end against a real `claude`
+  session. See the PROGRESS entry for the reasoning.
 
-**Also landed:** creating a project no longer needs a shell. Three sources
-instead of two — adopt, clone, or start empty (`createDirectory`) — plus the
-server creating its project root at startup and reporting
-`projectRootWritable` through `GET /api/config`. This came out of testing: the
-default root `/srv/projects` does not exist on a dev box, so every create
-failed with advice that would also have failed.
+**Next concrete step:** the last phase 3 box — output coalescing tiers by
+visibility (16 / 50 / 250 ms). The `vis` frame already arrives and is currently
+a no-op: `gateway-connection.ts` has `case 'vis': return`. The coalescer is
+`server/src/terminal/output-coalescer.ts`, today a single
+`createFocusedOutputCoalescer` at a flat 16 ms. The work is to make the interval
+a function of the session's visibility level, keep one coalescer per
+subscription, and switch its interval when a `vis` frame changes the level —
+without dropping buffered output at the moment of the switch. That last part is
+the bit to write a test for first.
 
-**Also landed:** the three fixes that made terminals work at all (commit
-59065ce) — the WebSocket Origin default, the missing `xterm.css` import, and the
-absent `terminal.focus()` call. Plus `server/.env` via `--env-file-if-exists`,
-so the Origin and project root stop reverting to production defaults on every
-restart. And the last phase 2 box: per-agent launch commands, configurable per
-project, verified 16/16 against a real gateway and tmux. Then deleting a project
-and a session from the sidebar, behind confirmations that state what is actually
-destroyed — a project keeps its files, a session loses its process and
-scrollback — verified 18/18 the same way.
-
-**Next concrete step:** agree the visual direction with the owner, then work
-screen by screen — sidebar, then pane chrome and toolbar, then the dialogs and
-the login page. No component library and no CSS framework: plain CSS modules,
-and the design tokens already in `web/src/app/globals.css` are the place to
-start. Keep RTL, reduced-motion, focus-visible and touch target sizes in scope
-from the first commit rather than as a pass at the end.
-
-Also unrun: `server/e2e-ws.mjs` needs `SECRET`, the operator's TOTP secret.
-`e2e-agent-commands.mjs` and `e2e-delete.mjs` are in the repo and both seed
-their own throwaway database and user, so they need no secret — see the header
-of each for the env vars.
+Then phase 3 is done and phase 4 (worktrees and diffs) opens.
 
 **Landmines:**
 - `pnpm` is not on `PATH` (only `corepack pnpm`) and system `node` is v20
@@ -75,6 +48,9 @@ of each for the env vars.
   Node 24. Rebuild with `npm rebuild` inside
   `node_modules/.pnpm/node-pty@1.0.0/node_modules/node-pty`. A `pnpm add` of a
   web-only dependency left it alone, but a full `pnpm install` still undoes it.
+- Server tests run **compiled**, not type-stripped: `pnpm test` is
+  `tsc && node --test dist/**/*.test.js`. Running `node --test src/x.test.ts`
+  directly fails on the `.js` import specifiers. Build first.
 - **Do not `pkill -f` a pattern that appears in the command you are typing** —
   it matches the invoking shell and kills the command mid-script. Kill the
   gateway by PID (`ss -ltnp | grep :3001`).
@@ -86,10 +62,15 @@ of each for the env vars.
   rewrites `web/tsconfig.json` to match — revert that file afterwards.
 - Whatever port the browser uses must match `TERMSPACE_ALLOWED_ORIGIN` exactly
   or the WS upgrade fails with a bare 403. The gateway reads it once at startup
-  and logs it at boot. The default assumes `web` is on 3002 — if you start it on
-  any other port (`PORT=3003 pnpm dev`), set `TERMSPACE_ALLOWED_ORIGIN` to match
-  or you are back in the same hole. A 403 is always the Origin; a bad ticket is
-  a 401.
+  and logs it at boot. A 403 is always the Origin; a bad ticket is a 401.
+- **Claude Code's welcome screen swallows typed input for the first several
+  seconds** of a new session. This is not a gateway bug — input lands normally
+  once the welcome clears. It cost a wrong diagnosis once already; don't chase
+  it again.
+- **State and title only advance while a viewer is subscribed.** `observe()` is
+  called from the attachment's `onData`, so with every tab closed nothing is
+  derived. Pre-existing for status; auto-title inherits it. If that ever matters,
+  it needs a session-lifetime attachment, not a patch to the titler.
 - The login form's field ids come from `useId()`. Select by `name`, not `id`.
 - `otplib` v13 exports `generate({ secret })`, not `authenticator.generate`.
 - Auth sessions are in memory, so a gateway restart forces a re-login. The
@@ -97,19 +78,18 @@ of each for the env vars.
 - `exactOptionalPropertyTypes` is on: an absent optional and an explicit
   `undefined` are different types. Build inputs with conditional spreads, and in
   tests reset a fake's field through a method — assigning narrows it to `never`.
-- `assert.equal` from `node:assert/strict` narrows its first argument for the
-  rest of the test. `assert.equal(x.field, null)` then calling `x.field?.()`
-  later is a `never` type error; compare a boolean instead.
+- `assert.deepEqual(x, [])` / `assert.equal(x, null)` from `node:assert/strict`
+  narrow the first argument for the rest of the test, so a later `x.map(...)` is
+  a `never` type error. Compare a length or a boolean instead.
 - Node's type stripping needs explicit `.ts` extensions on relative imports in
   anything `node --test` runs. Logic that needs testing goes in `web/src/lib/**`,
   not in a `.tsx` — a component's CSS module import cannot be loaded by the
-  test runner. This is why `PaneStore` takes an injected terminal factory and
-  the real `xterm` adapter lives in a file no test imports.
+  test runner.
 - `TERMSPACE_PROJECT_ROOT` (default `/srv/projects`) must exist and be writable
   by the app user or every project creation fails. Any test that creates a
-  project must set this env var to a directory it owns. Locally this now lives
-  in `server/.env` (loaded by `pnpm start`); a bare `node dist/index.js` still
-  bypasses it and takes the production defaults.
+  project must set this env var to a directory it owns. Locally this lives in
+  `server/.env` (loaded by `pnpm start`); a bare `node dist/index.js` bypasses
+  it and takes the production defaults.
 - `xterm.css` must stay imported in `web/src/app/layout.tsx`. Dropping it does
   not error — the pane just renders blank with a stray textarea in the corner,
   which reads as a backend or socket bug and is not one.
@@ -122,14 +102,21 @@ of each for the env vars.
   existing directory is deliberately left alone.
 - A session row can outlive its tmux session: tmux ends a session when the
   command inside it exits, and nothing reconciles the row with that. The sidebar
-  will show it as `idle` and it cannot be attached to. Phase 3 work, not a bug
-  to chase in phase 2.
+  shows it as `idle` and it cannot be attached to. Still unfixed.
 
-**Uncommitted:** nothing. Validation scripts live in the
-session scratchpad and are **not** in the repo: `e2e-layouts.mjs` (the 15 checks
-above), `e2e-setup.mjs` (seeds two projects and four sessions over the API), and
-`e2e-newproject.mjs` (10 checks on project creation from nothing), and an
-abandoned `e2e-grid.mjs` that drives headless Chrome over CDP and gets as far as
-the login form. Nothing in `pnpm test` covers the HTTP+WS+tmux path end to
-end; those scripts are still worth rewriting into the repo as real integration
-tests.
+**Uncommitted:** nothing.
+
+**Running an e2e locally.** The scripts in `server/*.mjs` need a gateway and a
+seeded user. Seed a throwaway one rather than touching the real database:
+
+    printf 'a-password\n' | TERMSPACE_DATABASE_PATH=/tmp/t.db \
+      TERMSPACE_PROJECT_ROOT=/tmp/projects node dist/seed/seed-user-cli.js operator
+    TERMSPACE_DATABASE_PATH=/tmp/t.db TERMSPACE_PROJECT_ROOT=/tmp/projects \
+      TERMSPACE_ALLOWED_ORIGIN=http://localhost:3002 PORT=3001 node dist/index.js &
+    DB=/tmp/t.db PASSWORD='a-password' ROOT=/tmp/projects node e2e-title.mjs
+
+They must be run from `server/`, or Node cannot resolve `otplib` and `ws`.
+`e2e-ws.mjs` still needs `SECRET`, the operator's TOTP secret.
+
+Nothing in `pnpm test` covers the HTTP+WS+tmux path end to end; the `e2e-*.mjs`
+scripts are still worth rewriting into the repo as real integration tests.

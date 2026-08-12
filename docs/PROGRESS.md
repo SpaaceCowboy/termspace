@@ -652,3 +652,65 @@ test overrides the launch command to a plain shell while keeping the agent kind,
 which is the per-project launch command feature paying for itself.
 
 Left in phase 3: auto-title, and the output coalescing tiers by visibility.
+
+### 2026-08-12T13:40:00+03:30 · SOLO · 3 · DONE
+Auto-title. A session now says what it is doing, and the label is not a guess.
+
+The checklist said "derive a short label from recent output". Every version of
+that is a heuristic over the scrollback, and every heuristic is wrong for an
+agent TUI, whose output is a redrawn full-screen buffer rather than a
+transcript — there is no "last line" that means anything.
+
+There is a real signal instead, and it was already there. A program tells its
+terminal what it is doing with OSC 0/2; tmux records that as `pane_title`; and
+`display-message -p '#{pane_title}'` reads it out-of-band, with nobody attached
+and no escape parsing on the output path. Claude Code publishes a genuine task
+summary there — confirmed against the live TUI, which showed
+`◑ Count files in directory` about a second into the turn.
+
+So the work split into a thing that reads (`TmuxClient.paneTitle`), a thing that
+decides what carries information (`deriveTitle`), and a thing that decides when
+to ask (`SessionTitler`).
+
+Decisions worth keeping:
+- **The title is read, not guessed.** If an agent ever stops publishing one, the
+  feature degrades to "no title" rather than to a confidently wrong one.
+- **The liveness glyph is stripped.** Claude alternates ◑ / ◐ / ✳ in front of
+  the *same* task. Left in, every turn boundary would emit a title change that
+  said nothing, and the sidebar would flicker for no reason.
+- **Three things are refused as titles**: the hostname (tmux's default
+  `pane_title`, so an untitled session would claim to be called `Bebop`), the
+  `user@host:path` a stock shell sets from `PROMPT_COMMAND` (not a task, and the
+  UI already shows all of it), and the agent naming itself (`Claude Code`) —
+  that last one matters most, because it would replace a real title from the
+  previous turn with a constant.
+- **Nothing to say never blanks a good title.** `deriveTitle` returns `null`
+  rather than an empty string, and `null` means keep what you had.
+- **Sampled 2 s after work starts, and again when it settles.** Not a poll: one
+  shot, edge-triggered off the activity tracker, cancelled by the next edge, and
+  never fired at all for a dead session. Reading on the first byte of output was
+  tried and is wrong — the agent has not published the new task yet, so it reads
+  the *previous* one and then shows it for the whole run.
+- **A slow read cannot overwrite a newer title.** Each sample carries a
+  sequence; a result that lands out of order is dropped.
+- **Titles are persisted and replayed on subscribe**, for the same reason as
+  status: the frames are edge-triggered, so a page load lands between edges and
+  would otherwise show nothing until the session's next turn.
+- **The titler is separate from the activity tracker.** State is derived
+  synchronously from bytes in hand; a title is an async call to a subprocess
+  that can fail. Folding them together would put tmux on the path of every
+  status frame.
+- `ActivityChange` now carries the agent kind, so nothing downstream can pair a
+  state with an agent the tracker did not use to derive it.
+
+Verified 6/6 in `server/e2e-title.mjs` against a real gateway, tmux, WebSocket
+and database, and then end-to-end against a genuine `claude` session: the
+derived title reached a subscribed client and landed in the row.
+
+Also learned, and worth knowing before chasing it as a bug: Claude Code's
+welcome screen swallows typed input for the first several seconds. Gateway
+input is fine — it lands the moment the welcome clears.
+
+197/197 server, 92/92 web, 25/25 contracts.
+
+Left in phase 3: the output coalescing tiers by visibility.

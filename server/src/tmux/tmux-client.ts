@@ -75,6 +75,25 @@ export class TmuxClient {
     return result.stdout
   }
 
+  /**
+   * What the program in the pane last told its terminal it is doing, via OSC
+   * 0/2. Read out-of-band rather than parsed out of the output stream, so it
+   * works with nobody attached and costs no escape-sequence handling.
+   *
+   * Defaults to the hostname when nothing has set a title — `deriveTitle` is
+   * what knows that means "no title", not this.
+   */
+  async paneTitle(untrustedId: unknown): Promise<string> {
+    const result = await this.#runner.run('tmux', [
+      'display-message',
+      '-p',
+      '-t',
+      toTmuxSessionName(untrustedId),
+      '#{pane_title}',
+    ])
+    return result.stdout.trim()
+  }
+
   attachCommand(untrustedId: unknown): TmuxAttachCommand {
     return {
       command: 'tmux',

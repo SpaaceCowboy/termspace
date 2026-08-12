@@ -3,6 +3,7 @@ import type { ServerFrame, Session } from '@termspace/contracts'
 import { encodeTerminalOutput } from './frame-codec.js'
 import { decodeClientFrame } from './frame-codec.js'
 import type { SessionActivityTracker } from '../activity/activity-tracker.js'
+import type { SessionTitler } from '../activity/session-titler.js'
 import type { SessionFeedCoordinator, SessionFeedLease } from './session-feed-coordinator.js'
 
 export interface GatewayAttachment {
@@ -40,6 +41,7 @@ export interface GatewayConnectionDependencies {
   readonly capture: (sessionId: string) => Promise<string>
   readonly feeds: SessionFeedCoordinator
   readonly activity: SessionActivityTracker
+  readonly titles: SessionTitler
   readonly createCoalescer: (
     onFlush: (data: string) => void,
     onTruncated: () => void,
@@ -55,10 +57,21 @@ export class GatewayConnection {
   readonly #dependencies: GatewayConnectionDependencies
   readonly #subscriptions = new Map<string, GatewaySubscription>()
   readonly #stopListening: () => void
+  readonly #stopListeningTitles: () => void
   #closed = false
 
   constructor(dependencies: GatewayConnectionDependencies) {
     this.#dependencies = dependencies
+    this.#stopListeningTitles = dependencies.titles.listen((change) => {
+      if (this.#closed || !this.#subscriptions.has(change.sessionId)) {
+        return
+      }
+      this.#dependencies.transport.sendFrame({
+        t: 'title',
+        sid: change.sessionId,
+        title: change.title,
+      })
+    })
     /*
      * One listener for the connection rather than one per subscription: state
      * belongs to the session, and a connection simply forwards the changes for
@@ -117,6 +130,7 @@ export class GatewayConnection {
     }
     this.#closed = true
     this.#stopListening()
+    this.#stopListeningTitles()
     for (const sessionId of [...this.#subscriptions.keys()]) {
       this.#unsubscribe(sessionId)
     }
@@ -135,6 +149,8 @@ export class GatewayConnection {
     // the persisted state so a freshly started gateway does not claim every
     // session is idle before any output arrives.
     this.#dependencies.activity.register(sessionId, session.agent, session.state)
+    // The stored title, so a restarted gateway does not re-announce it as new.
+    this.#dependencies.titles.register(sessionId, session.title)
 
     let feedLease: SessionFeedLease | undefined
     let coalescer: GatewayCoalescer | undefined
@@ -161,6 +177,16 @@ export class GatewayConnection {
           sid: sessionId,
           state: known.state,
           since: known.since,
+        })
+      }
+      // Same reasoning as the status frame: title frames are edge-triggered, so
+      // a client subscribing between two edges has to be told the current one.
+      const knownTitle = this.#dependencies.titles.title(sessionId)
+      if (knownTitle !== null) {
+        this.#dependencies.transport.sendFrame({
+          t: 'title',
+          sid: sessionId,
+          title: knownTitle,
         })
       }
 

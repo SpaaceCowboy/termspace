@@ -10,6 +10,12 @@ export interface ActivityChange {
   readonly state: SessionState
   /** When the session entered this state, so a client can render "for 4m". */
   readonly since: number
+  /**
+   * Carried on the change rather than looked up by the consumer, so anything
+   * reacting to state cannot end up with an agent kind that disagrees with the
+   * one the tracker used to derive that state.
+   */
+  readonly agent: AgentKind
 }
 
 export type ActivityListener = (change: ActivityChange) => void
@@ -168,7 +174,12 @@ export class SessionActivityTracker {
     }
     tracked.state = next
     tracked.since = this.#now()
-    const change: ActivityChange = { sessionId, state: next, since: tracked.since }
+    const change: ActivityChange = {
+      sessionId,
+      state: next,
+      since: tracked.since,
+      agent: tracked.agent,
+    }
     for (const listener of this.#listeners) {
       try {
         listener(change)

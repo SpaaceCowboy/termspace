@@ -73,6 +73,20 @@ export class SessionRepository {
     )
   }
 
+  /**
+   * Persisted for the same reason as the state: title frames are edge
+   * triggered, so without this the sidebar would show nothing until the
+   * session's next turn — and a session that is finished for the day would
+   * never get one.
+   */
+  updateTitle(sessionId: string, title: string): boolean {
+    return (
+      this.#database
+        .prepare('UPDATE sessions SET title = ? WHERE id = ?')
+        .run(title, sessionId).changes > 0
+    )
+  }
+
   insert(session: Session): void {
     this.#database
       .prepare(

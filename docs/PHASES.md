@@ -100,7 +100,7 @@ switching a hidden pane to visible shows correct up-to-date content instantly.
 **Backend (Codex)**
 - [x] Activity tracker per session, states per `docs/ARCHITECTURE.md`
 - [x] `status` frames pushed on state change only, not on a timer
-- [ ] Auto-title: derive a short label from recent output, push as `title` frame
+- [x] Auto-title: derive a short label from recent output, push as `title` frame
 - [x] Web Push subscription endpoints + notify on transition into `needs-you`
 
 **Frontend (Claude Code)**

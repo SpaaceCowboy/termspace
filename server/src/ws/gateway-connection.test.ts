@@ -9,6 +9,7 @@ import type {
   GatewayConnectionDependencies,
 } from './gateway-connection.js'
 import { SessionActivityTracker } from '../activity/activity-tracker.js'
+import { SessionTitler } from '../activity/session-titler.js'
 import { GatewayConnection } from './gateway-connection.js'
 import { SessionFeedCoordinator } from './session-feed-coordinator.js'
 
@@ -61,7 +62,10 @@ class FakeCoalescer implements GatewayCoalescer {
   }
 }
 
-function createHarness(session: Session | null = SESSION): {
+function createHarness(
+  session: Session | null = SESSION,
+  paneTitle = '',
+): {
   attachment: FakeAttachment
   callbacks: {
     onData: (data: string) => void
@@ -73,6 +77,7 @@ function createHarness(session: Session | null = SESSION): {
   bufferWrites: string[]
   errors: unknown[]
   activity: SessionActivityTracker
+  titles: SessionTitler
 } {
   const attachment = new FakeAttachment()
   const callbacks: {
@@ -89,8 +94,15 @@ function createHarness(session: Session | null = SESSION): {
     // real 3 s timer would make the suite wait for wall-clock time.
     schedule: () => () => undefined,
   })
+  const titles = new SessionTitler({
+    // These tests drive titles explicitly; a real tmux read has no place here.
+    readTitle: async () => paneTitle,
+    hostname: 'test-host',
+    schedule: () => () => undefined,
+  })
   const dependencies: GatewayConnectionDependencies = {
     activity,
+    titles,
     sessions: { find: () => session },
     attachments: {
       attach: (_sessionId, viewerCallbacks) => {
@@ -122,6 +134,7 @@ function createHarness(session: Session | null = SESSION): {
     bufferWrites,
     errors,
     activity,
+    titles,
   }
 }
 
@@ -203,5 +216,48 @@ describe('GatewayConnection', () => {
 
     assert.deepEqual(harness.frames.at(-1), { t: 'exit', sid: SID, code: 0 })
     assert.equal(harness.attachment.closed, true)
+  })
+
+  it('sends a title frame only to a connection subscribed to that session', async () => {
+    const harness = createHarness(SESSION, '\u2733 Count markdown files in docs')
+
+    // Nothing subscribed yet: the change must not be forwarded.
+    harness.titles.register(SID, null)
+    harness.titles.observe({ sessionId: SID, state: 'idle', since: 1_000, agent: 'claude' })
+    await new Promise((settle) => setImmediate(settle))
+    assert.equal(harness.frames.some((frame) => frame.t === 'title'), false)
+
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+    harness.titles.observe({ sessionId: SID, state: 'idle', since: 1_000, agent: 'claude' })
+    await new Promise((settle) => setImmediate(settle))
+
+    assert.deepEqual(
+      harness.frames.filter((frame) => frame.t === 'title'),
+      [{ t: 'title', sid: SID, title: 'Count markdown files in docs' }],
+    )
+  })
+
+  it('tells a newly subscribed client the title the session already has', async () => {
+    const harness = createHarness()
+    harness.titles.register(SID, 'a title from a previous turn')
+
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+
+    assert.deepEqual(
+      harness.frames.filter((frame) => frame.t === 'title'),
+      [{ t: 'title', sid: SID, title: 'a title from a previous turn' }],
+    )
+  })
+
+  it('stops forwarding titles once the connection is closed', async () => {
+    const harness = createHarness(SESSION, '\u2733 a new title')
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+    harness.titles.register(SID, null)
+
+    harness.connection.close()
+    harness.titles.observe({ sessionId: SID, state: 'idle', since: 1_000, agent: 'claude' })
+    await new Promise((settle) => setImmediate(settle))
+
+    assert.equal(harness.frames.some((frame) => frame.t === 'title'), false)
   })
 })

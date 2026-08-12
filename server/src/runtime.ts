@@ -1,3 +1,5 @@
+import { hostname } from 'node:os'
+
 import type { FastifyInstance, FastifyServerOptions } from 'fastify'
 import type Database from 'better-sqlite3'
 
@@ -21,6 +23,7 @@ import { ExecFileProcessRunner } from './tmux/process-runner.js'
 import { TmuxClient } from './tmux/tmux-client.js'
 import { GatewayConnection } from './ws/gateway-connection.js'
 import { SessionActivityTracker } from './activity/activity-tracker.js'
+import { SessionTitler } from './activity/session-titler.js'
 import { PushNotifier } from './push/push-notifier.js'
 import { PushSubscriptionRepository } from './push/push-repository.js'
 import { createWebPushSender, readVapidConfig } from './push/web-push-sender.js'
@@ -104,6 +107,27 @@ export function createServerRuntime(
    * have to agree about it.
    */
   const activity = new SessionActivityTracker({ onError: onGatewayError })
+  /*
+   * Titles come from tmux's `pane_title` — what the program in the pane told
+   * its terminal it is doing — rather than from guessing at the output. One
+   * titler for the process, for the same reason as the tracker.
+   */
+  const titles = new SessionTitler({
+    readTitle: (sessionId) => tmux.paneTitle(sessionId),
+    hostname: hostname(),
+    onError: onGatewayError,
+  })
+  titles.listen((change) => {
+    try {
+      sessionRepository.updateTitle(change.sessionId, change.title)
+    } catch (error) {
+      // A write failure must not stop the frame reaching the browser.
+      onGatewayError(error)
+    }
+  })
+  activity.listen((change) => {
+    titles.observe(change)
+  })
   const pushNotifier =
     vapid === null
       ? null
@@ -157,6 +181,7 @@ export function createServerRuntime(
         capture: (sessionId) => tmux.capture(sessionId),
         feeds,
         activity,
+        titles,
         createCoalescer: createFocusedOutputCoalescer,
         transport,
         onError: onGatewayError,
@@ -166,6 +191,8 @@ export function createServerRuntime(
   gateway.start()
   app.addHook('onClose', async () => {
     gateway.close()
+    activity.dispose()
+    titles.dispose()
     buffers.dispose()
     if (database.open) {
       database.close()
