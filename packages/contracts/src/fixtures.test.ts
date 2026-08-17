@@ -11,6 +11,11 @@ import {
   diffResultFixture,
   layoutFixture,
   layoutModeFixtures,
+  favoritesFixture,
+  operationalEventKindFixtures,
+  operationalEventLevelFixtures,
+  operationalHealthFixtures,
+  operationalStatusFixture,
   projectFixtures,
   serverFrameFixtures,
   sessionFixture,
@@ -19,6 +24,11 @@ import {
   visibilityLevelFixtures,
 } from './fixtures.js'
 import { LAYOUT_MODES, normalizeLayout } from './layout.js'
+import {
+  OPERATIONAL_EVENT_KINDS,
+  OPERATIONAL_EVENT_LEVELS,
+  OPERATIONAL_HEALTH_STATES,
+} from './operations.js'
 import { BINARY_SID_BYTES, SESSION_STATES, VISIBILITY_LEVELS } from './transport.js'
 
 const CLIENT_FRAME_KINDS = ['sub', 'unsub', 'in', 'resize', 'vis', 'ping'] as const
@@ -51,6 +61,18 @@ test('every member of a string union has a fixture', () => {
   assert.deepEqual(Object.keys(visibilityLevelFixtures).sort(), [...VISIBILITY_LEVELS].sort())
   assert.deepEqual(Object.keys(agentKindFixtures).sort(), [...AGENT_KINDS].sort())
   assert.deepEqual(Object.keys(layoutModeFixtures).sort(), [...LAYOUT_MODES].sort())
+  assert.deepEqual(
+    Object.keys(operationalHealthFixtures).sort(),
+    [...OPERATIONAL_HEALTH_STATES].sort(),
+  )
+  assert.deepEqual(
+    Object.keys(operationalEventKindFixtures).sort(),
+    [...OPERATIONAL_EVENT_KINDS].sort(),
+  )
+  assert.deepEqual(
+    Object.keys(operationalEventLevelFixtures).sort(),
+    [...OPERATIONAL_EVENT_LEVELS].sort(),
+  )
 })
 
 test('the layout fixture is itself a normal layout of real sessions', () => {
@@ -66,6 +88,18 @@ test('session fixtures reference a project fixture', () => {
   const projectIds = new Set(projectFixtures.map((project) => project.id))
   for (const session of sessionFixtures) {
     assert.ok(projectIds.has(session.projectId), `orphan session ${session.id}`)
+  }
+})
+
+test('favorites and operational status fixtures only reference known variants and entities', () => {
+  const projectIds = new Set(projectFixtures.map(({ id }) => id))
+  const sessionIds = new Set(sessionFixtures.map(({ id }) => id))
+  assert.ok(favoritesFixture.projectIds.every((id) => projectIds.has(id)))
+  assert.ok(favoritesFixture.sessionIds.every((id) => sessionIds.has(id)))
+  assert.equal(operationalStatusFixture.tmux.persistedSessions, sessionFixtures.length)
+  for (const event of operationalStatusFixture.recentEvents) {
+    assert.ok(OPERATIONAL_EVENT_KINDS.includes(event.kind))
+    assert.ok(OPERATIONAL_EVENT_LEVELS.includes(event.level))
   }
 })
 

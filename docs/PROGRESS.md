@@ -1044,3 +1044,12 @@ accessory-key, swipe, and destructive-confirmation exit criterion. Every defined
 phase is now both Built and Verified. No further phase has been defined yet;
 the next work should begin with an explicit product/UI decision rather than
 silently expanding v1 scope.
+
+### 2026-08-17T17:59:52+03:30 · SOLO · 6 · CONTRACT
+Phase 6 is defined before implementation. The HTTP surface adds authenticated
+`GET /api/operations`, `GET /api/favorites`, and `PUT /api/favorites`.
+`OperationalStatus` is a bounded snapshot of gateway, tmux, storage, backups,
+configured policies, and sanitized allowlisted event summaries; unavailable
+metrics remain explicitly nullable and raw journal messages never cross HTTP.
+`Favorites` stores ordered project and session ids per user and filters deleted
+entities on reads. Valid fixtures cover every new union and response shape.

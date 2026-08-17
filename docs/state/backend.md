@@ -1,9 +1,9 @@
 # Current state — Termspace (solo)
 
-**Phase:** all defined phases (0–5) are built and human-verified.
+**Phase:** Phase 6 — operations and interface refinement; contract in progress.
 
-**Working on:** product direction after v1. No Phase 6 exists yet; the owner wants recommendations
-for useful additions followed by a deliberate UI/UX improvement pass.
+**Working on:** the first Phase 6 implementation slice: authenticated operational telemetry and
+user-scoped favorites, after defining their shared contracts and safety behavior.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -30,9 +30,12 @@ The phone workspace is single-pane with swipe navigation and a drawer; its key b
 Ctrl plus guarded Ctrl+C/Ctrl+D, destructive dialogs double-confirm, and visibility recovery
 replaces frozen sockets with generation-safe fresh-ticket reconnects. All repository checks and a
 5/5 390×844 production-browser interaction pass are green.
+Phase 6 now has a written checklist and exit criterion. Shared contracts define ordered favorites
+and an operational snapshot with nullable telemetry plus sanitized, allowlisted recent events;
+fixtures cover all new union members.
 
-**Next concrete step:** agree with the owner on a small prioritized post-v1 roadmap, write Phase 6
-before implementation, then audit the existing desktop and phone workflows against that scope.
+**Next concrete step:** run contract tests/typecheck, commit the contract checkpoint, then add the
+preferences migration/repository and authenticated favorites routes before operational collectors.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -47,5 +50,8 @@ Transient session scopes inherit many properties from their slice but not servic
 verify every hardening directive on the actual agent process, not merely on gateway or tmux.
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
+Operational events must always be rebuilt from allowlisted structured fields; never return a raw
+journal `MESSAGE`, error stack, command argv, request body, query string, ticket, or session bytes.
 
-**Uncommitted:** none. Phase 5 owner verification landed in `fe9c6b6`.
+**Uncommitted:** Phase 6 contracts, fixtures, checklist, contracts prose, progress entry, and this
+resume update are ready for contract validation and a checkpoint commit.

@@ -156,6 +156,9 @@ Never a bare array, never a bare string. `ApiError` is
 | POST | `/api/push/subscriptions` | `PushSubscriptionInput` | `{}` | 3 |
 | DELETE | `/api/push/subscriptions` | `{endpoint}` | `{}` | 3 |
 | GET | `/api/sessions/:id/diff` | — | `DiffResult` | 4 |
+| GET | `/api/favorites` | — | `Favorites` | 6 |
+| PUT | `/api/favorites` | `Favorites` | `Favorites` | 6 |
+| GET | `/api/operations` | — | `OperationalStatus` | 6 |
 
 Error codes are a closed union in `packages/contracts/src/errors.ts`. The
 frontend switches on `code`, never on `message`.
@@ -169,6 +172,20 @@ types.
 
 Fixtures keep UI states testable without a running gateway and make contract
 drift visible before it reaches a browser.
+
+## Operations and favorites
+
+`Favorites` stores ordered project and session id lists per user. Reads omit
+ids whose entities no longer exist, making manual filesystem cleanup and later
+entity deletion harmless to the UI.
+
+`OperationalStatus` is an authenticated, bounded snapshot rather than a log
+reader. It reports gateway uptime, live and persisted session counts, filesystem
+capacity, database and backup size/age, and the active resource policies.
+`recentEvents` contains only explicitly allowlisted event kinds with summaries
+constructed from safe structured fields. Raw journal messages are never part of
+the contract. Nullable metrics and `eventsAvailable` distinguish unavailable
+telemetry from real zero values.
 
 ---
 

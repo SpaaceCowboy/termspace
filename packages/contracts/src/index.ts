@@ -50,4 +50,18 @@ export { CLIENT_ERROR_PREFIX, ERROR_CODES, isErrorCode } from './errors.js'
 export type { ApiErr, ApiError, ApiOk, ApiResponse, AppConfig, HealthData } from './http.js'
 export { isApiOk } from './http.js'
 
+export type {
+  Favorites,
+  OperationalEvent,
+  OperationalEventKind,
+  OperationalEventLevel,
+  OperationalHealth,
+  OperationalStatus,
+} from './operations.js'
+export {
+  OPERATIONAL_EVENT_KINDS,
+  OPERATIONAL_EVENT_LEVELS,
+  OPERATIONAL_HEALTH_STATES,
+} from './operations.js'
+
 export * from './fixtures.js'

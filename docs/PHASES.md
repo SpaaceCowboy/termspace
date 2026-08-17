@@ -165,6 +165,38 @@ permission prompt and killing a runaway session.
 
 ---
 
+## Phase 6 — Operations and interface refinement
+
+The first post-v1 phase makes the running system legible and reduces friction
+in the workspace without changing its terminal model.
+
+**Server**
+- [~] Authenticated `GET /api/operations` with gateway, tmux, storage, backup,
+      configured-limit, and allowlisted recent-event data
+- [ ] Authenticated, user-scoped `GET /api/favorites` / `PUT /api/favorites`;
+      deleted project and session ids are removed on reads
+- [ ] Operational collection degrades safely when tmux, storage, backups, or
+      journald are unavailable; raw log messages and secrets never cross HTTP
+
+**Web**
+- [ ] Operational panel with clear health, capacity, backup, policy, and recent
+      event summaries
+- [ ] Sessions needing attention sort first; projects and sessions can be
+      pinned, with favorites preserved across reloads
+- [ ] Cleaner top bar and less visual crowding
+- [ ] Purpose-built loading, empty, disconnected, and error states; transient
+      notices use accessible toast notifications
+- [ ] Consistent touch targets, spacing, typography, contrast, and motion,
+      including reduced-motion behavior
+
+**Exit criteria**
+Favorites survive reload, every needs-you session leads its group and affected
+projects lead the sidebar, and the operations panel truthfully reflects live
+tmux/storage/backup state while degrading safely. The primary desktop and phone
+workflows pass browser verification with no raw logs or secrets exposed.
+
+---
+
 ## Gate
 
 Two columns, not three: this is a solo project, so the old Backend/Frontend
@@ -184,3 +216,4 @@ criteria happen with your own eyes.
 | 3 | [x] | [x] | Owner confirmed: locked phone notified within 5 s and tapping opened the correct pane focused. |
 | 4 | [x] | [x] | Owner confirmed two separate worktrees and both side-by-side reviews work without collisions. |
 | 5 | [x] | [x] | Owner confirmed the complete physical-phone workflow works. |
+| 6 | [ ] | [ ] | |

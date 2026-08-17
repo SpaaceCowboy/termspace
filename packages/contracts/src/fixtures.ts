@@ -13,6 +13,13 @@ import type { ErrorCode } from './errors.js'
 import type { ApiErr, ApiError, ApiOk, AppConfig, HealthData } from './http.js'
 import { LAYOUT_MAX_SLOTS } from './layout.js'
 import type { Layout, LayoutInput, LayoutMode } from './layout.js'
+import type {
+  Favorites,
+  OperationalEventKind,
+  OperationalEventLevel,
+  OperationalHealth,
+  OperationalStatus,
+} from './operations.js'
 import { BINARY_SID_BYTES } from './transport.js'
 import type {
   ClientFrame,
@@ -237,6 +244,72 @@ export const appConfigFixture: AppConfig = {
   projectRootWritable: true,
   defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
   pushPublicKey: 'BExampleVapidPublicKeyForFixturesOnly0000000000000000000000000000000000000000000000000',
+}
+
+export const favoritesFixture: Favorites = {
+  projectIds: [projectFixture.id],
+  sessionIds: [sessionFixtures[1]!.id],
+}
+
+export const operationalHealthFixtures: Readonly<Record<OperationalHealth, OperationalHealth>> = {
+  healthy: 'healthy',
+  degraded: 'degraded',
+  unavailable: 'unavailable',
+}
+
+export const operationalEventKindFixtures: Readonly<
+  Record<OperationalEventKind, OperationalEventKind>
+> = {
+  http_request_complete: 'http_request_complete',
+  database_backup_complete: 'database_backup_complete',
+  push_delivery: 'push_delivery',
+}
+
+export const operationalEventLevelFixtures: Readonly<
+  Record<OperationalEventLevel, OperationalEventLevel>
+> = {
+  info: 'info',
+  warn: 'warn',
+  error: 'error',
+}
+
+export const operationalStatusFixture: OperationalStatus = {
+  generatedAt: FIXED_NOW,
+  gateway: { health: 'healthy', version: '0.0.0', uptimeMs: 7_200_000 },
+  tmux: { health: 'healthy', liveSessions: 3, persistedSessions: sessionFixtures.length },
+  storage: {
+    databaseBytes: 196_608,
+    projectRoot: {
+      path: '/srv/projects',
+      totalBytes: 536_870_912_000,
+      availableBytes: 214_748_364_800,
+    },
+    backups: {
+      count: 14,
+      latestAt: FIXED_NOW - 3_600_000,
+      latestBytes: 188_416,
+    },
+  },
+  policy: {
+    sessionMemoryMaxBytes: 4_294_967_296,
+    idleSessionGraceMs: 86_400_000,
+    backupRetentionCount: 14,
+  },
+  eventsAvailable: true,
+  recentEvents: [
+    {
+      at: FIXED_NOW - 1_000,
+      kind: 'http_request_complete',
+      level: 'info',
+      summary: 'GET /api/sessions completed with 200',
+    },
+    {
+      at: FIXED_NOW - 3_600_000,
+      kind: 'database_backup_complete',
+      level: 'info',
+      summary: 'Database backup completed',
+    },
+  ],
 }
 
 export const apiErrorFixture: ApiError = {
