@@ -17,6 +17,18 @@
   letter-spacing: -0.01em;
 }
 
+.mobileClose {
+  display: none;
+  margin-left: auto;
+  width: 36px;
+  height: 36px;
+  border: 0;
+  border-radius: var(--ts-radius-sm);
+  background: var(--ts-bg-raised);
+  color: var(--ts-text);
+  font-size: var(--ts-text-xl);
+}
+
 .brandMark {
   font-family: var(--ts-mono);
   color: var(--ts-accent);
@@ -331,4 +343,42 @@
   background: var(--ts-danger-quiet);
   color: var(--ts-danger);
   line-height: 1.45;
+}
+
+@media (max-width: 720px) {
+  .sidebar {
+    position: fixed;
+    inset: 0 15% 0 0;
+    z-index: 40;
+    border-right-color: var(--ts-border-strong);
+    box-shadow: 12px 0 36px rgb(0 0 0 / 45%);
+    transform: translateX(-105%);
+    visibility: hidden;
+    transition: transform 160ms ease, visibility 160ms;
+  }
+
+  .sidebarMobileOpen {
+    transform: translateX(0);
+    visibility: visible;
+  }
+
+  .mobileClose {
+    display: grid;
+    place-items: center;
+  }
+
+  .header {
+    padding-top: max(var(--ts-space-4), env(safe-area-inset-top));
+  }
+
+  .item,
+  .newProject {
+    min-height: 44px;
+  }
+
+  .itemDelete,
+  .groupAction {
+    min-width: 36px;
+    min-height: 36px;
+  }
 }

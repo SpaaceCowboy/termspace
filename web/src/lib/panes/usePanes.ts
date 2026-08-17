@@ -24,6 +24,8 @@ export interface PanesApi {
   write: (sid: string, bytes: Uint8Array) => void
   /** Hands the keyboard to a pane's terminal. */
   focus: (sid: string) => void
+  sendInput: (sid: string, data: string) => void
+  setControlArmed: (sid: string, armed: boolean) => void
 }
 
 /**
@@ -31,7 +33,12 @@ export interface PanesApi {
  * the components, so re-rendering the grid, changing mode, or switching tabs
  * never detaches a session.
  */
-export function usePanes(socket: SocketApi, enabled: boolean, onError?: (error: unknown) => void): PanesApi {
+export function usePanes(
+  socket: SocketApi,
+  enabled: boolean,
+  onError?: (error: unknown) => void,
+  onDestructiveInputArmed?: (sid: string, label: string) => void,
+): PanesApi {
   const storeRef = useRef<PaneStore | null>(null)
   const containers = useRef(new Map<string, HTMLElement>())
   const slots = useRef<readonly PaneSlot[]>([])
@@ -41,6 +48,8 @@ export function usePanes(socket: SocketApi, enabled: boolean, onError?: (error: 
   socketRef.current = socket
   const onErrorRef = useRef(onError)
   onErrorRef.current = onError
+  const onDestructiveInputArmedRef = useRef(onDestructiveInputArmed)
+  onDestructiveInputArmedRef.current = onDestructiveInputArmed
 
   const requests = useCallback((): readonly PaneRequest[] => {
     return slots.current.map((slot) => ({
@@ -81,6 +90,9 @@ export function usePanes(socket: SocketApi, enabled: boolean, onError?: (error: 
       },
       onError: (error) => {
         onErrorRef.current?.(error)
+      },
+      onDestructiveInputArmed: (sid, label) => {
+        onDestructiveInputArmedRef.current?.(sid, label)
       },
     })
     storeRef.current = store
@@ -134,8 +146,16 @@ export function usePanes(socket: SocketApi, enabled: boolean, onError?: (error: 
     storeRef.current?.focus(sid)
   }, [])
 
+  const sendInput = useCallback((sid: string, data: string) => {
+    storeRef.current?.sendInput(sid, data)
+  }, [])
+
+  const setControlArmed = useCallback((sid: string, armed: boolean) => {
+    storeRef.current?.setControlArmed(sid, armed)
+  }, [])
+
   return useMemo(
-    () => ({ setContainer, setSlots, restore, write, focus }),
-    [setContainer, setSlots, restore, write, focus],
+    () => ({ setContainer, setSlots, restore, write, focus, sendInput, setControlArmed }),
+    [setContainer, setSlots, restore, write, focus, sendInput, setControlArmed],
   )
 }

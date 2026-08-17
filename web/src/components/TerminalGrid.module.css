@@ -253,12 +253,108 @@
   color: var(--ts-state-dead);
 }
 
+.mobileNavigator {
+  display: none;
+}
+
+.accessoryBar {
+  display: none;
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
 @media (max-width: 720px) {
-  .modeSplit,
-  .modeGrid {
-    grid-template-columns: 1fr;
-    grid-template-rows: none;
-    grid-auto-rows: minmax(220px, 1fr);
-    overflow-y: auto;
+  .wrap {
+    gap: var(--ts-space-2);
+  }
+
+  .grid {
+    min-height: 220px;
+  }
+
+  .mobileNavigator {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: var(--ts-space-3);
+    height: 28px;
+    color: var(--ts-text-faint);
+    font-size: var(--ts-text-xs);
+  }
+
+  .mobileNavigator button {
+    width: 42px;
+    height: 28px;
+    border: 0;
+    border-radius: var(--ts-radius-sm);
+    background: var(--ts-bg-raised);
+    color: var(--ts-text);
+    font-size: var(--ts-text-lg);
+  }
+
+  .mobileNavigator button:disabled {
+    color: var(--ts-text-faint);
+    opacity: 0.35;
+  }
+
+  .pane {
+    border-radius: var(--ts-radius);
+  }
+
+  .chrome {
+    min-height: 38px;
+  }
+
+  .screen {
+    padding-left: var(--ts-space-2);
+  }
+
+  .accessoryBar {
+    display: flex;
+    flex: none;
+    gap: var(--ts-space-1);
+    overflow-x: auto;
+    padding: var(--ts-space-1) 0 max(var(--ts-space-1), env(safe-area-inset-bottom));
+    scrollbar-width: none;
+    overscroll-behavior-x: contain;
+  }
+
+  .accessoryBar::-webkit-scrollbar {
+    display: none;
+  }
+
+  .accessoryKey {
+    flex: 0 0 auto;
+    min-width: 42px;
+    height: 38px;
+    padding: 0 var(--ts-space-2);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-sm);
+    background: var(--ts-bg-raised);
+    color: var(--ts-text-dim);
+    font-family: var(--ts-mono);
+    font-size: var(--ts-text-sm);
+    touch-action: manipulation;
+  }
+
+  .accessoryKeyActive {
+    border-color: var(--ts-accent);
+    background: var(--ts-accent-quiet);
+    color: var(--ts-text);
+  }
+
+  .accessoryKeyDanger {
+    border-color: color-mix(in srgb, var(--ts-danger) 45%, var(--ts-border));
+    color: var(--ts-danger);
   }
 }

@@ -206,3 +206,21 @@ Production services write to the dedicated `termspace` journal namespace.
 That namespace is compressed, split daily, capped at 256 MiB while preserving
 1 GiB of free disk, and retains at most 14 days. These limits do not change the
 host's default journal or unrelated services.
+
+## Phone workspace
+
+At 720 px and below, the project sidebar becomes an off-canvas session drawer
+and every desktop layout paints only its focused pane. Other occupied slots
+remain subscribed in headless terminals, so horizontal swipe or the adjacent
+session buttons can switch instantly without losing output. Vertical gestures
+remain terminal scrolling; only a horizontal-dominant swipe of at least 48 px
+navigates.
+
+The bottom accessory strip sends Esc, Tab, arrows, slash, pipe, and a one-shot
+Ctrl modifier through the same restore-aware input queue as xterm. Ctrl+C and
+Ctrl+D are held on first press and sent only when repeated within three seconds;
+session/project deletion likewise requires a second confirmation press. When a
+backgrounded document becomes visible, the client deliberately replaces its
+possibly frozen WebSocket, fetches a fresh ticket, and replays all subscriptions.
+An attempt generation prevents a late pre-background ticket from opening a
+second stale socket.

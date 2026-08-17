@@ -2,8 +2,8 @@
 
 **Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
 
-**Working on:** gated after completing all five Phase 5 server boxes. The Phase 5 web checklist
-and phone exit criterion remain; phase discipline forbids starting Phase 6.
+**Working on:** Phase 5 is fully built and gated on the owner’s physical-phone exit test. All
+server and web boxes are checked; phase discipline forbids starting Phase 6 before verification.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -26,9 +26,14 @@ SQLite backup uses the live-safe online API, verifies and atomically publishes m
 retains a configurable count, and has a 6/6 disposable restore check plus verified systemd units.
 Structured request logging emits one bounded record, redacts or omits every credential/body/query
 surface, safely classifies errors, and writes to an isolated, size/time-bounded journal namespace.
+The phone workspace is single-pane with swipe navigation and a drawer; its key bar has one-shot
+Ctrl plus guarded Ctrl+C/Ctrl+D, destructive dialogs double-confirm, and visibility recovery
+replaces frozen sockets with generation-safe fresh-ticket reconnects. All repository checks and a
+5/5 390×844 production-browser interaction pass are green.
 
-**Next concrete step:** after the Phase 5 web boxes are complete, run the phone exit criterion and
-record owner verification. Do not start Phase 6 before that gate opens.
+**Next concrete step:** ask the owner to drive a real session from a physical phone one-handed,
+answer a permission prompt, background and restore the app, and double-confirm killing a runaway
+session; record Verified only after the owner confirms that exact flow.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -44,4 +49,5 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** none. Structured logging and the Phase 5 backend gate landed in `e7799cb`.
+**Uncommitted:** complete Phase 5 phone UI, tests, architecture/progress/checklist updates, and
+browser evidence; ready for one commit.

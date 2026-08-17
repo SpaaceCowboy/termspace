@@ -4,6 +4,7 @@ import { beforeEach, describe, it } from 'node:test'
 import type { VisibilityLevel } from '@termspace/contracts'
 
 import {
+  applyControlModifier,
   PaneStore,
   type PaneDisposable,
   type PaneSize,
@@ -135,12 +136,16 @@ describe('PaneStore', () => {
   let resizeHandlers: Map<HTMLElement, () => void>
   let scheduled: (() => void)[]
   let store: PaneStore
+  let now: number
+  let destructivePrompts: string[]
 
   beforeEach(() => {
     FakeTerminal.instances = []
     socket = new FakeSocket()
     resizeHandlers = new Map()
     scheduled = []
+    now = 1_000
+    destructivePrompts = []
     store = new PaneStore({
       createTerminal: () => Promise.resolve(new FakeTerminal()),
       socket,
@@ -160,6 +165,10 @@ describe('PaneStore', () => {
       },
       onError: (error) => {
         assert.fail(`unexpected store error: ${String(error)}`)
+      },
+      now: () => now,
+      onDestructiveInputArmed: (_sid, label) => {
+        destructivePrompts.push(label)
       },
     })
   })
@@ -242,6 +251,41 @@ describe('PaneStore', () => {
 
     terminal?.inputHandler?.('ls\r')
     assert.deepEqual(socket.input.at(-1), `${SID_A}:ls\r`, 'and it flows straight through after')
+  })
+
+  it('applies a one-shot Ctrl modifier to the next soft-keyboard character', async () => {
+    store.sync([{ sid: SID_A, visibility: 'focused', container: container('a') }])
+    await settle()
+    store.restore(SID_A, 'ready$ ')
+    await settle()
+
+    store.setControlArmed(SID_A, true)
+    FakeTerminal.instances[0]?.inputHandler?.('z')
+    FakeTerminal.instances[0]?.inputHandler?.('x')
+
+    assert.deepEqual(socket.input, [`${SID_A}:\x1a`, `${SID_A}:x`])
+  })
+
+  it('requires the same destructive control key twice inside the safety window', async () => {
+    store.sync([{ sid: SID_A, visibility: 'focused', container: container('a') }])
+    await settle()
+    store.restore(SID_A, 'ready$ ')
+    await settle()
+
+    store.sendInput(SID_A, '\x03')
+    assert.deepEqual(socket.input, [])
+    assert.deepEqual(destructivePrompts, ['Ctrl+C'])
+
+    now += 500
+    store.sendInput(SID_A, '\x03')
+    assert.deepEqual(socket.input, [`${SID_A}:\x03`])
+
+    now += 4_000
+    store.sendInput(SID_A, '\x04')
+    now += 4_000
+    store.sendInput(SID_A, '\x04')
+    assert.deepEqual(socket.input, [`${SID_A}:\x03`], 'an expired confirmation is re-armed')
+    assert.deepEqual(destructivePrompts, ['Ctrl+C', 'Ctrl+D', 'Ctrl+D'])
   })
 
   it('drops held keystrokes past a sane ceiling rather than growing forever', async () => {
@@ -402,5 +446,15 @@ describe('PaneStore', () => {
     assert.equal(terminal?.text, 'second')
     terminal?.inputHandler?.('k')
     assert.deepEqual(socket.input, [`${SID_A}:k`], 'one handler, one send')
+  })
+})
+
+describe('applyControlModifier', () => {
+  it('maps ASCII control characters and leaves unsupported input intact', () => {
+    assert.equal(applyControlModifier('c'), '\x03')
+    assert.equal(applyControlModifier('D'), '\x04')
+    assert.equal(applyControlModifier('['), '\x1b')
+    assert.equal(applyControlModifier('cat'), 'cat')
+    assert.equal(applyControlModifier('/'), '/')
   })
 })

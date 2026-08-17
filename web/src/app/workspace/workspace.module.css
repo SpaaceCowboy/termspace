@@ -43,6 +43,15 @@
   gap: var(--ts-space-4);
 }
 
+.mobileMenu,
+.mobileBackdrop {
+  display: none;
+}
+
+.layoutControls {
+  display: inline-flex;
+}
+
 .diffButton {
   padding: var(--ts-space-1) var(--ts-space-3);
   border: 1px solid var(--ts-border-strong);
@@ -128,21 +137,59 @@
 @media (max-width: 720px) {
   .shell {
     grid-template-columns: 1fr;
-    grid-template-rows: auto 1fr;
+    grid-template-rows: minmax(0, 100dvh);
   }
 
   .main {
-    padding: var(--ts-space-3);
+    min-height: 0;
+    padding: max(var(--ts-space-2), env(safe-area-inset-top)) var(--ts-space-2) 0;
+    gap: var(--ts-space-2);
   }
 
   .topbar {
-    align-items: flex-start;
+    min-height: 40px;
+    padding: 0;
+    gap: var(--ts-space-2);
   }
 
   .topbarRight {
-    flex-wrap: wrap;
-    justify-content: flex-end;
+    min-width: 0;
+    margin-left: auto;
     gap: var(--ts-space-2);
+  }
+
+  .mobileMenu {
+    display: inline-flex;
+    align-items: center;
+    min-height: 38px;
+    padding: 0 var(--ts-space-3);
+    border: 1px solid var(--ts-border);
+    border-radius: var(--ts-radius-sm);
+    background: var(--ts-bg-raised);
+    color: var(--ts-text);
+    font-size: var(--ts-text-sm);
+    font-weight: 600;
+  }
+
+  .mobileBackdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 30;
+    border: 0;
+    background: rgb(0 0 0 / 55%);
+  }
+
+  .crumbs,
+  .layoutControls {
+    display: none;
+  }
+
+  .diffButton {
+    min-height: 38px;
+    max-width: 116px;
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
 }
 

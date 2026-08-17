@@ -1013,3 +1013,26 @@ rotated daily, and retained for at most 14 days; native unit verification passes
 All five Phase 5 server boxes are checked with tests and operational fixtures.
 Per phase discipline, backend work stops here until the four Phase 5 web boxes
 and the phone exit criterion are complete; no Phase 6 work has started.
+
+### 2026-08-17T17:14:09+03:30 · SOLO · 5 · DONE
+All four Phase 5 phone UI boxes are built. At phone width the sidebar is an
+off-canvas drawer and only the focused pane is painted; occupied panes remain
+headlessly subscribed and horizontal-dominant swipes navigate without stealing
+vertical terminal scroll. The accessory strip provides Esc, one-shot Ctrl, Tab,
+arrows, slash, pipe, Ctrl+C, and Ctrl+D. Interrupt/EOF input and kill/project
+confirmation require a matching second press within three seconds.
+
+Returning from background now replaces the possibly frozen socket, fetches a
+fresh single-use ticket, and replays every subscription. Generation checks
+discard tickets from superseded connection attempts. Unit coverage exercises
+navigation thresholds/holes, control transformation, paste safety, destructive
+input expiry, subscription replay, and in-flight reconnect races. All workspace
+tests/typechecks/builds pass. A 390×844 production fixture build passed 5/5
+headless Chrome interactions: single pane, complete key bar, swipe, drawer, and
+double confirmation.
+
+### 2026-08-17T17:14:09+03:30 · SOLO · 5 · GATE
+Phase 5 is built. The remaining gate is the owner’s physical-phone exit test: run
+a real working session one-handed, answer a permission prompt with the accessory
+controls, background/restore the app, and double-confirm killing a runaway
+session. Verified remains intentionally unchecked until that is observed.

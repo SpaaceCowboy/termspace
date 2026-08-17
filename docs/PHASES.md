@@ -154,10 +154,10 @@ side by side, no file collisions.
 - [x] Structured request log, no secrets, log rotation
 
 **Web**
-- [ ] Responsive: single pane, swipe between sessions
-- [ ] Key accessory bar — Esc, Ctrl, Tab, arrows, `/`, `|`
-- [ ] Double-press confirm on kill and on destructive keys
-- [ ] Reconnect on `visibilitychange` after backgrounding
+- [x] Responsive: single pane, swipe between sessions
+- [x] Key accessory bar — Esc, Ctrl, Tab, arrows, `/`, `|`
+- [x] Double-press confirm on kill and on destructive keys
+- [x] Reconnect on `visibilitychange` after backgrounding
 
 **Exit criteria**
 A full working session driven from a phone, one-handed, including answering a
@@ -183,4 +183,4 @@ criteria happen with your own eyes.
 | 2 | [x] | [x] | Confirmed in a browser by the owner. |
 | 3 | [x] | [x] | Owner confirmed: locked phone notified within 5 s and tapping opened the correct pane focused. |
 | 4 | [x] | [x] | Owner confirmed two separate worktrees and both side-by-side reviews work without collisions. |
-| 5 | [ ] | [ ] | |
+| 5 | [x] | [ ] | Built and browser-checked at 390×844; awaiting the owner’s full physical-phone session test. |

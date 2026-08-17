@@ -64,7 +64,15 @@ export function useSocket(handlers: SocketHandlers, enabled = true): SocketApi {
     clientRef.current = client
     client.connect()
 
+    const onVisibilityChange = (): void => {
+      if (document.visibilityState === 'visible') {
+        client.reconnect()
+      }
+    }
+    document.addEventListener('visibilitychange', onVisibilityChange)
+
     return () => {
+      document.removeEventListener('visibilitychange', onVisibilityChange)
       clientRef.current = null
       client.dispose()
     }

@@ -6,11 +6,16 @@ import {
   type Session,
   type SessionState,
 } from '@termspace/contracts'
-import { useCallback, useEffect, useMemo } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 
 import { cx } from '@/lib/cx'
 import type { PaneSlot, PanesApi } from '@/lib/panes/usePanes.ts'
+import {
+  adjacentOccupiedSlot,
+  occupiedSlotIndices,
+  swipeDirection,
+} from '@/lib/panes/mobile-navigation.ts'
 
 import { PanePlaceholder } from './PanePlaceholder'
 import styles from './TerminalGrid.module.css'
@@ -41,6 +46,7 @@ export interface TerminalGridProps {
   onFocusSlot: (index: number) => void
   onClearSlot: (index: number) => void
   onNewSession: () => void
+  mobile?: boolean
 }
 
 export function TerminalGrid({
@@ -53,9 +59,12 @@ export function TerminalGrid({
   onFocusSlot,
   onClearSlot,
   onNewSession,
+  mobile = false,
 }: TerminalGridProps) {
   const capacity = LAYOUT_SLOT_CAPACITY[layout.mode]
   const tabbed = layout.mode === 'tabs'
+  const [controlArmed, setControlArmed] = useState(false)
+  const touchStart = useRef<{ x: number; y: number } | null>(null)
 
   const byId = useMemo(
     () => new Map(sessions.map((session) => [session.id, session])),
@@ -77,12 +86,12 @@ export function TerminalGrid({
       const focused = index === layout.focusedSlot
       requests.push({
         sid,
-        visibility: focused ? 'focused' : tabbed ? 'hidden' : 'visible',
-        onScreen: !tabbed || focused,
+        visibility: focused ? 'focused' : tabbed || mobile ? 'hidden' : 'visible',
+        onScreen: (!tabbed && !mobile) || focused,
       })
     }
     return requests
-  }, [byId, capacity, layout.focusedSlot, layout.slots, tabbed])
+  }, [byId, capacity, layout.focusedSlot, layout.slots, mobile, tabbed])
 
   useEffect(() => {
     if (!live) {
@@ -94,26 +103,49 @@ export function TerminalGrid({
   const visibleIndices = useMemo(() => {
     const indices: number[] = []
     for (let index = 0; index < capacity; index += 1) {
-      if (!tabbed || index === layout.focusedSlot) {
+      if ((!tabbed && !mobile) || index === layout.focusedSlot) {
         indices.push(index)
       }
     }
     return indices
-  }, [capacity, layout.focusedSlot, tabbed])
+  }, [capacity, layout.focusedSlot, mobile, tabbed])
 
   const occupiedIndices = useMemo(() => {
-    const indices: number[] = []
-    for (let index = 0; index < capacity; index += 1) {
-      if ((layout.slots[index] ?? null) !== null) {
-        indices.push(index)
-      }
-    }
-    return indices
-  }, [capacity, layout.slots])
+    return occupiedSlotIndices(layout)
+  }, [layout])
+
+  const previous = adjacentOccupiedSlot(layout, -1)
+  const next = adjacentOccupiedSlot(layout, 1)
+  const focusedSid = layout.slots[layout.focusedSlot] ?? null
+
+  useEffect(() => {
+    setControlArmed(false)
+  }, [focusedSid])
+
+  useEffect(() => {
+    if (!controlArmed || focusedSid === null) return
+    const timer = setTimeout(() => {
+      setControlArmed(false)
+      panes.setControlArmed(focusedSid, false)
+    }, 5_000)
+    return () => { clearTimeout(timer) }
+  }, [controlArmed, focusedSid, panes])
+
+  const sendKey = useCallback((data: string) => {
+    if (focusedSid === null) return
+    panes.sendInput(focusedSid, data)
+    panes.focus(focusedSid)
+    setControlArmed(false)
+  }, [focusedSid, panes])
+
+  const navigate = useCallback((direction: -1 | 1) => {
+    const target = adjacentOccupiedSlot(layout, direction)
+    if (target !== null) onFocusSlot(target)
+  }, [layout, onFocusSlot])
 
   return (
     <div className={styles.wrap}>
-      {tabbed ? (
+      {tabbed && !mobile ? (
         <div className={styles.tabs} role="group" aria-label="Open panes">
           {occupiedIndices.length === 0 ? (
             <span className={styles.tabsEmpty}>No panes open</span>
@@ -139,7 +171,33 @@ export function TerminalGrid({
         </div>
       ) : null}
 
-      <div className={cx(styles.grid, MODE_CLASS[layout.mode])}>
+      {mobile && occupiedIndices.length > 1 ? (
+        <div className={styles.mobileNavigator} aria-label="Session navigation">
+          <button type="button" disabled={previous === null} onClick={() => { navigate(-1) }}>
+            ‹ <span className={styles.srOnly}>Previous session</span>
+          </button>
+          <span>{String(occupiedIndices.indexOf(layout.focusedSlot) + 1)} / {String(occupiedIndices.length)}</span>
+          <button type="button" disabled={next === null} onClick={() => { navigate(1) }}>
+            <span className={styles.srOnly}>Next session</span> ›
+          </button>
+        </div>
+      ) : null}
+
+      <div
+        className={cx(styles.grid, !mobile && MODE_CLASS[layout.mode])}
+        onTouchStart={(event) => {
+          const touch = event.changedTouches[0]
+          touchStart.current = touch === undefined ? null : { x: touch.clientX, y: touch.clientY }
+        }}
+        onTouchEnd={(event) => {
+          const start = touchStart.current
+          const touch = event.changedTouches[0]
+          touchStart.current = null
+          if (!mobile || start === null || touch === undefined) return
+          const direction = swipeDirection(start, { x: touch.clientX, y: touch.clientY })
+          if (direction !== null) navigate(direction)
+        }}
+      >
         {visibleIndices.map((index) => {
           const sid = layout.slots[index] ?? null
           const session = sid === null ? null : (byId.get(sid) ?? null)
@@ -161,7 +219,58 @@ export function TerminalGrid({
           )
         })}
       </div>
+      {mobile && focusedSid !== null ? (
+        <div className={styles.accessoryBar} role="toolbar" aria-label="Terminal keys">
+          <AccessoryKey label="Esc" onPress={() => { sendKey('\x1b') }} />
+          <AccessoryKey
+            label="Ctrl"
+            pressed={controlArmed}
+            onPress={() => {
+              const armed = !controlArmed
+              setControlArmed(armed)
+              panes.setControlArmed(focusedSid, armed)
+              panes.focus(focusedSid)
+            }}
+          />
+          <AccessoryKey label="Tab" onPress={() => { sendKey('\t') }} />
+          <AccessoryKey label="←" accessibleLabel="Left arrow" onPress={() => { sendKey('\x1b[D') }} />
+          <AccessoryKey label="↑" accessibleLabel="Up arrow" onPress={() => { sendKey('\x1b[A') }} />
+          <AccessoryKey label="↓" accessibleLabel="Down arrow" onPress={() => { sendKey('\x1b[B') }} />
+          <AccessoryKey label="→" accessibleLabel="Right arrow" onPress={() => { sendKey('\x1b[C') }} />
+          <AccessoryKey label="/" onPress={() => { sendKey('/') }} />
+          <AccessoryKey label="|" onPress={() => { sendKey('|') }} />
+          <AccessoryKey label="Ctrl+C" destructive onPress={() => { sendKey('\x03') }} />
+          <AccessoryKey label="Ctrl+D" destructive onPress={() => { sendKey('\x04') }} />
+        </div>
+      ) : null}
     </div>
+  )
+}
+
+function AccessoryKey({
+  label,
+  accessibleLabel,
+  pressed = false,
+  destructive = false,
+  onPress,
+}: {
+  label: string
+  accessibleLabel?: string
+  pressed?: boolean
+  destructive?: boolean
+  onPress: () => void
+}) {
+  return (
+    <button
+      type="button"
+      className={cx(styles.accessoryKey, pressed && styles.accessoryKeyActive, destructive && styles.accessoryKeyDanger)}
+      aria-label={accessibleLabel ?? label}
+      aria-pressed={label === 'Ctrl' ? pressed : undefined}
+      onPointerDown={(event) => { event.preventDefault() }}
+      onClick={onPress}
+    >
+      {label}
+    </button>
   )
 }
 

@@ -49,6 +49,7 @@ export class GatewayClient {
   #retryHandle: number | null = null
   #disposed = false
   #connecting = false
+  #generation = 0
 
   constructor(options: GatewayClientOptions) {
     this.#options = options
@@ -71,6 +72,19 @@ export class GatewayClient {
       return
     }
     void this.#openSocket()
+  }
+
+  /** Replace a socket that a backgrounded mobile browser may have silently frozen. */
+  reconnect(): void {
+    if (this.#disposed) {
+      return
+    }
+    this.#generation += 1
+    this.#connecting = false
+    this.#attempt = 0
+    this.#cancelRetry()
+    this.#teardownSocket()
+    this.connect()
   }
 
   subscribe(sid: string, level: VisibilityLevel = 'visible'): void {
@@ -119,12 +133,14 @@ export class GatewayClient {
 
   dispose(): void {
     this.#disposed = true
+    this.#generation += 1
     this.#cancelRetry()
     this.#subscriptions.clear()
     this.#teardownSocket()
   }
 
   async #openSocket(): Promise<void> {
+    const generation = this.#generation
     this.#connecting = true
     this.#setState(this.#attempt === 0 ? 'connecting' : 'reconnecting')
 
@@ -135,8 +151,7 @@ export class GatewayClient {
       // A throwing ticket fetch must not wedge the client with #connecting stuck true.
       ticket = { ok: false, fatal: false }
     }
-    if (this.#disposed) {
-      this.#connecting = false
+    if (this.#disposed || generation !== this.#generation) {
       return
     }
     if (!ticket.ok) {

@@ -67,6 +67,8 @@ export default function WorkspacePage() {
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [diffDialogOpen, setDiffDialogOpen] = useState(false)
+  const [mobile, setMobile] = useState(false)
+  const [mobileNavOpen, setMobileNavOpen] = useState(false)
 
   const live = dataSource.kind === 'http'
   const authenticated = auth === 'authenticated'
@@ -132,9 +134,26 @@ export default function WorkspacePage() {
     )
   }, [])
 
+  const onDestructiveInputArmed = useCallback((_sid: string, label: string) => {
+    setNotice(`Press ${label} again within 3 seconds to send it.`)
+  }, [])
+
   const socket = useSocket({ onFrame, onOutput }, live && authenticated)
-  const panes = usePanes(socket, live && authenticated, onPaneError)
+  const panes = usePanes(
+    socket,
+    live && authenticated,
+    onPaneError,
+    onDestructiveInputArmed,
+  )
   panesRef.current = panes
+
+  useEffect(() => {
+    const query = window.matchMedia('(max-width: 720px)')
+    const update = (): void => { setMobile(query.matches) }
+    update()
+    query.addEventListener('change', update)
+    return () => { query.removeEventListener('change', update) }
+  }, [])
 
   useEffect(() => {
     const controller = new AbortController()
@@ -338,6 +357,7 @@ export default function WorkspacePage() {
   const onSelectSession = useCallback(
     (sid: string) => {
       apply((current) => showSession(current, sid))
+      setMobileNavOpen(false)
     },
     [apply],
   )
@@ -402,26 +422,52 @@ export default function WorkspacePage() {
         selectedId={focusedSessionId}
         onScreenIds={onScreenIds}
         onSelect={onSelectSession}
-        onNewSession={openSessionDialog}
+        onNewSession={(projectId) => {
+          setMobileNavOpen(false)
+          openSessionDialog(projectId)
+        }}
         onNewProject={() => {
+          setMobileNavOpen(false)
           setProjectDialogOpen(true)
         }}
         onEditProject={(projectId) => {
+          setMobileNavOpen(false)
           setSettingsFor(projectId)
         }}
         onDeleteProject={(projectId) => {
+          setMobileNavOpen(false)
           setDeletingProject(projectId)
         }}
         onDeleteSession={(sessionId) => {
+          setMobileNavOpen(false)
           setDeletingSession(sessionId)
           setForceDeletingSession(false)
         }}
         loading={loading}
         error={error}
         sourceKind={dataSource.kind}
+        mobileOpen={mobileNavOpen}
+        onCloseMobile={() => { setMobileNavOpen(false) }}
       />
+      {mobileNavOpen ? (
+        <button
+          type="button"
+          className={styles.mobileBackdrop}
+          aria-label="Close sessions menu"
+          onClick={() => { setMobileNavOpen(false) }}
+        />
+      ) : null}
       <main className={styles.main} id="workspace-main">
         <div className={styles.topbar}>
+          <button
+            type="button"
+            className={styles.mobileMenu}
+            aria-controls="workspace-sidebar"
+            aria-expanded={mobileNavOpen}
+            onClick={() => { setMobileNavOpen(true) }}
+          >
+            Sessions
+          </button>
           <p className={styles.crumbs}>
             workspace /{' '}
             <span className={styles.crumbCurrent}>{focusedSession?.name ?? 'no session'}</span>
@@ -436,7 +482,9 @@ export default function WorkspacePage() {
                 Review changes
               </button>
             )}
-            <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
+            <span className={styles.layoutControls}>
+              <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
+            </span>
             <PushToggle push={push} available={pushPublicKey !== null} />
             <ConnectionBadge state={socket.state} />
           </div>
@@ -484,6 +532,7 @@ export default function WorkspacePage() {
             onNewSession={() => {
               openSessionDialog(null)
             }}
+            mobile={mobile}
           />
         )}
       </main>
@@ -521,6 +570,7 @@ export default function WorkspacePage() {
         title="Delete session"
         confirmLabel={forceDeletingSession ? 'Force delete' : 'Delete session'}
         busyLabel="Deleting…"
+        doublePress
         onClose={() => {
           setDeletingSession(null)
           setForceDeletingSession(false)
@@ -564,6 +614,7 @@ export default function WorkspacePage() {
         title="Delete project"
         confirmLabel="Delete project"
         busyLabel="Deleting…"
+        doublePress
         onClose={() => {
           setDeletingProject(null)
         }}

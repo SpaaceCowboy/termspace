@@ -159,6 +159,44 @@ test('a fresh ticket is fetched for every reconnect', async () => {
   assert.equal(h.ticketCalls(), 2)
 })
 
+test('visibility recovery replaces a possibly frozen socket and replays subscriptions', async () => {
+  const h = harness()
+  h.client.subscribe(SID, 'focused')
+  h.client.connect()
+  await flush()
+  const frozen = h.sockets[0]
+  frozen?.onopen?.()
+
+  h.client.reconnect()
+  await flush()
+
+  assert.equal(frozen?.closed, true)
+  assert.equal(h.ticketCalls(), 2)
+  const replacement = h.sockets[1]
+  replacement?.onopen?.()
+  assert.deepEqual(replacement?.frames, [
+    { t: 'sub', sid: SID },
+    { t: 'vis', sid: SID, level: 'focused' },
+  ])
+})
+
+test('a reconnect supersedes an in-flight ticket request', async () => {
+  const resolvers: Array<(value: { ok: true; ticket: string }) => void> = []
+  const h = harness(() => new Promise((resolve) => { resolvers.push(resolve) }))
+  h.client.connect()
+  await flush()
+  h.client.reconnect()
+  await flush()
+  assert.equal(h.ticketCalls(), 2)
+
+  resolvers[0]?.({ ok: true, ticket: 'stale' })
+  await flush()
+  assert.equal(h.sockets.length, 0, 'the superseded ticket must not create a socket')
+  resolvers[1]?.({ ok: true, ticket: 'fresh' })
+  await flush()
+  assert.equal(h.sockets.length, 1)
+})
+
 test('state moves connecting to connected to reconnecting and back', async () => {
   const h = harness()
   h.client.connect()

@@ -1,6 +1,7 @@
 import type { VisibilityLevel } from '@termspace/contracts'
 
 export const RESIZE_DEBOUNCE_MS = 100
+export const DESTRUCTIVE_INPUT_CONFIRM_MS = 3_000
 
 /**
  * Output can keep arriving while a pane is being rehosted between headless and
@@ -65,6 +66,8 @@ export interface PaneStoreOptions {
   readonly schedule?: (handler: () => void, delayMs: number) => () => void
   readonly resizeDebounceMs?: number
   readonly onError?: (error: unknown) => void
+  readonly onDestructiveInputArmed?: (sid: string, label: string) => void
+  readonly now?: () => number
 }
 
 interface PaneEntry {
@@ -85,6 +88,8 @@ interface PaneEntry {
   queue: Promise<void>
   lastSize: PaneSize | null
   released: boolean
+  controlArmed: boolean
+  pendingDestructive: { readonly data: string; readonly at: number } | null
 }
 
 /**
@@ -101,11 +106,13 @@ export class PaneStore {
   readonly #options: PaneStoreOptions
   readonly #panes = new Map<string, PaneEntry>()
   readonly #resizeDebounceMs: number
+  readonly #now: () => number
   #disposed = false
 
   constructor(options: PaneStoreOptions) {
     this.#options = options
     this.#resizeDebounceMs = options.resizeDebounceMs ?? RESIZE_DEBOUNCE_MS
+    this.#now = options.now ?? Date.now
   }
 
   get sessionIds(): readonly string[] {
@@ -182,6 +189,22 @@ export class PaneStore {
     })
   }
 
+  /** Input from the phone accessory bar follows the same restore/safety path as xterm input. */
+  sendInput(sid: string, data: string): void {
+    const entry = this.#panes.get(sid)
+    if (entry !== undefined) {
+      this.#acceptInput(entry, data)
+    }
+  }
+
+  /** Arms Ctrl for the next character produced by either the soft keyboard or the bar. */
+  setControlArmed(sid: string, armed: boolean): void {
+    const entry = this.#panes.get(sid)
+    if (entry !== undefined) {
+      entry.controlArmed = armed
+    }
+  }
+
   write(sid: string, bytes: Uint8Array): void {
     const entry = this.#panes.get(sid)
     if (entry === undefined) {
@@ -222,6 +245,8 @@ export class PaneStore {
       queue: Promise.resolve(),
       lastSize: null,
       released: false,
+      controlArmed: false,
+      pendingDestructive: null,
     }
     this.#panes.set(entry.sid, entry)
     this.#options.socket.subscribe(entry.sid, entry.visibility)
@@ -298,14 +323,39 @@ export class PaneStore {
       return
     }
     entry.input = terminal.onData((chunk) => {
-      if (!entry.restored) {
-        if (entry.pendingInput.length < MAX_PENDING_INPUT_CHUNKS) {
-          entry.pendingInput.push(chunk)
-        }
+      this.#acceptInput(entry, chunk)
+    })
+  }
+
+  #acceptInput(entry: PaneEntry, raw: string): void {
+    const data = entry.controlArmed ? applyControlModifier(raw) : raw
+    entry.controlArmed = false
+    if (data === '\x03' || data === '\x04') {
+      const now = this.#now()
+      const pending = entry.pendingDestructive
+      if (
+        pending === null ||
+        pending.data !== data ||
+        now - pending.at > DESTRUCTIVE_INPUT_CONFIRM_MS
+      ) {
+        entry.pendingDestructive = { data, at: now }
+        this.#options.onDestructiveInputArmed?.(
+          entry.sid,
+          data === '\x03' ? 'Ctrl+C' : 'Ctrl+D',
+        )
         return
       }
-      this.#options.socket.sendInput(entry.sid, chunk)
-    })
+      entry.pendingDestructive = null
+    } else {
+      entry.pendingDestructive = null
+    }
+    if (!entry.restored) {
+      if (entry.pendingInput.length < MAX_PENDING_INPUT_CHUNKS) {
+        entry.pendingInput.push(data)
+      }
+      return
+    }
+    this.#options.socket.sendInput(entry.sid, data)
   }
 
   #flushInput(entry: PaneEntry): void {
@@ -434,4 +484,18 @@ export class PaneStore {
       globalThis.clearTimeout(handle)
     }
   }
+}
+
+export function applyControlModifier(data: string): string {
+  // A paste may arrive as one multi-character chunk. Never turn its leading
+  // letter into a control signal while silently sending the remainder.
+  if (data.length !== 1) {
+    return data
+  }
+  const code = data.charCodeAt(0)
+  const normalized = code >= 97 && code <= 122 ? code - 32 : code
+  if (normalized < 64 || normalized > 95) {
+    return data
+  }
+  return String.fromCharCode(normalized & 0x1f) + data.slice(1)
 }

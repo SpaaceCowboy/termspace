@@ -36,6 +36,8 @@ export interface SidebarProps {
   loading: boolean
   error: string | null
   sourceKind: string
+  mobileOpen?: boolean
+  onCloseMobile?: () => void
 }
 
 export function Sidebar({
@@ -52,12 +54,28 @@ export function Sidebar({
   loading,
   error,
   sourceKind,
+  mobileOpen = false,
+  onCloseMobile,
 }: SidebarProps) {
   return (
-    <nav className={styles.sidebar} aria-label="Projects and sessions">
+    <nav
+      id="workspace-sidebar"
+      className={cx(styles.sidebar, mobileOpen && styles.sidebarMobileOpen)}
+      aria-label="Projects and sessions"
+    >
       <h1 className={styles.header}>
         <span className={styles.brandMark}>▌</span>
         Termspace
+        {onCloseMobile === undefined ? null : (
+          <button
+            type="button"
+            className={styles.mobileClose}
+            onClick={onCloseMobile}
+            aria-label="Close sessions menu"
+          >
+            ×
+          </button>
+        )}
       </h1>
 
       {onNewProject !== undefined ? (
@@ -108,7 +126,7 @@ function SidebarBody({
   onDeleteSession,
   loading,
   error,
-}: Omit<SidebarProps, 'sourceKind'>) {
+}: Omit<SidebarProps, 'sourceKind' | 'mobileOpen' | 'onCloseMobile'>) {
   if (loading) {
     return (
       <p className={styles.state} role="status">

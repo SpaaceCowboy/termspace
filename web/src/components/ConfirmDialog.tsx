@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 
 import { cx } from '@/lib/cx'
 
@@ -17,6 +17,8 @@ export interface ConfirmDialogProps {
   /** Resolves to an error message, or null when it worked. */
   onConfirm: () => Promise<string | null>
   onClose: () => void
+  /** First press arms the destructive action; only a second press executes it. */
+  doublePress?: boolean
 }
 
 /**
@@ -32,9 +34,12 @@ export function ConfirmDialog({
   busyLabel,
   onConfirm,
   onClose,
+  doublePress = false,
 }: ConfirmDialogProps) {
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
+  const [armed, setArmed] = useState(false)
+  const disarmTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   // A reopen must not show the previous attempt's failure.
   useEffect(() => {
@@ -43,12 +48,31 @@ export function ConfirmDialog({
     }
     setError(null)
     setBusy(false)
+    setArmed(false)
   }, [open])
+
+  useEffect(() => () => {
+    if (disarmTimer.current !== null) clearTimeout(disarmTimer.current)
+  }, [])
 
   async function confirm(): Promise<void> {
     if (busy) {
       return
     }
+    if (doublePress && !armed) {
+      setArmed(true)
+      if (disarmTimer.current !== null) clearTimeout(disarmTimer.current)
+      disarmTimer.current = setTimeout(() => {
+        disarmTimer.current = null
+        setArmed(false)
+      }, 3_000)
+      return
+    }
+    if (disarmTimer.current !== null) {
+      clearTimeout(disarmTimer.current)
+      disarmTimer.current = null
+    }
+    setArmed(false)
     setBusy(true)
     setError(null)
     try {
@@ -93,7 +117,7 @@ export function ConfirmDialog({
             }}
             disabled={busy}
           >
-            {busy ? busyLabel : confirmLabel}
+            {busy ? busyLabel : armed ? `Press again: ${confirmLabel}` : confirmLabel}
           </button>
         </div>
       </div>
