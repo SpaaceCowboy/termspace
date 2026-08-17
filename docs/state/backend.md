@@ -31,4 +31,4 @@ ordinary directory has no objective baseline and must never be initialized or co
 The tmux server inherits the cgroup that launches it even after daemonizing; never launch the first
 tmux server from the gateway service unless it is moved into its own systemd ownership first.
 
-**Uncommitted:** Phase 4 GATE record and Phase 5 resume transition; ready for a gate commit.
+**Uncommitted:** none. The Phase 4 gate and Phase 5 transition are committed at `508cc40`.
