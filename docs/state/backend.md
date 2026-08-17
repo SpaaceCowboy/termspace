@@ -1,10 +1,9 @@
 # Current state — Termspace (solo)
 
-**Phase:** 4 — Parallelism is built; Phases 0–3 are built and human-verified. Phase 4 is gated on
-the owner's real two-agent worktree exit test, so Phase 5 must not start yet.
+**Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
 
-**Working on:** Phase 4 gate only. Diff review now diagnoses non-Git directories separately from
-missing base branches; this gate-setup repair is committed.
+**Working on:** the first Phase 5 server box: separate systemd ownership for the disposable Node
+gateway and persistent tmux shells, with per-session memory control.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -15,11 +14,12 @@ Stale standard sessions whose tmux target and cwd are already absent can now be 
 the real-tmux regression passes 3/3 and the full package test/typecheck suites remain green.
 Diff preflights now distinguish `not_repository`, `base_missing`, and later Git failures without
 changing the HTTP status or error code; the real Git diff integration remains 7/7.
+The owner confirmed the two-worktree, side-by-side review exit criterion; Phase 4 is verified.
 
-**Next concrete step:** ask the owner to run two agent sessions from the same project in separate
-worktrees, make a distinct change in each, open the 2-pane layout and Review changes, and confirm
-both reviews are visible side by side with no file collision. On confirmation, check Phase 4
-Verified, append a GATE entry, and begin the first unchecked Phase 5 server item.
+**Next concrete step:** design and test a gateway service plus a separately-owned tmux service or
+scope, then prove with a real long-running tmux command that restarting the gateway leaves the
+session alive. Define where per-session `MemoryMax` is applied without putting tmux under the
+gateway cgroup.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -28,5 +28,7 @@ into the patch. Worktree branches and commits are preserved on normal and forced
 Projects remain deliberately non-cascading: delete their sessions first, then the project record.
 Review changes requires a real Git repository with a commit at the configured default branch; an
 ordinary directory has no objective baseline and must never be initialized or committed silently.
+The tmux server inherits the cgroup that launches it even after daemonizing; never launch the first
+tmux server from the gateway service unless it is moved into its own systemd ownership first.
 
-**Uncommitted:** none. The reason-specific diff diagnosis repair is committed at `b826d65`.
+**Uncommitted:** Phase 4 GATE record and Phase 5 resume transition; ready for a gate commit.

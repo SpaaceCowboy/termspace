@@ -918,3 +918,10 @@ English message must update, which is the only broken surface.
 Unit tests cover the two preflight failure reasons and both HTTP messages. All
 package tests and typechecks pass, the real Git diff integration remains 7/7,
 and the actual affected session classifies as `not_repository`.
+
+### 2026-08-17T16:21:09+03:30 · SOLO · 4 · GATE
+Phase 4 is shipped. The owner confirmed both parallel worktrees and their
+side-by-side diff reviews work, with no file collision. Built and Verified are
+checked. Phase 5 — phone operation and the production system boundary — is now
+the current phase; its first unit is separate systemd ownership for the gateway
+and tmux shells so restarting the app cannot kill an agent.
