@@ -183,4 +183,4 @@ criteria happen with your own eyes.
 | 2 | [x] | [x] | Confirmed in a browser by the owner. |
 | 3 | [x] | [x] | Owner confirmed: locked phone notified within 5 s and tapping opened the correct pane focused. |
 | 4 | [x] | [x] | Owner confirmed two separate worktrees and both side-by-side reviews work without collisions. |
-| 5 | [x] | [ ] | Built and browser-checked at 390×844; awaiting the owner’s full physical-phone session test. |
+| 5 | [x] | [x] | Owner confirmed the complete physical-phone workflow works. |

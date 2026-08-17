@@ -1,9 +1,9 @@
 # Current state — Termspace (solo)
 
-**Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
+**Phase:** all defined phases (0–5) are built and human-verified.
 
-**Working on:** Phase 5 is fully built and gated on the owner’s physical-phone exit test. All
-server and web boxes are checked; phase discipline forbids starting Phase 6 before verification.
+**Working on:** product direction after v1. No Phase 6 exists yet; the owner wants recommendations
+for useful additions followed by a deliberate UI/UX improvement pass.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -31,9 +31,8 @@ Ctrl plus guarded Ctrl+C/Ctrl+D, destructive dialogs double-confirm, and visibil
 replaces frozen sockets with generation-safe fresh-ticket reconnects. All repository checks and a
 5/5 390×844 production-browser interaction pass are green.
 
-**Next concrete step:** ask the owner to drive a real session from a physical phone one-handed,
-answer a permission prompt, background and restore the app, and double-confirm killing a runaway
-session; record Verified only after the owner confirms that exact flow.
+**Next concrete step:** agree with the owner on a small prioritized post-v1 roadmap, write Phase 6
+before implementation, then audit the existing desktop and phone workflows against that scope.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -49,4 +48,4 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** none. The complete Phase 5 phone workspace landed in `ff3b130`.
+**Uncommitted:** Phase 5 owner-verification record and resume-state transition only.
