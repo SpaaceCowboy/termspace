@@ -191,3 +191,18 @@ procedure validates the candidate, stops only the disposable gateway, moves the
 current database plus WAL/SHM siblings aside for rollback, installs the verified
 snapshot, and restarts the gateway. The separately owned tmux service and agent
 scopes stay alive for the entire restore.
+
+## Operational logging
+
+Fastify's two default request records are disabled in favor of one
+`http_request_complete` JSON record per response: request id, method, path,
+matched route, remote address, status, and duration. Query strings, headers,
+and bodies are never included. The Pino boundary strips query strings from any
+incidentally serialized request, redacts known credential/terminal fields, and
+reduces errors to their class name plus machine code; messages and stacks can
+contain command output or third-party request objects and are not logged.
+
+Production services write to the dedicated `termspace` journal namespace.
+That namespace is compressed, split daily, capped at 256 MiB while preserving
+1 GiB of free disk, and retains at most 14 days. These limits do not change the
+host's default journal or unrelated services.

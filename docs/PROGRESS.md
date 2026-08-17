@@ -997,3 +997,19 @@ stops only the gateway, preserves the current DB/WAL/SHM for rollback, and
 keeps tmux-owned sessions alive. Unit tests and a disposable 6/6 live
 backup/restore round trip preserve project and session rows; systemd's native
 unit/timer verifier passes.
+
+### 2026-08-17T16:56:43+03:30 · SOLO · 5 · DONE
+The final Phase 5 server box is complete. Every HTTP response emits one bounded
+JSON completion record with method, query-free path, matched route, remote
+address, status, and duration. Default duplicate request logs are disabled.
+Logger serializers omit headers/bodies/query values, explicit redaction covers
+credentials and terminal/session bytes, and error objects are reduced to name
+and machine code so nested process/HTTP data cannot leak. Tests prove password,
+TOTP, cookie, authorization, WebSocket ticket, and terminal-byte sentinels never
+serialize. All services use an isolated journald namespace capped at 256 MiB,
+rotated daily, and retained for at most 14 days; native unit verification passes.
+
+### 2026-08-17T16:56:43+03:30 · BACKEND · 5 · GATE
+All five Phase 5 server boxes are checked with tests and operational fixtures.
+Per phase discipline, backend work stops here until the four Phase 5 web boxes
+and the phone exit criterion are complete; no Phase 6 work has started.

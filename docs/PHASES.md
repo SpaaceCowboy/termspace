@@ -151,7 +151,7 @@ side by side, no file collisions.
       session. Re-read decision #6 before writing it.
 - [x] Idle session reaper with a configurable grace period
 - [x] SQLite backup on a timer, restore documented
-- [ ] Structured request log, no secrets, log rotation
+- [x] Structured request log, no secrets, log rotation
 
 **Web**
 - [ ] Responsive: single pane, swipe between sessions

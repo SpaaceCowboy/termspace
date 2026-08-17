@@ -12,6 +12,7 @@ describe('readEnvironment', () => {
       TERMSPACE_DATABASE_PATH: './data/termspace.db',
       TERMSPACE_HOST: '127.0.0.1',
       TERMSPACE_IDLE_SESSION_GRACE_MS: 86_400_000,
+      TERMSPACE_LOG_LEVEL: 'info',
       TERMSPACE_PORT: 3001,
       TERMSPACE_PROJECT_ROOT: '/srv/projects',
       TERMSPACE_SESSION_MEMORY_MAX_BYTES: 4_294_967_296,

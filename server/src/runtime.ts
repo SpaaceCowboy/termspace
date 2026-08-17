@@ -20,6 +20,7 @@ import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
 import { SessionLivenessReconciler } from './sessions/session-liveness-reconciler.js'
 import { SessionIdleReaper } from './sessions/session-idle-reaper.js'
+import { safeErrorLog } from './logging/request-logging.js'
 import { SessionRepository } from './sessions/session-repository.js'
 import { HeadlessBufferRegistry } from './terminal/headless-buffer.js'
 import { createOutputCoalescer } from './terminal/output-coalescer.js'
@@ -117,7 +118,7 @@ export function createServerRuntime(
   const attachments = new ViewerAttachmentFactory(new NodePtySpawner())
   const feeds = new SessionFeedCoordinator()
   const onGatewayError = (error: unknown): void => {
-    app.log.error({ err: error }, 'WebSocket gateway failure')
+    app.log.error(safeErrorLog(error), 'WebSocket gateway failure')
   }
 
   /*

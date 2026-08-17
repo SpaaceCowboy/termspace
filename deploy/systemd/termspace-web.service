@@ -9,6 +9,7 @@ Requires=termspace-gateway.service
 Type=exec
 User=root
 Slice=termspace.slice
+LogNamespace=termspace
 WorkingDirectory=/opt/termspace/web
 EnvironmentFile=-/etc/termspace/runtime.env
 ExecStart=/usr/bin/env NODE_ENV=production PORT=3002 node node_modules/next/dist/bin/next start

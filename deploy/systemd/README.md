@@ -28,6 +28,7 @@ pnpm install --frozen-lockfile
 pnpm build
 install -d -m 0755 /etc/termspace /var/lib/termspace /srv/projects
 install -d -m 0700 /var/backups/termspace
+install -d -m 0755 /etc/systemd/journald@termspace.conf.d
 install -m 0644 deploy/systemd/runtime.env.example /etc/termspace/runtime.env
 install -m 0600 deploy/systemd/server.env.example /etc/termspace/server.env
 install -m 0644 deploy/systemd/termspace.slice /etc/systemd/system/
@@ -37,6 +38,7 @@ install -m 0644 deploy/systemd/termspace-gateway.service /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-web.service /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-backup.service /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-backup.timer /etc/systemd/system/
+install -m 0644 deploy/systemd/journald-termspace.conf /etc/systemd/journald@termspace.conf.d/retention.conf
 ```
 
 Edit both environment files. `runtime.env` must locate Node, Codex, and Claude
@@ -51,6 +53,7 @@ install system packages and update their CLI state. Then:
 ```sh
 systemd-analyze verify /etc/systemd/system/termspace*.service /etc/systemd/system/termspace*.slice
 systemctl daemon-reload
+systemctl restart systemd-journald@termspace.service
 systemctl enable --now termspace-tmux.service termspace-gateway.service termspace-web.service
 systemctl enable --now termspace-backup.timer
 ```
@@ -114,3 +117,25 @@ Keep the three `before-restore` files until the restored application has been
 checked. To roll back, stop the gateway, remove only the newly installed
 `termspace.db` and its new `-wal`/`-shm` siblings, move the timestamped files
 back to their original names, and start the gateway again.
+
+## Logs and retention
+
+All Termspace services use the dedicated `termspace` journal namespace. The
+checked-in namespace config compresses and rotates its files daily, caps them
+at 256 MiB, keeps at least 1 GiB free, and removes records older than 14 days.
+This is isolated from the host's default journal; changing it does not shorten
+retention for unrelated services.
+
+The gateway emits one `http_request_complete` JSON object per response with
+method, path, route, remote address, status, and duration. Query strings,
+headers, and bodies are excluded. Logger serializers also remove query strings,
+known credential fields are redacted, and error objects are reduced to name and
+safe machine code so command output or third-party request objects cannot leak.
+
+Read and verify the namespace with:
+
+```sh
+journalctl --namespace=termspace -u termspace-gateway.service --output=json
+journalctl --namespace=termspace --disk-usage
+systemctl status systemd-journald@termspace.service
+```

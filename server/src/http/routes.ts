@@ -29,6 +29,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 import { z } from 'zod'
 
 import { clearAuthCookie, readAuthCookie, serializeAuthCookie } from '../auth/cookie.js'
+import { safeErrorLog } from '../logging/request-logging.js'
 import {
   AgentCommandSchema,
   parseAgentCommandOverrides,
@@ -250,7 +251,7 @@ export function registerPhase1Routes(
         sendError(reply, 400, 'validation_failed', 'Invalid request.'),
       )
     }
-    request.log.error({ err: error }, 'HTTP request failed')
+    request.log.error(safeErrorLog(error), 'HTTP request failed')
     return reply.send(
       sendError(reply, 500, 'internal_error', 'Internal server error.'),
     )
@@ -380,7 +381,7 @@ export function registerPhase1Routes(
       reply.code(201)
       return ok<Record<string, never>>({})
     } catch (error) {
-      request.log.error({ err: error }, 'Push subscription failed')
+      request.log.error(safeErrorLog(error), 'Push subscription failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -465,7 +466,7 @@ export function registerPhase1Routes(
         )
       }
       if (error instanceof ProjectPathNotCreatableError) {
-        request.log.error({ err: error }, 'Project directory could not be created')
+        request.log.error(safeErrorLog(error), 'Project directory could not be created')
         return sendError(
           reply,
           400,
@@ -493,7 +494,7 @@ export function registerPhase1Routes(
         )
       }
       if (error instanceof ProjectCloneFailedError) {
-        request.log.error({ err: error }, 'Project clone failed')
+        request.log.error(safeErrorLog(error), 'Project clone failed')
         return sendError(
           reply,
           400,
@@ -502,7 +503,7 @@ export function registerPhase1Routes(
           'repoUrl',
         )
       }
-      request.log.error({ err: error }, 'Project creation failed')
+      request.log.error(safeErrorLog(error), 'Project creation failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -542,7 +543,7 @@ export function registerPhase1Routes(
       }
       return ok<Project>(project)
     } catch (error) {
-      request.log.error({ err: error }, 'Project update failed')
+      request.log.error(safeErrorLog(error), 'Project update failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -570,7 +571,7 @@ export function registerPhase1Routes(
           'id',
         )
       }
-      request.log.error({ err: error }, 'Project deletion failed')
+      request.log.error(safeErrorLog(error), 'Project deletion failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -694,10 +695,10 @@ export function registerPhase1Routes(
         )
       }
       if (error instanceof WorktreeCreateFailedError) {
-        request.log.error({ err: error }, 'Worktree creation failed')
+        request.log.error(safeErrorLog(error), 'Worktree creation failed')
         return sendError(reply, 500, 'internal_error', 'Could not create the worktree.')
       }
-      request.log.error({ err: error }, 'Session creation failed')
+      request.log.error(safeErrorLog(error), 'Session creation failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -730,7 +731,7 @@ export function registerPhase1Routes(
           message,
         )
       }
-      request.log.error({ err: error }, 'Session diff failed')
+      request.log.error(safeErrorLog(error), 'Session diff failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })
@@ -762,7 +763,7 @@ export function registerPhase1Routes(
           'The worktree has uncommitted changes. Force deletion to discard them.',
         )
       }
-      request.log.error({ err: error }, 'Session deletion failed')
+      request.log.error(safeErrorLog(error), 'Session deletion failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })

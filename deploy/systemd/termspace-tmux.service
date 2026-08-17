@@ -8,6 +8,7 @@ Before=termspace-gateway.service
 Type=exec
 User=root
 Slice=termspace.slice
+LogNamespace=termspace
 EnvironmentFile=-/etc/termspace/runtime.env
 RuntimeDirectory=termspace
 RuntimeDirectoryMode=0700

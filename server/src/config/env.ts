@@ -20,6 +20,9 @@ const EnvironmentSchema = z
       .default(8 * 60 * 60 * 1_000),
     TERMSPACE_DATABASE_PATH: z.string().min(1).default('./data/termspace.db'),
     TERMSPACE_HOST: z.string().min(1).default('127.0.0.1'),
+    TERMSPACE_LOG_LEVEL: z
+      .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])
+      .default('info'),
     TERMSPACE_IDLE_SESSION_GRACE_MS: z.coerce
       .number()
       .int()

@@ -2,8 +2,8 @@
 
 **Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
 
-**Working on:** completing the fourth Phase 5 server box: online SQLite backup, retention,
-systemd timer, integrity verification, and the restore/rollback runbook are ready to commit.
+**Working on:** gated after completing all five Phase 5 server boxes. The Phase 5 web checklist
+and phone exit criterion remain; phase discipline forbids starting Phase 6.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -24,10 +24,11 @@ candidate, and uses non-force SessionManager cleanup; unit/workspace checks and 
 checks pass.
 SQLite backup uses the live-safe online API, verifies and atomically publishes mode-0600 files,
 retains a configurable count, and has a 6/6 disposable restore check plus verified systemd units.
+Structured request logging emits one bounded record, redacts or omits every credential/body/query
+surface, safely classifies errors, and writes to an isolated, size/time-bounded journal namespace.
 
-**Next concrete step:** run all workspace tests/typechecks and diff checks, commit the backup slice,
-then inspect Fastify request logging and journald defaults for the final Phase 5 server box without
-allowing cookies, credentials, TOTP values, WebSocket tickets, or session bytes into logs.
+**Next concrete step:** after the Phase 5 web boxes are complete, run the phone exit criterion and
+record owner verification. Do not start Phase 6 before that gate opens.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -43,5 +44,5 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** complete Phase 5 SQLite backup/timer/restore slice and this state update; ready for
-one commit. Idle reaper landed in `ba03d6e`.
+**Uncommitted:** complete structured-logging/journal-rotation slice, tests, deployment docs, and
+Phase 5 backend gate entry; ready for one commit.

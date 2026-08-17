@@ -2,6 +2,7 @@ import { readEnvironment } from './config/env.js'
 import { openDatabase } from './database/connection.js'
 import { migrateDatabase } from './database/migrations.js'
 import { createServerRuntime } from './runtime.js'
+import { createLoggerOptions, safeErrorLog } from './logging/request-logging.js'
 
 async function start(): Promise<void> {
   const environment = readEnvironment()
@@ -9,7 +10,10 @@ async function start(): Promise<void> {
 
   try {
     migrateDatabase(database)
-    const runtime = createServerRuntime(database, environment, { logger: true })
+    const runtime = createServerRuntime(database, environment, {
+      disableRequestLogging: true,
+      logger: createLoggerOptions(environment.TERMSPACE_LOG_LEVEL),
+    })
 
     // Without a usable project root nothing can be created, and the failure
     // otherwise shows up as a confusing form error at the far end of a login.
@@ -48,7 +52,9 @@ async function start(): Promise<void> {
 try {
   await start()
 } catch (error) {
-  const message = error instanceof Error ? error.message : 'Unknown startup error'
-  process.stderr.write(`Termspace server failed to start: ${message}\n`)
+  process.stderr.write(`${JSON.stringify({
+    event: 'server_start_failed',
+    ...safeErrorLog(error),
+  })}\n`)
   process.exitCode = 1
 }

@@ -9,6 +9,7 @@ Wants=network-online.target
 Type=exec
 User=root
 Slice=termspace.slice
+LogNamespace=termspace
 WorkingDirectory=/opt/termspace/server
 EnvironmentFile=-/etc/termspace/runtime.env
 EnvironmentFile=/etc/termspace/server.env

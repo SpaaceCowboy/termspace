@@ -6,6 +6,7 @@ After=local-fs.target
 [Service]
 Type=oneshot
 User=root
+LogNamespace=termspace
 EnvironmentFile=-/etc/termspace/runtime.env
 EnvironmentFile=/etc/termspace/server.env
 WorkingDirectory=/opt/termspace/server
