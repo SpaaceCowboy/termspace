@@ -808,3 +808,11 @@ Covered by unit tests for missing/live/repeated/empty/failure cases and by
 `server/e2e-liveness.mjs`: a real tmux command that exited with no viewer was
 marked dead while a second live tmux session was left alone. Full typecheck and
 all server, web, and contract unit suites pass.
+
+### 2026-08-17T12:37:05+03:30 · SOLO · 3 · GATE
+Phase 3 is shipped. The owner confirmed the physical exit criterion: a locked
+subscribed phone received the notification within five seconds of an agent
+reaching a permission prompt, and tapping it opened the correct pane focused.
+
+Both Built and Verified are now checked. Phase 4 — worktree isolation, diffs,
+and shared-directory collision warnings — is the current phase.
