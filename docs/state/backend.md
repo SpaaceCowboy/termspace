@@ -49,5 +49,4 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** complete Phase 5 phone UI, tests, architecture/progress/checklist updates, and
-browser evidence; ready for one commit.
+**Uncommitted:** none. The complete Phase 5 phone workspace landed in `ff3b130`.
