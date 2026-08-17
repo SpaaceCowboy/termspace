@@ -881,3 +881,23 @@ two-session review layout. `server/e2e-diff.mjs` passed 7/7 against a temporary
 real Git repository, and `server/e2e-worktree.mjs` passed 5/5 against real Git
 and tmux. The Built gate is checked; the owner's two-agent worktree exit test is
 the only remaining Phase 4 gate.
+
+### 2026-08-17T14:51:17+03:30 · SOLO · 4 · FIXED
+Stale sessions can now be deleted after their tmux process or project directory
+has already disappeared. Previously `SessionManager.delete` always issued
+`tmux kill-session`; tmux exits with status 1 when its server or target does not
+exist, which escaped the route as `internal_error` and trapped the parent
+project behind its remaining session rows.
+
+`TmuxClient.kill` now snapshots real tmux state first. An absent target is
+already in the requested stopped state, while a target present in the snapshot
+is killed normally. Status 1 from the kill itself is accepted only as the race
+where the target ended between snapshot and kill; other exit statuses still
+propagate. Project deletion remains non-cascading and never removes files.
+
+Unit coverage verifies named-only killing, no-server idempotence, the race, and
+operational error propagation. `server/e2e-stale-delete.mjs` passed 3/3 against
+the real tmux socket with a synthetic dead session and missing cwd. All package
+tests and typechecks pass. The live database was inspected read-only: its three
+projects have four dead standard sessions between them, explaining why those
+project rows require session cleanup first; no user record was modified.

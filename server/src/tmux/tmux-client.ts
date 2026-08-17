@@ -55,11 +55,28 @@ export class TmuxClient {
   }
 
   async kill(untrustedId: unknown): Promise<void> {
-    await this.#runner.run('tmux', [
-      'kill-session',
-      '-t',
-      toTmuxSessionName(untrustedId),
-    ])
+    const sessionId = parseSessionId(untrustedId)
+    // Deletion is also how stale persisted rows are cleaned up. If tmux was
+    // restarted, the shell exited while the gateway was down, or an operator
+    // removed the project directory manually, there may be no tmux target left
+    // to kill. Treat that as the desired end state, using the same real tmux
+    // snapshot and status semantics as liveness reconciliation.
+    if (!(await this.listSessionIds()).has(sessionId)) {
+      return
+    }
+    try {
+      await this.#runner.run('tmux', [
+        'kill-session',
+        '-t',
+        toTmuxSessionName(sessionId),
+      ])
+    } catch (error) {
+      // The target can disappear between the snapshot and kill command.
+      if (commandExitCode(error) === 1) {
+        return
+      }
+      throw error
+    }
   }
 
   /**

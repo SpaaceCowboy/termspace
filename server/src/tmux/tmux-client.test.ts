@@ -31,6 +31,20 @@ class FailingRunner implements ProcessRunner {
   }
 }
 
+class KillFailureRunner implements ProcessRunner {
+  calls = 0
+
+  constructor(readonly code: number) {}
+
+  async run(): Promise<CommandResult> {
+    this.calls += 1
+    if (this.calls === 1) {
+      return { stderr: '', stdout: `ts_${SID}\n` }
+    }
+    throw { code: this.code }
+  }
+}
+
 describe('TmuxClient', () => {
   it('creates a detached, fixed-size session in the requested cwd', async () => {
     const runner = new RecordingRunner()
@@ -80,15 +94,35 @@ describe('TmuxClient', () => {
   })
 
   it('kills only the named Termspace session', async () => {
-    const runner = new RecordingRunner()
+    const runner = new RecordingRunner([
+      { stderr: '', stdout: `ts_${SID}\n` },
+      { stderr: '', stdout: '' },
+    ])
     const tmux = new TmuxClient(runner, '/config/tmux.conf')
 
     await tmux.kill(SID)
 
-    assert.deepEqual(runner.calls[0], {
-      command: 'tmux',
-      arguments_: ['kill-session', '-t', `ts_${SID}`],
-    })
+    assert.deepEqual(runner.calls, [
+      {
+        command: 'tmux',
+        arguments_: ['list-sessions', '-F', '#{session_name}'],
+      },
+      {
+        command: 'tmux',
+        arguments_: ['kill-session', '-t', `ts_${SID}`],
+      },
+    ])
+  })
+
+  it('treats an already absent session as successfully killed', async () => {
+    const noServer = new TmuxClient(new FailingRunner({ code: 1 }))
+
+    await noServer.kill(SID)
+  })
+
+  it('accepts a kill race but propagates an operational kill failure', async () => {
+    await new TmuxClient(new KillFailureRunner(1)).kill(SID)
+    await assert.rejects(new TmuxClient(new KillFailureRunner(2)).kill(SID))
   })
 
   it('captures ANSI scrollback from tmux', async () => {
