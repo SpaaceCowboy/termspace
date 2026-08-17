@@ -27,6 +27,7 @@ cd /opt/termspace
 pnpm install --frozen-lockfile
 pnpm build
 install -d -m 0755 /etc/termspace /var/lib/termspace /srv/projects
+install -d -m 0700 /var/backups/termspace
 install -m 0644 deploy/systemd/runtime.env.example /etc/termspace/runtime.env
 install -m 0600 deploy/systemd/server.env.example /etc/termspace/server.env
 install -m 0644 deploy/systemd/termspace.slice /etc/systemd/system/
@@ -34,6 +35,8 @@ install -m 0644 deploy/systemd/termspace-sessions.slice /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-tmux.service /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-gateway.service /etc/systemd/system/
 install -m 0644 deploy/systemd/termspace-web.service /etc/systemd/system/
+install -m 0644 deploy/systemd/termspace-backup.service /etc/systemd/system/
+install -m 0644 deploy/systemd/termspace-backup.timer /etc/systemd/system/
 ```
 
 Edit both environment files. `runtime.env` must locate Node, Codex, and Claude
@@ -49,6 +52,7 @@ install system packages and update their CLI state. Then:
 systemd-analyze verify /etc/systemd/system/termspace*.service /etc/systemd/system/termspace*.slice
 systemctl daemon-reload
 systemctl enable --now termspace-tmux.service termspace-gateway.service termspace-web.service
+systemctl enable --now termspace-backup.timer
 ```
 
 Check the ownership boundary before putting Caddy in front:
@@ -69,3 +73,44 @@ Stopping `termspace-tmux.service` is intentionally destructive to all running
 sessions. Routine deploys restart only gateway and web. Session deletion stops
 its transient scope after removing the tmux session, so daemonized children
 cannot outlive the row.
+
+## Database backup and restore
+
+`termspace-backup.timer` runs daily, catches up after downtime, and adds up to
+30 minutes of jitter. The oneshot service uses SQLite's online backup API, so a
+live WAL database is copied transactionally; never replace it with `cp` against
+the running database. Snapshots are mode 0600 in
+`/var/backups/termspace`, and the newest 14 are retained by default. Change
+`TERMSPACE_BACKUP_DIRECTORY` or `TERMSPACE_BACKUP_RETENTION_COUNT` in
+`server.env` if needed.
+
+Test the timer immediately after installation:
+
+```sh
+systemctl start termspace-backup.service
+systemctl status termspace-backup.service
+systemctl list-timers termspace-backup.timer
+ls -l /var/backups/termspace/
+```
+
+To restore, choose a snapshot and validate it before stopping anything. The
+tmux service stays running throughout, so agent processes survive; only the
+gateway is stopped while its database is replaced.
+
+```sh
+cd /opt/termspace/server
+node dist/database/verify-backup-cli.js /var/backups/termspace/termspace-YYYY-MM-DDTHH-MM-SS.sssZ.sqlite3
+systemctl stop termspace-gateway.service
+stamp=$(date -u +%Y%m%dT%H%M%SZ)
+mv /var/lib/termspace/termspace.db "/var/lib/termspace/termspace.db.before-restore-$stamp"
+test ! -e /var/lib/termspace/termspace.db-wal || mv /var/lib/termspace/termspace.db-wal "/var/lib/termspace/termspace.db-wal.before-restore-$stamp"
+test ! -e /var/lib/termspace/termspace.db-shm || mv /var/lib/termspace/termspace.db-shm "/var/lib/termspace/termspace.db-shm.before-restore-$stamp"
+install -m 0600 /var/backups/termspace/termspace-YYYY-MM-DDTHH-MM-SS.sssZ.sqlite3 /var/lib/termspace/termspace.db
+systemctl start termspace-gateway.service
+curl --fail http://127.0.0.1:3001/api/health
+```
+
+Keep the three `before-restore` files until the restored application has been
+checked. To roll back, stop the gateway, remove only the newly installed
+`termspace.db` and its new `-wal`/`-shm` siblings, move the timestamped files
+back to their original names, and start the gateway again.

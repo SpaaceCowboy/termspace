@@ -986,3 +986,14 @@ normal non-force SessionManager path so active/needs-you/dead sessions and dirty
 worktrees are preserved. Unit coverage includes cutoff behavior, state races,
 per-session failure isolation, scheduling, and disposal. The real-tmux check
 passes 4/4, and all workspace tests and typechecks pass on Node 24/pnpm 10.
+
+### 2026-08-17T16:47:16+03:30 · SOLO · 5 · DONE
+SQLite now has a daily persistent systemd backup timer and a hardened oneshot
+service. Backups use SQLite's online API against the live WAL database, pass
+`quick_check`, publish atomically at mode 0600, and retain the newest 14 by
+default; directory and retention are validated configuration. Duplicate names
+are refused rather than overwritten. The restore runbook validates first,
+stops only the gateway, preserves the current DB/WAL/SHM for rollback, and
+keeps tmux-owned sessions alive. Unit tests and a disposable 6/6 live
+backup/restore round trip preserve project and session rows; systemd's native
+unit/timer verifier passes.

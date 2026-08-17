@@ -8,7 +8,9 @@
   },
   "scripts": {
     "build": "tsc -p tsconfig.build.json",
+    "db:backup": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env dist/database/backup-cli.js",
     "db:migrate": "tsc -p tsconfig.build.json && node dist/database/migrate-cli.js",
+    "db:verify-backup": "tsc -p tsconfig.build.json && node dist/database/verify-backup-cli.js",
     "dev": "tsc -p tsconfig.build.json --watch",
     "seed:user": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env dist/seed/seed-user-cli.js",
     "start": "node --env-file-if-exists=.env dist/index.js",

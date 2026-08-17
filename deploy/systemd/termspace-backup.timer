@@ -1,0 +1,11 @@
+[Unit]
+Description=Back up Termspace SQLite daily
+
+[Timer]
+OnCalendar=daily
+Persistent=true
+RandomizedDelaySec=30m
+Unit=termspace-backup.service
+
+[Install]
+WantedBy=timers.target

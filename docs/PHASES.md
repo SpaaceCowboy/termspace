@@ -150,7 +150,7 @@ side by side, no file collisions.
       `NoNewPrivileges` is now off the list, since it breaks `sudo` inside a
       session. Re-read decision #6 before writing it.
 - [x] Idle session reaper with a configurable grace period
-- [ ] SQLite backup on a timer, restore documented
+- [x] SQLite backup on a timer, restore documented
 - [ ] Structured request log, no secrets, log rotation
 
 **Web**

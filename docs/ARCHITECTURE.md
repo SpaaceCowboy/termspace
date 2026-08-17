@@ -176,3 +176,18 @@ to its memory scope. Per decision #6, package installation and agent state need
 explicit writable exceptions for system package trees and selected user config
 directories. This limits accidental writes elsewhere but is deliberately not a
 sandbox against a malicious unrestricted-root command.
+
+## Database durability
+
+The gateway keeps SQLite in WAL mode. `termspace-backup.timer` therefore runs a
+separate oneshot Node process using SQLite's online backup API instead of
+copying the main file and risking a snapshot that omits committed WAL pages.
+The backup is verified with `PRAGMA quick_check`, mode 0600, and atomically
+published into a mode-0700 directory only after the copy completes. Timestamped
+snapshots are lexically ordered; retention defaults to the newest 14.
+
+Restoring is an operator action, not an automatic fallback. The documented
+procedure validates the candidate, stops only the disposable gateway, moves the
+current database plus WAL/SHM siblings aside for rollback, installs the verified
+snapshot, and restarts the gateway. The separately owned tmux service and agent
+scopes stay alive for the entire restore.
