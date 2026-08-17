@@ -44,5 +44,4 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** complete structured-logging/journal-rotation slice, tests, deployment docs, and
-Phase 5 backend gate entry; ready for one commit.
+**Uncommitted:** none. Structured logging and the Phase 5 backend gate landed in `e7799cb`.
