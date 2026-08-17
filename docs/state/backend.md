@@ -21,5 +21,4 @@ toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 Ki
 and files at 2,000; `truncated` must remain visible. Untracked contents are listed but never copied
 into the patch. Worktree branches and commits are preserved on normal and forced session deletion.
 
-**Uncommitted:** the complete diff endpoint/panel slice plus this DONE/gate documentation; ready
-for one Phase 4 commit.
+**Uncommitted:** none. Phase 4 implementation and gate records are committed at `13a6eb4`.
