@@ -19,6 +19,7 @@ import { NodePtySpawner } from './pty/node-pty-spawner.js'
 import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
 import { SessionLivenessReconciler } from './sessions/session-liveness-reconciler.js'
+import { SessionIdleReaper } from './sessions/session-idle-reaper.js'
 import { SessionRepository } from './sessions/session-repository.js'
 import { HeadlessBufferRegistry } from './terminal/headless-buffer.js'
 import { createOutputCoalescer } from './terminal/output-coalescer.js'
@@ -152,6 +153,11 @@ export function createServerRuntime(
     tmux,
     onError: onGatewayError,
   })
+  const idleReaper = new SessionIdleReaper({
+    sessions,
+    graceMs: environment.TERMSPACE_IDLE_SESSION_GRACE_MS,
+    onError: onGatewayError,
+  })
   const pushNotifier =
     vapid === null
       ? null
@@ -185,6 +191,7 @@ export function createServerRuntime(
   // Start only after the persistence listener exists. The first reconciliation
   // runs immediately, and an already-dead row must not lose that transition.
   liveness.start()
+  idleReaper.start()
   const gateway = new WebSocketGatewayServer(app.server, {
     allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN,
     tickets,
@@ -219,6 +226,7 @@ export function createServerRuntime(
   app.addHook('onClose', async () => {
     gateway.close()
     liveness.dispose()
+    idleReaper.dispose()
     activity.dispose()
     titles.dispose()
     buffers.dispose()

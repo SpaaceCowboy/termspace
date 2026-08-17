@@ -11,6 +11,7 @@ describe('readEnvironment', () => {
       TERMSPACE_AUTH_SESSION_TTL_MS: 28_800_000,
       TERMSPACE_DATABASE_PATH: './data/termspace.db',
       TERMSPACE_HOST: '127.0.0.1',
+      TERMSPACE_IDLE_SESSION_GRACE_MS: 86_400_000,
       TERMSPACE_PORT: 3001,
       TERMSPACE_PROJECT_ROOT: '/srv/projects',
       TERMSPACE_SESSION_MEMORY_MAX_BYTES: 4_294_967_296,
@@ -30,6 +31,16 @@ describe('readEnvironment', () => {
 
   it('rejects an invalid port', () => {
     assert.throws(() => readEnvironment({ TERMSPACE_PORT: '70000' }))
+  })
+
+  it('bounds the idle-session grace period', () => {
+    assert.equal(
+      readEnvironment({ TERMSPACE_IDLE_SESSION_GRACE_MS: '3600000' })
+        .TERMSPACE_IDLE_SESSION_GRACE_MS,
+      3_600_000,
+    )
+    assert.throws(() => readEnvironment({ TERMSPACE_IDLE_SESSION_GRACE_MS: '59999' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_IDLE_SESSION_GRACE_MS: '2592000001' }))
   })
 
   it('requires the project root to be an absolute path', () => {

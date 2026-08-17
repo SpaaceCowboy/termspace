@@ -977,3 +977,12 @@ allowed project but not a sibling directory it otherwise owns, its private tmp
 file was absent on the host, its per-session MemoryMax was effective, gateway
 restart preserved it, and deletion collected tmux plus scope. systemd's native
 unit verifier, all package tests/typechecks, and production builds pass.
+
+### 2026-08-17T16:42:15+03:30 · SOLO · 5 · DONE
+Idle sessions are now automatically deleted after a bounded, configurable grace
+period (24 hours by default). Eligibility is deliberately limited to persisted
+`idle` rows, each candidate is re-read before deletion, and cleanup reuses the
+normal non-force SessionManager path so active/needs-you/dead sessions and dirty
+worktrees are preserved. Unit coverage includes cutoff behavior, state races,
+per-session failure isolation, scheduling, and disposal. The real-tmux check
+passes 4/4, and all workspace tests and typechecks pass on Node 24/pnpm 10.

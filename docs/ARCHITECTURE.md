@@ -93,6 +93,13 @@ Two corrections to the table above, both found while implementing it:
   literal last line is usually the final option and carries no signal. The last
   six non-empty lines are matched.
 
+The gateway also owns an idle-session reaper. It runs once at startup and then
+once per minute, selecting only rows that have continuously remained `idle`
+for `TERMSPACE_IDLE_SESSION_GRACE_MS` (24 hours by default, bounded from one
+minute to 30 days). It re-reads each candidate before cleanup and delegates to
+`SessionManager.delete`, so tmux/scope cleanup and the existing dirty-worktree
+refusal cannot diverge. `working`, `needs-you`, and `dead` rows are not reaped.
+
 `dead` is not derived: it is set when the viewer reports an exit, and outranks
 whatever the last line said.
 

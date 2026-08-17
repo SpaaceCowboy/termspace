@@ -20,6 +20,12 @@ const EnvironmentSchema = z
       .default(8 * 60 * 60 * 1_000),
     TERMSPACE_DATABASE_PATH: z.string().min(1).default('./data/termspace.db'),
     TERMSPACE_HOST: z.string().min(1).default('127.0.0.1'),
+    TERMSPACE_IDLE_SESSION_GRACE_MS: z.coerce
+      .number()
+      .int()
+      .min(60_000)
+      .max(30 * 24 * 60 * 60 * 1_000)
+      .default(24 * 60 * 60 * 1_000),
     TERMSPACE_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
     TERMSPACE_TMUX_SOCKET_NAME: z
       .string()

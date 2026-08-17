@@ -2,8 +2,8 @@
 
 **Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
 
-**Working on:** the third Phase 5 server box: an idle-session reaper with a configurable grace
-period that never mistakes active output or a transient tmux failure for safe deletion.
+**Working on:** completing the third Phase 5 server box: the idle-session reaper is implemented,
+verified, documented, and ready to commit before moving to SQLite backup/restore.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -19,10 +19,12 @@ The systemd ownership box is complete: foreground named tmux service, separate d
 per-session transient scopes with MemoryMax, verified 9/9 against real systemd/tmux/gateway.
 The shell-owning tmux namespace, gateway, and web units now apply the planned filesystem/private
 tmp directives; the expanded real hardening/restart integration passes 12/12.
+The idle reaper selects only continuously idle rows older than its bounded grace, rechecks every
+candidate, and uses non-force SessionManager cleanup; unit/workspace checks and 4/4 real tmux
+checks pass.
 
-**Next concrete step:** define reaper eligibility from persisted `state` and `lastActivityAt`, add
-a bounded interval and configurable grace period, and make the deletion path reuse SessionManager
-so tmux, worktree dirty protection, transient scopes, and rows stay consistent.
+**Next concrete step:** commit the complete idle-reaper slice, rewrite this state for the SQLite
+backup timer item, then inspect the database open/WAL lifecycle and systemd deployment layout.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -38,5 +40,5 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** complete Phase 5 hardening/socket-path slice, tests, docs, and expanded e2e; ready
-for one commit.
+**Uncommitted:** complete Phase 5 idle-reaper implementation, tests, real-tmux check, env setting,
+and documentation; ready for one commit.

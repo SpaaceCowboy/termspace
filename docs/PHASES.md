@@ -149,7 +149,7 @@ side by side, no file collisions.
       makes this unit the only boundary left rather than a second one — and
       `NoNewPrivileges` is now off the list, since it breaks `sudo` inside a
       session. Re-read decision #6 before writing it.
-- [ ] Idle session reaper with a configurable grace period
+- [x] Idle session reaper with a configurable grace period
 - [ ] SQLite backup on a timer, restore documented
 - [ ] Structured request log, no secrets, log rotation
 
