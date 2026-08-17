@@ -5,6 +5,7 @@ import type {
   CreateProjectInput,
   CreateSessionInput,
   DiffResult,
+  Favorites,
   Layout,
   LayoutInput,
   Project,
@@ -19,6 +20,7 @@ import {
   EMPTY_LAYOUT,
   LAYOUT_MAX_SLOTS,
   layoutFixture,
+  operationalStatusFixture,
   projectFixture,
   projectFixtures,
   sessionFixture,
@@ -215,6 +217,7 @@ describe('Phase 1 HTTP routes', () => {
   let sessions: FakeSessions
   let user: User | null
   let issuedTicket: WsTicket
+  let savedFavorites: Favorites
   let pushSubscriptions: { userId: string; endpoint: string }[]
 
   beforeEach(() => {
@@ -228,12 +231,27 @@ describe('Phase 1 HTTP routes', () => {
     sessions = new FakeSessions()
     user = userFixture
     issuedTicket = { ticket: 'b'.repeat(43), expiresAt: 10_000 }
+    savedFavorites = { projectIds: [], sessionIds: [] }
     const services: Phase1RouteServices = {
       auth,
       authSessionTtlMs: 60_000,
       authSessions,
+      favorites: {
+        find: (_userId, knownProjects, knownSessions) => ({
+          projectIds: savedFavorites.projectIds.filter((id) => knownProjects.has(id)),
+          sessionIds: savedFavorites.sessionIds.filter((id) => knownSessions.has(id)),
+        }),
+        save: (_userId, favorites, knownProjects, knownSessions) => {
+          savedFavorites = {
+            projectIds: favorites.projectIds.filter((id) => knownProjects.has(id)),
+            sessionIds: favorites.sessionIds.filter((id) => knownSessions.has(id)),
+          }
+          return savedFavorites
+        },
+      },
       layouts,
       loginRateLimiter: limiter,
+      operations: { snapshot: async () => operationalStatusFixture },
       projects,
       push: {
         publicKey: 'BFakeVapidPublicKey',
@@ -338,6 +356,50 @@ describe('Phase 1 HTTP routes', () => {
     assert.deepEqual(authSessions.revoked, [AUTH_TOKEN])
     const clearedCookie = requireHeader(logout.headers['set-cookie'])
     assert.match(clearedCookie, /Max-Age=0/)
+  })
+
+  it('requires authentication for operational status and returns its bounded snapshot', async () => {
+    const unauthorized = await app.inject({ method: 'GET', url: '/api/operations' })
+    assert.equal(unauthorized.statusCode, 401)
+
+    const response = await app.inject({
+      method: 'GET',
+      url: '/api/operations',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(response.json(), { ok: true, data: operationalStatusFixture })
+  })
+
+  it('reads and saves bounded favorites while filtering unknown entities', async () => {
+    const saved = await app.inject({
+      method: 'PUT',
+      url: '/api/favorites',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        projectIds: [projectFixture.id, 'unknown-project'],
+        sessionIds: [sessionFixture.id, 'unknown-session'],
+      },
+    })
+    assert.deepEqual(saved.json(), {
+      ok: true,
+      data: { projectIds: [projectFixture.id], sessionIds: [sessionFixture.id] },
+    })
+
+    const read = await app.inject({
+      method: 'GET',
+      url: '/api/favorites',
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.deepEqual(read.json(), saved.json())
+
+    const duplicate = await app.inject({
+      method: 'PUT',
+      url: '/api/favorites',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { projectIds: [projectFixture.id, projectFixture.id], sessionIds: [] },
+    })
+    assert.equal(duplicate.statusCode, 400)
+    assert.equal(duplicate.json().error.field, 'projectIds')
   })
 
   it('rejects protected routes without a valid auth session', async () => {

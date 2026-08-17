@@ -13,6 +13,8 @@ import { UserRepository } from './auth/user-repository.js'
 import type { Environment } from './config/env.js'
 import { registerPhase1Routes } from './http/routes.js'
 import { LayoutRepository } from './layouts/layout-repository.js'
+import { OperationalStatusService } from './operations/operational-status.js'
+import { FavoritesRepository } from './preferences/favorites-repository.js'
 import { ProjectManager } from './projects/project-manager.js'
 import { ProjectRepository } from './projects/project-repository.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
@@ -90,17 +92,26 @@ export function createServerRuntime(
     worktrees: new WorktreeManager(processes, environment.TERMSPACE_PROJECT_ROOT),
   })
   const layouts = new LayoutRepository(database)
+  const favorites = new FavoritesRepository(database)
   const projects = new ProjectManager(
     new ProjectRepository(database),
     processes,
     environment.TERMSPACE_PROJECT_ROOT,
   )
+  const operations = new OperationalStatusService({
+    environment,
+    journal: processes,
+    sessions,
+    tmux,
+  })
   registerPhase1Routes(app, {
     auth,
     authSessionTtlMs: environment.TERMSPACE_AUTH_SESSION_TTL_MS,
     authSessions,
+    favorites,
     layouts,
     loginRateLimiter,
+    operations,
     projects,
     push: {
       publicKey: vapid?.publicKey ?? null,
@@ -168,7 +179,7 @@ export function createServerRuntime(
           onError: onGatewayError,
           log: (event) => {
             // Outcome and latency, never the payload.
-            app.log.info(event, 'Push delivery')
+            app.log.info({ event: 'push_delivery', ...event }, 'Push delivery')
           },
         })
 

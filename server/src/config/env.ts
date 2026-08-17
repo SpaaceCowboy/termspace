@@ -19,6 +19,13 @@ const EnvironmentSchema = z
       .max(86_400_000)
       .default(8 * 60 * 60 * 1_000),
     TERMSPACE_DATABASE_PATH: z.string().min(1).default('./data/termspace.db'),
+    TERMSPACE_BACKUP_DIRECTORY: z.string().min(1).default('/var/backups/termspace'),
+    TERMSPACE_BACKUP_RETENTION_COUNT: z.coerce
+      .number()
+      .int()
+      .min(1)
+      .max(365)
+      .default(14),
     TERMSPACE_HOST: z.string().min(1).default('127.0.0.1'),
     TERMSPACE_LOG_LEVEL: z
       .enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace'])

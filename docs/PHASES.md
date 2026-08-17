@@ -171,11 +171,11 @@ The first post-v1 phase makes the running system legible and reduces friction
 in the workspace without changing its terminal model.
 
 **Server**
-- [~] Authenticated `GET /api/operations` with gateway, tmux, storage, backup,
+- [x] Authenticated `GET /api/operations` with gateway, tmux, storage, backup,
       configured-limit, and allowlisted recent-event data
-- [ ] Authenticated, user-scoped `GET /api/favorites` / `PUT /api/favorites`;
+- [x] Authenticated, user-scoped `GET /api/favorites` / `PUT /api/favorites`;
       deleted project and session ids are removed on reads
-- [ ] Operational collection degrades safely when tmux, storage, backups, or
+- [x] Operational collection degrades safely when tmux, storage, backups, or
       journald are unavailable; raw log messages and secrets never cross HTTP
 
 **Web**

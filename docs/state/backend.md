@@ -1,9 +1,9 @@
 # Current state — Termspace (solo)
 
-**Phase:** Phase 6 — operations and interface refinement; contract in progress.
+**Phase:** Phase 6 — operations and interface refinement; server complete, web next.
 
-**Working on:** the first Phase 6 implementation slice: authenticated operational telemetry and
-user-scoped favorites, after defining their shared contracts and safety behavior.
+**Working on:** the Phase 6 web slice: operations panel, attention-first ordering, and persistent
+project/session pin controls backed by the completed server APIs.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -33,9 +33,13 @@ replaces frozen sockets with generation-safe fresh-ticket reconnects. All reposi
 Phase 6 now has a written checklist and exit criterion. Shared contracts define ordered favorites
 and an operational snapshot with nullable telemetry plus sanitized, allowlisted recent events;
 fixtures cover all new union members.
+Migration 4 and authenticated GET/PUT routes persist user favorites and remove unknown ids.
+Operational collection caches for five seconds, reports live tmux/storage/backup/policy metrics,
+and isolates every unavailable source. Three allowlisted structured journal event types are
+converted to safe summaries; all 43 server test files and typechecking pass.
 
-**Next concrete step:** run contract tests/typecheck, commit the contract checkpoint, then add the
-preferences migration/repository and authenticated favorites routes before operational collectors.
+**Next concrete step:** extend the web data source and zod parsers for favorites/operations, then
+add attention/favorite ordering and pin controls before building the operations panel.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -53,5 +57,5 @@ high exposure score is expected and must not be described as strong containment.
 Operational events must always be rebuilt from allowlisted structured fields; never return a raw
 journal `MESSAGE`, error stack, command argv, request body, query string, ticket, or session bytes.
 
-**Uncommitted:** Phase 6 contracts, fixtures, checklist, contracts prose, progress entry, and this
-resume update are ready for contract validation and a checkpoint commit.
+**Uncommitted:** completed Phase 6 server implementation, tests, checklist updates, progress entry,
+and this resume update are ready for the server checkpoint commit.

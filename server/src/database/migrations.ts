@@ -99,6 +99,18 @@ const migrations: readonly Migration[] = [
       CREATE INDEX push_subscriptions_user_id_idx ON push_subscriptions(user_id);
     `,
   },
+  {
+    version: 4,
+    name: 'user_favorites',
+    sql: `
+      CREATE TABLE user_favorites (
+        user_id TEXT PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+        project_ids TEXT NOT NULL CHECK (json_valid(project_ids)),
+        session_ids TEXT NOT NULL CHECK (json_valid(session_ids)),
+        updated_at INTEGER NOT NULL
+      ) STRICT;
+    `,
+  },
 ]
 
 export interface MigrationResult {

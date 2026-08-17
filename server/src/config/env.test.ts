@@ -9,6 +9,8 @@ describe('readEnvironment', () => {
       NODE_ENV: 'development',
       TERMSPACE_ALLOWED_ORIGIN: 'http://localhost:3002',
       TERMSPACE_AUTH_SESSION_TTL_MS: 28_800_000,
+      TERMSPACE_BACKUP_DIRECTORY: '/var/backups/termspace',
+      TERMSPACE_BACKUP_RETENTION_COUNT: 14,
       TERMSPACE_DATABASE_PATH: './data/termspace.db',
       TERMSPACE_HOST: '127.0.0.1',
       TERMSPACE_IDLE_SESSION_GRACE_MS: 86_400_000,
@@ -32,6 +34,16 @@ describe('readEnvironment', () => {
 
   it('rejects an invalid port', () => {
     assert.throws(() => readEnvironment({ TERMSPACE_PORT: '70000' }))
+  })
+
+  it('bounds backup retention', () => {
+    assert.equal(
+      readEnvironment({ TERMSPACE_BACKUP_RETENTION_COUNT: '30' })
+        .TERMSPACE_BACKUP_RETENTION_COUNT,
+      30,
+    )
+    assert.throws(() => readEnvironment({ TERMSPACE_BACKUP_RETENTION_COUNT: '0' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_BACKUP_RETENTION_COUNT: '366' }))
   })
 
   it('bounds the idle-session grace period', () => {

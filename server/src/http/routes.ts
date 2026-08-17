@@ -6,9 +6,11 @@ import type {
   CreateSessionInput,
   DiffResult,
   ErrorCode,
+  Favorites,
   Layout,
   LayoutInput,
   LoginInput,
+  OperationalStatus,
   Project,
   PushStatus,
   PushSubscriptionInput,
@@ -168,6 +170,18 @@ const LayoutInputSchema = z
   })
   .strict()
 
+const FavoriteIdsSchema = z
+  .array(z.string().min(1).max(128))
+  .max(500)
+  .refine((ids) => new Set(ids).size === ids.length, 'Ids must be unique')
+
+const FavoritesInputSchema = z
+  .object({
+    projectIds: FavoriteIdsSchema,
+    sessionIds: FavoriteIdsSchema,
+  })
+  .strict()
+
 const ProjectParamsSchema = z.object({ id: z.string().min(1).max(128) })
 
 const SessionParamsSchema = z.object({ id: SessionIdSchema })
@@ -224,6 +238,25 @@ interface LayoutOperations {
   save(userId: string, input: LayoutInput, updatedAt: number): Layout
 }
 
+interface FavoritesOperations {
+  find(
+    userId: string,
+    knownProjectIds: ReadonlySet<string>,
+    knownSessionIds: ReadonlySet<string>,
+  ): Favorites
+  save(
+    userId: string,
+    favorites: Favorites,
+    knownProjectIds: ReadonlySet<string>,
+    knownSessionIds: ReadonlySet<string>,
+    updatedAt: number,
+  ): Favorites
+}
+
+interface OperationsReader {
+  snapshot(): Promise<OperationalStatus>
+}
+
 interface Tickets {
   issue(userId: string): WsTicket
 }
@@ -232,8 +265,10 @@ export interface Phase1RouteServices {
   readonly auth: Authenticator
   readonly authSessionTtlMs: number
   readonly authSessions: AuthSessions
+  readonly favorites: FavoritesOperations
   readonly layouts: LayoutOperations
   readonly loginRateLimiter: RateLimiter
+  readonly operations: OperationsReader
   readonly projects: ProjectOperations
   readonly push: PushOperations
   readonly sessions: SessionOperations
@@ -337,6 +372,13 @@ export function registerPhase1Routes(
       defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
       pushPublicKey: services.push.publicKey,
     })
+  })
+
+  app.get('/api/operations', async (request, reply) => {
+    if (resolveAuthenticatedUser(request, services) === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    return ok<OperationalStatus>(await services.operations.snapshot())
   })
 
   app.get('/api/push', async (request, reply) => {
@@ -584,6 +626,43 @@ export function registerPhase1Routes(
     return ok<Layout>(services.layouts.find(user.id, liveSessionIds(services)))
   })
 
+  app.get('/api/favorites', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    return ok<Favorites>(
+      services.favorites.find(user.id, liveProjectIds(services), liveSessionIds(services)),
+    )
+  })
+
+  app.put('/api/favorites', async (request, reply) => {
+    const user = resolveAuthenticatedUser(request, services)
+    if (user === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    const parsed = FavoritesInputSchema.safeParse(request.body)
+    if (!parsed.success) {
+      const issue = parsed.error.issues[0]
+      return sendError(
+        reply,
+        400,
+        'validation_failed',
+        'Invalid favorites.',
+        issue?.path[0] === undefined ? undefined : String(issue.path[0]),
+      )
+    }
+    return ok<Favorites>(
+      services.favorites.save(
+        user.id,
+        parsed.data,
+        liveProjectIds(services),
+        liveSessionIds(services),
+        Date.now(),
+      ),
+    )
+  })
+
   app.put('/api/layouts', async (request, reply) => {
     const user = resolveAuthenticatedUser(request, services)
     if (user === null) {
@@ -783,6 +862,10 @@ function resolveAuthenticatedUser(
 
 function liveSessionIds(services: Phase1RouteServices): ReadonlySet<string> {
   return new Set(services.sessions.list().map((session) => session.id))
+}
+
+function liveProjectIds(services: Phase1RouteServices): ReadonlySet<string> {
+  return new Set(services.projects.list().map((project) => project.id))
 }
 
 function ok<T>(data: T): ApiOk<T> {

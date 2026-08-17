@@ -1053,3 +1053,17 @@ configured policies, and sanitized allowlisted event summaries; unavailable
 metrics remain explicitly nullable and raw journal messages never cross HTTP.
 `Favorites` stores ordered project and session ids per user and filters deleted
 entities on reads. Valid fixtures cover every new union and response shape.
+
+### 2026-08-17T18:04:30+03:30 · SOLO · 6 · DONE
+Phase 6 server work is complete. Migration 4 persists ordered favorites per
+user, with foreign-key cleanup, bounded input, deduplication, and stale entity
+filtering. Authenticated favorites routes expose only currently known project
+and session ids.
+
+The cached operations snapshot reports gateway uptime/version, real tmux and
+persisted session counts, database size, project filesystem capacity, backup
+count/age/size, and active memory/idle/retention policies. Each external metric
+fails independently. Recent journal events are bounded and reconstructed only
+from three structured allowlisted schemas; tests prove query values, paths,
+remote addresses, payloads, and unknown terminal data cannot leak. All 43 server
+test files and server typechecking pass on Node 24/pnpm 10.
