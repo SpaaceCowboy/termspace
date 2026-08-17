@@ -9,6 +9,10 @@
   overflow: auto;
 }
 
+.wide {
+  width: min(1120px, calc(100vw - 32px));
+}
+
 /*
  * A heavy backdrop rather than a light one: the dialog is a modal interruption
  * and the workspace behind it is busy, colourful terminal output.

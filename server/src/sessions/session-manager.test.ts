@@ -1,8 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { sessionFixture } from '@termspace/contracts'
-import type { AgentCommand, Session } from '@termspace/contracts'
+import { diffResultFixture, sessionFixture } from '@termspace/contracts'
+import type { AgentCommand, DiffResult, Session } from '@termspace/contracts'
 
 import type { SessionProject } from './session-repository.js'
 import { SessionManager, SessionProjectNotFoundError } from './session-manager.js'
@@ -99,15 +99,26 @@ class FakeWorktrees {
   }
 }
 
+class FakeDiffs {
+  readonly reads: { session: Session; baseBranch: string }[] = []
+
+  async read(session: Session, baseBranch: string): Promise<DiffResult> {
+    this.reads.push({ session, baseBranch })
+    return { ...diffResultFixture, sessionId: session.id, baseBranch }
+  }
+}
+
 function createManager(
   repository: FakeRepository,
   tmux: FakeTmux,
   worktrees?: FakeWorktrees,
+  diffs?: FakeDiffs,
 ): SessionManager {
   return new SessionManager(repository, tmux, {
     createId: () => SID,
     isDirectory: async () => true,
     now: () => 100,
+    ...(diffs === undefined ? {} : { diffs }),
     ...(worktrees === undefined ? {} : { worktrees }),
   })
 }
@@ -254,6 +265,20 @@ describe('SessionManager', () => {
     assert.equal(await manager.delete(SID), true)
     assert.deepEqual(tmux.killed, [SID])
     assert.deepEqual(repository.sessions, [])
+  })
+
+  it('reads a session diff against its project default branch', async () => {
+    const repository = new FakeRepository()
+    repository.sessions.push({ ...sessionFixture, id: SID, projectId: 'project-1' })
+    const diffs = new FakeDiffs()
+    const manager = createManager(repository, new FakeTmux(), undefined, diffs)
+
+    const result = await manager.diff(SID)
+
+    assert.equal(result?.sessionId, SID)
+    assert.equal(result?.baseBranch, 'main')
+    assert.deepEqual(diffs.reads, [{ session: repository.sessions[0], baseBranch: 'main' }])
+    assert.equal(await manager.diff('ses_missing00001'), null)
   })
 
   it('creates a worktree before tmux and persists its branch and generated cwd', async () => {

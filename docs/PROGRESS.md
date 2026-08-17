@@ -853,3 +853,31 @@ Validated with all package typechecks and unit suites, a successful Next
 production build, and `server/e2e-worktree.mjs` against a temporary real Git
 repository and tmux: branch/cwd creation, live tmux, dirty refusal preserving
 both, forced removal, and branch preservation all passed (5/5).
+
+### 2026-08-17T13:02:52+03:30 · SOLO · 4 · DONE
+Phase 4 is built. The authenticated `GET /api/sessions/:id/diff` resolves the
+session and its project's default branch, then runs bounded Git name-status,
+numstat, status, and unified-patch subprocesses. It returns tracked changes,
+rename origins, binary markers, untracked paths, and a visible `truncated`
+signal. Invalid or missing base branches map to `diff_unavailable`; missing
+sessions remain `session_not_found`.
+
+The subprocess runner drains Git to completion while retaining only bounded
+stdout and diagnostic stderr, avoiding both memory growth and abandoned Git
+processes. Parsers use NUL-delimited records, so whitespace in paths is not
+treated as syntax. Direct tests cover output bounds, command failure, incomplete
+records, rename stats, binary files, and the file-count safety limit.
+
+The workspace now opens a focused session's changed-file list and highlighted
+unified patch. When two sessions are visible, their reviews appear at the same
+time in two columns, satisfying the phase's side-by-side workflow rather than
+forcing the owner to alternate between modal views. Untracked and binary-only
+changes remain visible even without patch text, and partial results carry an
+explicit warning.
+
+All package unit suites, typechecks, and production builds pass. A headless
+Chrome interaction clicked the real workspace control and visually verified the
+two-session review layout. `server/e2e-diff.mjs` passed 7/7 against a temporary
+real Git repository, and `server/e2e-worktree.mjs` passed 5/5 against real Git
+and tmux. The Built gate is checked; the owner's two-agent worktree exit test is
+the only remaining Phase 4 gate.

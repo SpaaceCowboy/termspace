@@ -4,6 +4,7 @@ import type {
   AppConfig,
   CreateProjectInput,
   CreateSessionInput,
+  DiffResult,
   ErrorCode,
   Layout,
   LayoutInput,
@@ -52,6 +53,7 @@ import {
   WorktreeDirtyError,
   WorktreeInvalidRepositoryError,
 } from '../git/worktree-manager.js'
+import { DiffUnavailableError } from '../git/diff-reader.js'
 
 const LoginInputSchema = z
   .object({
@@ -195,6 +197,7 @@ interface RateLimiter {
 interface SessionOperations {
   create(input: CreateSessionInput): Promise<Session>
   delete(sessionId: string, options?: { readonly force?: boolean }): Promise<boolean>
+  diff(sessionId: string): Promise<DiffResult | null>
   list(): readonly Session[]
 }
 
@@ -695,6 +698,34 @@ export function registerPhase1Routes(
         return sendError(reply, 500, 'internal_error', 'Could not create the worktree.')
       }
       request.log.error({ err: error }, 'Session creation failed')
+      return sendError(reply, 500, 'internal_error', 'Internal server error.')
+    }
+  })
+
+  app.get('/api/sessions/:id/diff', async (request, reply) => {
+    if (resolveAuthenticatedUser(request, services) === null) {
+      return sendError(reply, 401, 'unauthorized', 'Authentication required.')
+    }
+    const parsed = SessionParamsSchema.safeParse(request.params)
+    if (!parsed.success) {
+      return sendError(reply, 400, 'validation_failed', 'Invalid session id.', 'id')
+    }
+    try {
+      const diff = await services.sessions.diff(parsed.data.id)
+      if (diff === null) {
+        return sendError(reply, 404, 'session_not_found', 'Session was not found.')
+      }
+      return ok<DiffResult>(diff)
+    } catch (error) {
+      if (error instanceof DiffUnavailableError) {
+        return sendError(
+          reply,
+          409,
+          'diff_unavailable',
+          'The session diff is not available for its configured base branch.',
+        )
+      }
+      request.log.error({ err: error }, 'Session diff failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
   })

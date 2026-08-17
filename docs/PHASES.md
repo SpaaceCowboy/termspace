@@ -119,12 +119,12 @@ permission question, and tapping the notification opens that pane focused.
 
 **Server**
 - [x] `POST /api/sessions` with `worktree: true` creates `git worktree add`
-- [ ] `GET /api/sessions/:id/diff` — `git diff` against the base branch
+- [x] `GET /api/sessions/:id/diff` — `git diff` against the base branch
 - [x] `DELETE` removes the worktree, refusing if dirty unless `force`
 - [x] Detect two sessions on the same non-worktree cwd and flag it
 
 **Web**
-- [ ] Diff panel per session, file list + unified diff, syntax highlight
+- [x] Diff panel per session, file list + unified diff, syntax highlight
 - [x] Worktree toggle in the new-session dialog, branch name field
 - [x] Warning banner when two sessions share a working directory
 
@@ -182,5 +182,5 @@ criteria happen with your own eyes.
 | 1 | [x] | [x] | Re-validated from scratch: SIGKILL the gateway, restart, reattach, scrollback and backgrounded process both survive. |
 | 2 | [x] | [x] | Confirmed in a browser by the owner. |
 | 3 | [x] | [x] | Owner confirmed: locked phone notified within 5 s and tapping opened the correct pane focused. |
-| 4 | [ ] | [ ] | |
+| 4 | [x] | [ ] | Built with real Git/tmux checks and a browser-verified side-by-side diff UI; awaiting owner exit test. |
 | 5 | [ ] | [ ] | |

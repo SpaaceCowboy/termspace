@@ -43,6 +43,23 @@
   gap: var(--ts-space-4);
 }
 
+.diffButton {
+  padding: var(--ts-space-1) var(--ts-space-3);
+  border: 1px solid var(--ts-border-strong);
+  border-radius: var(--ts-radius-sm);
+  background: var(--ts-bg-raised);
+  color: var(--ts-text-dim);
+  font-size: var(--ts-text-sm);
+  white-space: nowrap;
+  transition: background var(--ts-ease), color var(--ts-ease), border-color var(--ts-ease);
+}
+
+.diffButton:hover {
+  border-color: var(--ts-accent);
+  background: var(--ts-bg-hover);
+  color: var(--ts-text);
+}
+
 /*
  * Connection state is ambient: it should be findable when something is wrong
  * and ignorable when it is not. Sans rather than mono, and dim until it has
@@ -116,6 +133,16 @@
 
   .main {
     padding: var(--ts-space-3);
+  }
+
+  .topbar {
+    align-items: flex-start;
+  }
+
+  .topbarRight {
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: var(--ts-space-2);
   }
 }
 

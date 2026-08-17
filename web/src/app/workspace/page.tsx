@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionBadge } from '@/components/ConnectionBadge'
+import { DiffDialog } from '@/components/DiffDialog'
 import { PushToggle } from '@/components/PushToggle'
 import { LayoutToolbar } from '@/components/LayoutToolbar'
 import { NewProjectDialog } from '@/components/NewProjectDialog'
@@ -65,6 +66,7 @@ export default function WorkspacePage() {
   const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
+  const [diffDialogOpen, setDiffDialogOpen] = useState(false)
 
   const live = dataSource.kind === 'http'
   const authenticated = auth === 'authenticated'
@@ -365,6 +367,14 @@ export default function WorkspacePage() {
   const onScreenIds = useMemo(() => new Set(liveSessionIds(layout)), [layout])
   const focusedSession =
     sessions.find((session) => session.id === focusedSessionId) ?? null
+  const reviewSessions = useMemo(() => {
+    if (focusedSession === null) return []
+    const others = liveSessionIds(layout)
+      .filter((sessionId) => sessionId !== focusedSession.id)
+      .map((sessionId) => sessions.find((session) => session.id === sessionId))
+      .filter((session): session is Session => session !== undefined)
+    return [focusedSession, ...others].slice(0, 2)
+  }, [focusedSession, layout, sessions])
 
   const banner =
     socket.state === 'dead'
@@ -417,6 +427,15 @@ export default function WorkspacePage() {
             <span className={styles.crumbCurrent}>{focusedSession?.name ?? 'no session'}</span>
           </p>
           <div className={styles.topbarRight}>
+            {focusedSession === null ? null : (
+              <button
+                type="button"
+                className={styles.diffButton}
+                onClick={() => { setDiffDialogOpen(true) }}
+              >
+                Review changes
+              </button>
+            )}
             <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
             <PushToggle push={push} available={pushPublicKey !== null} />
             <ConnectionBadge state={socket.state} />
@@ -477,6 +496,11 @@ export default function WorkspacePage() {
           setSessionDialogOpen(false)
         }}
         onCreated={onSessionCreated}
+      />
+      <DiffDialog
+        open={diffDialogOpen && reviewSessions.length > 0}
+        sessions={reviewSessions}
+        onClose={() => { setDiffDialogOpen(false) }}
       />
       <ProjectSettingsDialog
         open={settingsFor !== null}

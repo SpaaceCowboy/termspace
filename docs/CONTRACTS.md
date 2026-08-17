@@ -172,7 +172,7 @@ drift visible before it reaches a browser.
 
 ---
 
-## Design notes
+## Settled
 
 ### 2026-08-17 · SOLO · Phase 4 worktrees and diffs
 
@@ -188,10 +188,6 @@ drift visible before it reaches a browser.
   Untracked files appear in the file list even though the patch does not copy
   their contents. `truncated` makes safety limits visible rather than silently
   presenting a partial review as complete.
-
-## Settled
-
-_(agreed and implemented proposals move here)_
 
 ### 2026-08-10 · FRONTEND · The shapes this file names but never defines
 

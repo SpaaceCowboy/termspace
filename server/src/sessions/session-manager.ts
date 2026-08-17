@@ -5,6 +5,7 @@ import type {
   AgentCommandOverrides,
   CreateSessionInput,
   DeleteSessionOptions,
+  DiffResult,
   Session,
 } from '@termspace/contracts'
 
@@ -47,8 +48,13 @@ interface WorktreePort {
   rollback(projectPath: string, cwd: string, branch: string): Promise<void>
 }
 
+interface SessionDiffPort {
+  read(session: Session, baseBranch: string): Promise<DiffResult>
+}
+
 interface SessionManagerOptions {
   readonly createId?: () => string
+  readonly diffs?: SessionDiffPort
   readonly isDirectory?: (path: string) => Promise<boolean>
   readonly now?: () => number
   readonly realPath?: RealPath
@@ -61,6 +67,7 @@ export class SessionCwdOutsideProjectError extends Error {}
 
 export class SessionManager {
   readonly #createId: () => string
+  readonly #diffs: SessionDiffPort | undefined
   readonly #isDirectory: (path: string) => Promise<boolean>
   readonly #now: () => number
   readonly #realPath: RealPath | undefined
@@ -76,6 +83,7 @@ export class SessionManager {
     this.#repository = repository
     this.#tmux = tmux
     this.#createId = options.createId ?? createSessionId
+    this.#diffs = options.diffs
     this.#isDirectory = options.isDirectory ?? isDirectory
     this.#now = options.now ?? Date.now
     this.#realPath = options.realPath
@@ -166,6 +174,18 @@ export class SessionManager {
 
   find(sessionId: string): Session | null {
     return this.list().find(({ id }) => id === sessionId) ?? null
+  }
+
+  async diff(sessionId: string): Promise<DiffResult | null> {
+    const session = this.#repository.find(sessionId)
+    if (session === null) {
+      return null
+    }
+    const project = this.#repository.findProject(session.projectId)
+    if (project === null || this.#diffs === undefined) {
+      throw new Error('Session diff support is not configured')
+    }
+    return this.#diffs.read(session, project.defaultBranch)
   }
 
   async delete(

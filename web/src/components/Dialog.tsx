@@ -9,6 +9,7 @@ export interface DialogProps {
   title: string
   onClose: () => void
   children: ReactNode
+  size?: 'default' | 'wide'
 }
 
 /**
@@ -16,7 +17,7 @@ export interface DialogProps {
  * focus on close, `Escape`, and inertness of the page behind it are the
  * browser's job rather than ours. Nothing here is a component library.
  */
-export function Dialog({ open, title, onClose, children }: DialogProps) {
+export function Dialog({ open, title, onClose, children, size = 'default' }: DialogProps) {
   const ref = useRef<HTMLDialogElement | null>(null)
 
   useEffect(() => {
@@ -50,7 +51,7 @@ export function Dialog({ open, title, onClose, children }: DialogProps) {
 
   return (
     <dialog
-      className={styles.dialog}
+      className={`${styles.dialog} ${size === 'wide' ? styles.wide : ''}`}
       ref={ref}
       aria-label={title}
       onClick={(event) => {

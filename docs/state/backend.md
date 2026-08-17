@@ -1,23 +1,25 @@
 # Current state — Termspace (solo)
 
-**Phase:** 4 — Parallelism. Phases 0–3 are built and human-verified; five of seven Phase 4
-checklist items are complete.
+**Phase:** 4 — Parallelism is built; Phases 0–3 are built and human-verified. Phase 4 is gated on
+the owner's real two-agent worktree exit test, so Phase 5 must not start yet.
 
-**Working on:** `GET /api/sessions/:id/diff` and the session diff-review panel.
+**Working on:** Phase 4 gate only. No implementation box remains open.
 
-**Done so far:** worktree create, rollback, dirty/forced delete, the new-session worktree and
-branch controls, derived same-cwd conflict flags, and the sidebar warning are implemented.
-Worktree storage is reserved and contained. Full typecheck/unit suites, a Next production build,
-and 5/5 checks against real Git and tmux pass.
+**Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
+worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
+simultaneous side-by-side reviews for two visible sessions. All unit suites, typechecks,
+production builds, 7/7 real Git diff checks, 5/5 real Git/tmux worktree checks, and a headless
+Chrome visual interaction pass.
 
-**Next concrete step:** implement a bounded Git diff reader that compares a session cwd with its
-project default branch, parses name-status/numstat plus untracked files, and returns the shared
-`DiffResult`; then expose the authenticated route and build the file-list/unified-patch panel.
+**Next concrete step:** ask the owner to run two agent sessions from the same project in separate
+worktrees, make a distinct change in each, open the 2-pane layout and Review changes, and confirm
+both reviews are visible side by side with no file collision. On confirmation, check Phase 4
+Verified, append a GATE entry, and begin the first unchecked Phase 5 server item.
 
-**Landmines:** system Node is 20 and global pnpm is 11, so use the explicit compatible toolchain.
-Diff generation must include staged and unstaged tracked changes plus list untracked files,
-preserve rename paths, bound subprocess output without presenting partial data as complete, and
-never allow a path argument to become a Git revision or option. Worktree branches are preserved
-on normal/forced session deletion by design.
+**Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
+toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
+and files at 2,000; `truncated` must remain visible. Untracked contents are listed but never copied
+into the patch. Worktree branches and commits are preserved on normal and forced session deletion.
 
-**Uncommitted:** none after the worktree/collision slice is committed.
+**Uncommitted:** the complete diff endpoint/panel slice plus this DONE/gate documentation; ready
+for one Phase 4 commit.

@@ -4,6 +4,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test'
 import type {
   CreateProjectInput,
   CreateSessionInput,
+  DiffResult,
   Layout,
   LayoutInput,
   Project,
@@ -14,6 +15,7 @@ import type {
 } from '@termspace/contracts'
 import {
   DEFAULT_AGENT_COMMANDS,
+  diffResultFixture,
   EMPTY_LAYOUT,
   LAYOUT_MAX_SLOTS,
   layoutFixture,
@@ -34,6 +36,7 @@ import {
 } from '../projects/project-manager.js'
 import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
 import { WorktreeDirtyError } from '../git/worktree-manager.js'
+import { DiffUnavailableError } from '../git/diff-reader.js'
 import { registerPhase1Routes, type Phase1RouteServices } from './routes.js'
 
 const AUTH_TOKEN = 'a'.repeat(43)
@@ -100,6 +103,8 @@ class FakeSessions {
   createError: Error | undefined
   deleteResult = true
   deleteError: Error | undefined
+  diffError: Error | undefined
+  diffResult: DiffResult | null = diffResultFixture
   readonly deleted: string[] = []
   readonly deleteOptions: ({ readonly force?: boolean } | undefined)[] = []
 
@@ -113,6 +118,15 @@ class FakeSessions {
 
   list(): readonly Session[] {
     return [sessionFixture]
+  }
+
+  async diff(sessionId: string): Promise<DiffResult | null> {
+    if (this.diffError !== undefined) {
+      throw this.diffError
+    }
+    return this.diffResult === null
+      ? null
+      : { ...this.diffResult, sessionId }
   }
 
   async delete(sessionId: string, options?: { readonly force?: boolean }): Promise<boolean> {
@@ -332,6 +346,7 @@ describe('Phase 1 HTTP routes', () => {
       { method: 'GET' as const, url: '/api/auth/me' },
       { method: 'POST' as const, url: '/api/ws-ticket' },
       { method: 'GET' as const, url: '/api/sessions' },
+      { method: 'GET' as const, url: `/api/sessions/${sessionFixture.id}/diff` },
     ]) {
       const response = await app.inject({
         ...request,
@@ -377,6 +392,35 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.deepEqual(deleted.json(), { ok: true, data: {} })
     assert.deepEqual(sessions.deleted, [sessionFixture.id])
+  })
+
+  it('returns an authenticated session diff and maps missing or unavailable diffs', async () => {
+    const response = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${sessionFixture.id}/diff`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(response.statusCode, 200)
+    assert.deepEqual(response.json(), { ok: true, data: diffResultFixture })
+
+    sessions.diffResult = null
+    const missing = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${sessionFixture.id}/diff`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(missing.statusCode, 404)
+    assert.equal(missing.json().error.code, 'session_not_found')
+
+    sessions.diffResult = diffResultFixture
+    sessions.diffError = new DiffUnavailableError('missing base')
+    const unavailable = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${sessionFixture.id}/diff`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(unavailable.statusCode, 409)
+    assert.equal(unavailable.json().error.code, 'diff_unavailable')
   })
 
   it('maps session validation and missing records to contract errors', async () => {
