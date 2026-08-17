@@ -413,7 +413,7 @@ describe('Phase 1 HTTP routes', () => {
     assert.equal(missing.json().error.code, 'session_not_found')
 
     sessions.diffResult = diffResultFixture
-    sessions.diffError = new DiffUnavailableError('missing base')
+    sessions.diffError = new DiffUnavailableError('base_missing', 'missing base')
     const unavailable = await app.inject({
       method: 'GET',
       url: `/api/sessions/${sessionFixture.id}/diff`,
@@ -421,6 +421,22 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.equal(unavailable.statusCode, 409)
     assert.equal(unavailable.json().error.code, 'diff_unavailable')
+    assert.equal(
+      unavailable.json().error.message,
+      'The project’s configured base branch does not exist in this repository.',
+    )
+
+    sessions.diffError = new DiffUnavailableError('not_repository', 'not git')
+    const notRepository = await app.inject({
+      method: 'GET',
+      url: `/api/sessions/${sessionFixture.id}/diff`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(notRepository.statusCode, 409)
+    assert.equal(
+      notRepository.json().error.message,
+      'This session directory is not a Git repository, so there is no baseline to review.',
+    )
   })
 
   it('maps session validation and missing records to contract errors', async () => {

@@ -901,3 +901,20 @@ the real tmux socket with a synthetic dead session and missing cwd. All package
 tests and typechecks pass. The live database was inspected read-only: its three
 projects have four dead standard sessions between them, explaining why those
 project rows require session cleanup first; no user record was modified.
+
+### 2026-08-17T15:12:44+03:30 · SOLO · 4 · BROKE
+`GET /api/sessions/:id/diff` now preflights the session cwd as a Git worktree
+and verifies the configured base commit before generating metadata and patch
+output. The live failure was identified without modifying user data:
+`/home/spacecowboy/projects/test-6` exists but has no `.git` repository, so Git
+has no baseline from which “changes” can be calculated.
+
+The 409 status and `diff_unavailable` code are unchanged. Its message is now
+reason-specific: a non-repository directory says that no Git baseline exists;
+a missing configured base branch says exactly that; later Git failures report
+generation failure. Any client test or automation matching the old generic
+English message must update, which is the only broken surface.
+
+Unit tests cover the two preflight failure reasons and both HTTP messages. All
+package tests and typechecks pass, the real Git diff integration remains 7/7,
+and the actual affected session classifies as `not_repository`.

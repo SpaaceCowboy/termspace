@@ -14,7 +14,16 @@ interface BoundedRunner {
   ): Promise<BoundedCommandResult>
 }
 
-export class DiffUnavailableError extends Error {}
+export type DiffUnavailableReason = 'base_missing' | 'git_failed' | 'not_repository'
+
+export class DiffUnavailableError extends Error {
+  readonly reason: DiffUnavailableReason
+
+  constructor(reason: DiffUnavailableReason, detail: string) {
+    super(detail)
+    this.reason = reason
+  }
+}
 
 export class GitDiffReader {
   readonly #runner: BoundedRunner
@@ -24,6 +33,30 @@ export class GitDiffReader {
   }
 
   async read(session: Session, baseBranch: string): Promise<DiffResult> {
+    try {
+      await this.#runner.runBounded(
+        'git',
+        ['-C', session.cwd, 'rev-parse', '--is-inside-work-tree'],
+        64,
+      )
+    } catch (error) {
+      throw new DiffUnavailableError(
+        'not_repository',
+        error instanceof Error ? error.message : String(error),
+      )
+    }
+    try {
+      await this.#runner.runBounded(
+        'git',
+        ['-C', session.cwd, 'rev-parse', '--verify', '--end-of-options', `${baseBranch}^{commit}`],
+        128,
+      )
+    } catch (error) {
+      throw new DiffUnavailableError(
+        'base_missing',
+        error instanceof Error ? error.message : String(error),
+      )
+    }
     try {
       const common = ['-C', session.cwd, 'diff', '--no-ext-diff', '--no-color', '--find-renames']
       const [names, stats, untracked, patch] = await Promise.all([
@@ -86,7 +119,10 @@ export class GitDiffReader {
           fileLimitHit,
       }
     } catch (error) {
-      throw new DiffUnavailableError(error instanceof Error ? error.message : String(error))
+      throw new DiffUnavailableError(
+        'git_failed',
+        error instanceof Error ? error.message : String(error),
+      )
     }
   }
 }

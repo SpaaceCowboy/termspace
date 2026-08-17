@@ -718,11 +718,16 @@ export function registerPhase1Routes(
       return ok<DiffResult>(diff)
     } catch (error) {
       if (error instanceof DiffUnavailableError) {
+        const message = error.reason === 'not_repository'
+          ? 'This session directory is not a Git repository, so there is no baseline to review.'
+          : error.reason === 'base_missing'
+            ? 'The project’s configured base branch does not exist in this repository.'
+            : 'Git could not generate this session diff.'
         return sendError(
           reply,
           409,
           'diff_unavailable',
-          'The session diff is not available for its configured base branch.',
+          message,
         )
       }
       request.log.error({ err: error }, 'Session diff failed')
