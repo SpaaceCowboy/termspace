@@ -49,6 +49,7 @@ describe('readEnvironment', () => {
         TERMSPACE_SESSION_MEMORY_MAX_BYTES: '536870912',
         TERMSPACE_SESSION_SHELL: '/bin/zsh',
         TERMSPACE_TMUX_SOCKET_NAME: 'termspace-test',
+        TERMSPACE_TMUX_SOCKET_PATH: '/run/user/1000/termspace/tmux.sock',
       }),
       {
         ...readEnvironment({}),
@@ -56,12 +57,14 @@ describe('readEnvironment', () => {
         TERMSPACE_SESSION_MEMORY_MAX_BYTES: 536_870_912,
         TERMSPACE_SESSION_SHELL: '/bin/zsh',
         TERMSPACE_TMUX_SOCKET_NAME: 'termspace-test',
+        TERMSPACE_TMUX_SOCKET_PATH: '/run/user/1000/termspace/tmux.sock',
       },
     )
     assert.throws(() => readEnvironment({ TERMSPACE_SYSTEMD_SESSION_SCOPES: 'yes' }))
     assert.throws(() => readEnvironment({ TERMSPACE_SESSION_MEMORY_MAX_BYTES: '1024' }))
     assert.throws(() => readEnvironment({ TERMSPACE_SESSION_SHELL: 'bash' }))
     assert.throws(() => readEnvironment({ TERMSPACE_TMUX_SOCKET_NAME: '../escape' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_TMUX_SOCKET_PATH: 'tmux.sock' }))
   })
 
   it('requires an explicit allowed Origin in production', () => {

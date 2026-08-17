@@ -71,7 +71,9 @@ export function createServerRuntime(
   const vapid = readVapidConfig(environment)
   const processes = new ExecFileProcessRunner()
   const tmux = new TmuxClient(processes, {
-    socketName: environment.TERMSPACE_TMUX_SOCKET_NAME,
+    ...(environment.TERMSPACE_TMUX_SOCKET_PATH === undefined
+      ? { socketName: environment.TERMSPACE_TMUX_SOCKET_NAME }
+      : { socketPath: environment.TERMSPACE_TMUX_SOCKET_PATH }),
     ...(environment.TERMSPACE_SYSTEMD_SESSION_SCOPES
       ? {
           sessionScope: {

@@ -143,7 +143,7 @@ side by side, no file collisions.
       (its parent becomes pid 1, its cgroup does not change). Under one service
       with the default `KillMode=control-group`, `systemctl restart` would kill
       every agent session — breaking non-negotiable #1.
-- [ ] Hardening on the unit that owns the shells: `ProtectSystem=strict`,
+- [x] Hardening on the unit that owns the shells: `ProtectSystem=strict`,
       `ProtectHome`, `ReadWritePaths=$TERMSPACE_PROJECT_ROOT`, `PrivateTmp`.
       ⚠ Decision #6 runs the app as root so sessions can install packages, which
       makes this unit the only boundary left rather than a second one — and

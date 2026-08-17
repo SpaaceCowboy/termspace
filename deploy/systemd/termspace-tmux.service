@@ -9,10 +9,23 @@ Type=exec
 User=root
 Slice=termspace.slice
 EnvironmentFile=-/etc/termspace/runtime.env
-ExecStart=/usr/bin/tmux -L termspace -D -f /opt/termspace/server/tmux.conf
+RuntimeDirectory=termspace
+RuntimeDirectoryMode=0700
+ExecStart=/usr/bin/tmux -S /run/termspace/tmux.sock -D -f /opt/termspace/server/tmux.conf
 Restart=always
 RestartSec=1s
 KillMode=control-group
+ProtectSystem=strict
+ProtectHome=read-only
+PrivateTmp=yes
+
+# The agent remains intentionally capable of installing system packages per
+# decision #6. These exceptions preserve apt/dpkg and tool installation while
+# the rest of the filesystem stays read-only. Keep the project-root path in
+# sync with TERMSPACE_PROJECT_ROOT in /etc/termspace/server.env.
+ReadWritePaths=/srv/projects
+ReadWritePaths=/etc /usr /var /boot /opt
+ReadWritePaths=/home/spacecowboy/.cache /home/spacecowboy/.claude /home/spacecowboy/.codex /home/spacecowboy/.config /home/spacecowboy/.local
 
 [Install]
 WantedBy=multi-user.target

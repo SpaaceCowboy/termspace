@@ -123,6 +123,17 @@ describe('TmuxClient', () => {
     })
   })
 
+  it('uses a shared runtime socket path when PrivateTmp isolates service temp directories', () => {
+    const tmux = new TmuxClient(new RecordingRunner(), {
+      socketName: 'ignored-when-path-exists',
+      socketPath: '/run/termspace/tmux.sock',
+    })
+
+    assert.deepEqual(tmux.attachCommand(SID).arguments_, [
+      '-S', '/run/termspace/tmux.sock', 'attach-session', '-t', `ts_${SID}`,
+    ])
+  })
+
   it('uses the user manager for scoped tests and stops a leftover scope on delete', async () => {
     const runner = new RecordingRunner([
       { stderr: '', stdout: '' },

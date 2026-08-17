@@ -173,10 +173,11 @@ own transient systemd scope.
 **Choice** — (c). `tmux -D` lets systemd own the real server process and keeps
 it alive while empty. `systemd-run --scope` preserves the pane's PTY while
 placing its complete agent process tree under an independent `MemoryMax` in
-`termspace-sessions.slice`.
+`termspace-sessions.slice`. Gateway and tmux share a dedicated socket under
+`/run/termspace`; `/tmp` cannot be shared once both units use `PrivateTmp`.
 
 **Consequence** — systemd is now a production runtime dependency, not only an
 installer. The gateway needs permission to create and stop transient scopes;
 development leaves scope wrapping disabled. The tmux service must be started
-before the gateway, its named socket must match the gateway configuration, and
+before the gateway, its socket path must match the gateway configuration, and
 stopping that service is destructive even though restarting the gateway is not.

@@ -951,3 +951,29 @@ actual Fastify gateway: gateway and tmux/session cgroups were distinct, the
 configured `MemoryMax` was effective, restarting the gateway preserved the
 live session, and deletion removed both tmux and scope. All package tests,
 typechecks, and production builds pass.
+
+### 2026-08-17T16:37:50+03:30 · SOLO · 5 · DONE
+The second Phase 5 server box is complete. `ProtectSystem=strict`,
+`ProtectHome`, `PrivateTmp=yes`, and explicit `ReadWritePaths` now apply to the
+tmux service whose mount namespace every agent inherits. Gateway and web are
+hardened separately. Production moved from the tmux `/tmp` namespace to
+`/run/termspace/tmux.sock`, created with `RuntimeDirectory`, so gateway and tmux
+can both use private temp directories without losing their control socket.
+
+The project root and persistent database remain explicit writable paths. The
+tmux unit also keeps `/etc`, `/usr`, `/var`, `/boot`, and `/opt`, plus selected
+agent configuration directories, writable. Those broad exceptions are
+deliberate: decision #6 requires root sessions to install system packages and
+update Codex/Claude state, and `NoNewPrivileges` remains off. Consequently
+systemd-analyze rates tmux 9.0 UNSAFE and gateway 8.9 EXPOSED; these directives
+reduce accidental writes outside the declared surfaces but do not pretend to
+contain a malicious root agent.
+
+The environment parser and tmux client now validate and route an absolute
+socket path; named sockets remain available for development. The expanded real
+integration passed 12/12: both gateway and foreground tmux ran with private
+temp namespaces, their `/run` socket remained reachable, an agent wrote its
+allowed project but not a sibling directory it otherwise owns, its private tmp
+file was absent on the host, its per-session MemoryMax was effective, gateway
+restart preserved it, and deletion collected tmux plus scope. systemd's native
+unit verifier, all package tests/typechecks, and production builds pass.

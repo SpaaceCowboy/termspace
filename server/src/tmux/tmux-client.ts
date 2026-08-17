@@ -25,6 +25,7 @@ export interface TmuxClientOptions {
   readonly configPath?: string
   readonly sessionScope?: SessionScopeOptions
   readonly socketName?: string
+  readonly socketPath?: string
 }
 
 export class TmuxClient {
@@ -46,9 +47,11 @@ export class TmuxClient {
     }
     this.#configPath = configPathOrOptions.configPath ?? DEFAULT_TMUX_CONFIG_PATH
     this.#sessionScope = configPathOrOptions.sessionScope
-    this.#socketArguments = configPathOrOptions.socketName === undefined
-      ? []
-      : ['-L', configPathOrOptions.socketName]
+    this.#socketArguments = configPathOrOptions.socketPath !== undefined
+      ? ['-S', configPathOrOptions.socketPath]
+      : configPathOrOptions.socketName === undefined
+        ? []
+        : ['-L', configPathOrOptions.socketName]
   }
 
   async createDetached(

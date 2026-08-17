@@ -27,6 +27,12 @@ const EnvironmentSchema = z
       .max(64)
       .regex(/^[A-Za-z0-9_-]+$/)
       .default('default'),
+    TERMSPACE_TMUX_SOCKET_PATH: z
+      .string()
+      .min(1)
+      .refine((value) => value.startsWith('/'), 'Must be an absolute path')
+      .refine((value) => !value.includes('\0'), 'Must not contain a null byte')
+      .optional(),
     TERMSPACE_SYSTEMD_SESSION_SCOPES: z
       .enum(['true', 'false'])
       .default('false')

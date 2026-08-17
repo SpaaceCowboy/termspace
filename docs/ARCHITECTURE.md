@@ -135,7 +135,7 @@ gateway.
 
 ## systemd ownership
 
-Production uses a named tmux socket and a foreground server. The process tree
+Production uses a dedicated runtime tmux socket and a foreground server. The process tree
 is intentionally not the same as the application dependency tree:
 
 ```text
@@ -146,7 +146,8 @@ termspace.slice
     └── termspace-session-<id>.scope  one agent tree, one MemoryMax
 ```
 
-The gateway asks the already-running named tmux server to create a pane whose
+The gateway asks the already-running tmux server on
+`/run/termspace/tmux.sock` to create a pane whose
 command is `systemd-run --scope`. The transient scope moves the agent command
 out of the tmux service cgroup and applies the validated
 `TERMSPACE_SESSION_MEMORY_MAX_BYTES` ceiling to that session and every child it
@@ -158,3 +159,13 @@ stops a leftover scope; an already-collected scope is success.
 order only. Restarting the gateway never restarts or stops tmux. Stopping the
 tmux service remains intentionally destructive and is not part of deployment.
 The checked-in units and operational procedure live in `deploy/systemd/`.
+
+`PrivateTmp=yes` on gateway and tmux is why the socket cannot live in `/tmp`:
+each service sees a different directory there. `RuntimeDirectory=termspace`
+creates the shared `/run/termspace` location instead. The tmux unit's mount
+namespace carries `ProtectSystem=strict`, `ProtectHome=read-only`, and the exact
+project-root `ReadWritePaths`; every pane inherits that namespace before moving
+to its memory scope. Per decision #6, package installation and agent state need
+explicit writable exceptions for system package trees and selected user config
+directories. This limits accidental writes elsewhere but is deliberately not a
+sandbox against a malicious unrestricted-root command.
