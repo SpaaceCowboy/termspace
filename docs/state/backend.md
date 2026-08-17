@@ -4,7 +4,7 @@
 the owner's real two-agent worktree exit test, so Phase 5 must not start yet.
 
 **Working on:** Phase 4 gate only. Diff review now diagnoses non-Git directories separately from
-missing base branches; this gate-setup repair is ready to commit.
+missing base branches; this gate-setup repair is committed.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -29,5 +29,4 @@ Projects remain deliberately non-cascading: delete their sessions first, then th
 Review changes requires a real Git repository with a commit at the configured default branch; an
 ordinary directory has no objective baseline and must never be initialized or committed silently.
 
-**Uncommitted:** reason-specific diff preflights/messages, tests, and BROKE progress entry; ready
-for one commit.
+**Uncommitted:** none. The reason-specific diff diagnosis repair is committed at `b826d65`.
