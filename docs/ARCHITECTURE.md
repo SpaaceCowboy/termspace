@@ -103,7 +103,9 @@ whatever the last line said.
 - Session cookie: `httpOnly; Secure; SameSite=Strict`, short TTL, rotated
 - WebSocket: `POST /api/ws-ticket` returns a single-use token with a 10 s TTL,
   redeemed in the handshake. The `Origin` header is validated again server-side.
-- The app user has no sudo. Per-session memory ceiling via a systemd slice.
+- Per decision #6, the app and its shells run with root privileges so sessions
+  can install system packages. Phase 5's separate tmux unit, shell hardening,
+  and memory limits are therefore the remaining damage-containment boundary.
 - Every project directory lives under `TERMSPACE_PROJECT_ROOT` (default
   `/srv/projects`), and a session's `cwd` must be inside its own project.
 

@@ -766,3 +766,22 @@ buzzing within five seconds, and that needs the owner and a real device.
 Gate table rewritten while here — two columns (Built, Verified) instead of the
 Codex/Claude Code split, which recorded a handoff that no longer happens, and
 backfilled to reality: phases 0–2 were done and verified but showed blank.
+
+### 2026-08-17T12:24:45+03:30 · SOLO · 3 · DONE
+The repository now has one developer, one ownership model, and one resume
+state. Codex owns `server/**`, `web/**`, contracts, scripts, and documentation;
+the old cross-agent proposal, blocking, and handoff rules are retired.
+
+The project brief, conventions, phase headings, session prompt, README, and
+status script now describe the actual solo workflow. `docs/state/backend.md` is
+the authoritative resume and `docs/state/frontend.md` is an explicit retired
+pointer, so two contradictory current states cannot silently return.
+
+Contract prose was reconciled with the shipped surface: project command
+overrides, `GET /api/config`, `PATCH /api/projects/:id`, and the three push
+routes now match the TypeScript and server. The architecture security section
+also reflects decision #6: the runtime is root, and phase 5 hardening is the
+remaining containment boundary.
+
+This changes no application contract or runtime behavior. Phase 3 remains
+built but not human-verified; its locked-phone exit test is still the next gate.

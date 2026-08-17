@@ -56,16 +56,13 @@ explicit decision entry. In particular, out of scope for v1:
 4. Every displayed session state is derived from observed output. Agents are
    never asked to self-report.
 
-## The two agents
+## Development ownership
 
-| | Owner | Owns | Never edits |
-|---|---|---|---|
-| Backend | Codex | `server/**` | `web/**` |
-| Frontend | Claude Code | `web/**` | `server/**` |
-
-Both read all of `docs/**`. Both may append to `docs/PROGRESS.md`.
-`packages/contracts/**` is shared and changes only by the process in
-`docs/CONTRACTS.md`.
+Codex is the sole developer and owns the backend, frontend, contracts, scripts,
+and documentation. The server/UI split remains an architectural boundary, not
+an ownership boundary. Shared API and transport changes are designed in
+`packages/contracts/**` first, then implemented on both sides in the same
+development slice.
 
 ## Stack
 

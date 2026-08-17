@@ -1,32 +1,23 @@
 # Conventions
 
-Shared by both agents. Where this file and your own brief disagree, this wins.
+Shared across the whole project. Where this file and a task brief disagree,
+this wins unless the owner explicitly changes the rule.
 
 ## Ownership
 
-```
-server/**              Codex only
-web/**                 Claude Code only
-packages/contracts/**  shared — change only via docs/CONTRACTS.md
-docs/PROGRESS.md       both append, neither edits
-docs/PHASES.md         each ticks only its own boxes
-docs/DECISIONS.md      both append
-everything else        propose before touching
-```
-
-If you need a change in the other agent's directory, do not make it. Append a
-`BLOCKED` entry to `docs/PROGRESS.md` naming exactly what you need, and keep
-working on something else.
+Codex owns the repository. Keep server, web, and contracts concerns separated
+in code, but implement cross-boundary features end to end. `docs/PROGRESS.md`
+is append-only; old entries are historical evidence and are never rewritten.
 
 ## Git
 
-- Both agents work in the same checkout on the same branch. Ownership
-  boundaries, not branches, are what prevent file conflicts. Do not use
-  separate worktrees — each would get its own `docs/PROGRESS.md` and the
-  coordination loop would silently stop working.
+- Work in the current checkout and branch unless the owner asks for another
+  workflow. Product-created worktrees are runtime data, not development
+  checkouts for this repository.
 - Commit message: `<area>: <imperative>` where area is `server`, `web`,
   `contract`, or `docs`
-- Commit small and often. The other agent reads your commits.
+- Commit complete, reviewable units. Progress and resume state travel with the
+  code they describe.
 - `docs/PROGRESS.md` is append-only, so a conflict there is resolved by keeping
   both sides in timestamp order. Never drop an entry.
 - Never rebase or force-push. Never commit a secret, a `.env`, or a database
@@ -63,7 +54,7 @@ working on something else.
 
 ## What to do when unsure
 
-In order: check `docs/CONTRACTS.md`, check `docs/DECISIONS.md`, check the last
-30 entries of `docs/PROGRESS.md`. If still unsure, append `BLOCKED` and move to
-another task. Do not guess at the seam — a wrong guess costs the other agent
-more than a pause costs you.
+In order: check `docs/CONTRACTS.md`, `docs/DECISIONS.md`, and the last 30
+entries of `docs/PROGRESS.md`; inspect both implementations; then make the
+smallest reversible assumption that preserves the documented product. Ask the
+owner only when the remaining choice materially changes scope, safety, or UX.

@@ -1,7 +1,8 @@
 # Phases
 
-One phase at a time. Nobody starts phase N+1 until both agents have checked
-their box in the gate for phase N and the human has replied `SHIP N`.
+One phase at a time. Codex completes both server and web work. A phase is built
+only when all of its boxes and development checks pass; the owner separately
+confirms its real-world exit criterion.
 
 Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 
@@ -12,14 +13,14 @@ Status legend: `[ ]` not started · `[~]` in progress · `[x]` done
 Nothing runs yet. This phase exists so the seam is defined before any code is
 written against it.
 
-**Backend (Codex)**
+**Server**
 - [x] pnpm workspace, `server/` package, TS strict, Node 22
 - [x] `better-sqlite3` + migration runner, schema for `users`, `projects`, `sessions`, `layouts`
 - [x] Fastify boots, `GET /api/health` returns `{ok:true, version}`
 - [x] `server/tmux.conf` with `window-size latest`, committed
 - [x] Seed script `pnpm seed:user` — argon2id hash + TOTP secret, prints the otpauth URL
 
-**Frontend (Claude Code)**
+**Web**
 - [x] `web/` Next.js App Router package, TS strict
 - [x] Login page shell (no real auth yet), dark/light, no component library
 - [x] Empty workspace shell: sidebar + grid area, renders a placeholder pane
@@ -39,7 +40,7 @@ shell renders. No terminal exists yet and that is correct.
 
 The only phase with real technical risk. Do not add features to it.
 
-**Backend (Codex)**
+**Server**
 - [x] `POST /api/auth/login` — argon2id verify + TOTP, rate limited, sets cookie
 - [x] `POST /api/auth/logout`, `GET /api/auth/me`
 - [x] `POST /api/ws-ticket` — single-use, 10 s TTL, bound to user
@@ -50,7 +51,7 @@ The only phase with real technical risk. Do not add features to it.
 - [x] Headless `Terminal` per session + `restore` frame on attach
 - [x] Output coalescing at 16 ms
 
-**Frontend (Claude Code)**
+**Web**
 - [x] Working login with TOTP field, error states, redirect
 - [x] `useSocket` — one multiplexed WS for the whole page, ticket fetch,
       exponential backoff reconnect, resubscribe on reopen
@@ -68,13 +69,13 @@ miniature — do not move on until it is true.
 
 ## Phase 2 — It becomes a workspace
 
-**Backend (Codex)**
+**Server**
 - [x] Projects CRUD; `POST /api/projects` accepts an existing path or a git URL to clone
 - [x] Sessions belong to a project; `agent` field (`claude` | `codex` | `shell`)
 - [x] Launch command per agent type, configurable per project
 - [x] `GET /api/layouts` / `PUT /api/layouts` per user
 
-**Frontend (Claude Code)**
+**Web**
 - [x] Project sidebar, sessions nested under projects
 - [x] Grid layout: 1 / 2 / 2×2 / tabs, switchable, persisted via layouts API
 - [x] Hidden panes hold a headless `Terminal` and never call `open()`
@@ -97,13 +98,13 @@ switching a hidden pane to visible shows correct up-to-date content instantly.
 
 ## Phase 3 — It knows what is happening
 
-**Backend (Codex)**
+**Server**
 - [x] Activity tracker per session, states per `docs/ARCHITECTURE.md`
 - [x] `status` frames pushed on state change only, not on a timer
 - [x] Auto-title: derive a short label from recent output, push as `title` frame
 - [x] Web Push subscription endpoints + notify on transition into `needs-you`
 
-**Frontend (Claude Code)**
+**Web**
 - [x] Status pill per pane, sidebar dots, document title reflects worst state
 - [x] Service worker, push permission flow, notification click focuses the pane
 - [x] Output coalescing tiers by visibility (16 / 50 / 250 ms)
@@ -116,13 +117,13 @@ permission question, and tapping the notification opens that pane focused.
 
 ## Phase 4 — Parallelism
 
-**Backend (Codex)**
+**Server**
 - [ ] `POST /api/sessions` with `worktree: true` creates `git worktree add`
 - [ ] `GET /api/sessions/:id/diff` — `git diff` against the base branch
 - [ ] `DELETE` removes the worktree, refusing if dirty unless `force`
 - [ ] Detect two sessions on the same non-worktree cwd and flag it
 
-**Frontend (Claude Code)**
+**Web**
 - [ ] Diff panel per session, file list + unified diff, syntax highlight
 - [ ] Worktree toggle in the new-session dialog, branch name field
 - [ ] Warning banner when two sessions share a working directory
@@ -135,7 +136,7 @@ side by side, no file collisions.
 
 ## Phase 5 — Phone and hardening
 
-**Backend (Codex)**
+**Server**
 - [ ] systemd unit + slice with `MemoryMax` per session
       ⚠ The tmux server must get its **own** unit or transient scope. Verified on
       this box: a daemonized tmux server keeps the cgroup of whatever spawned it
@@ -152,7 +153,7 @@ side by side, no file collisions.
 - [ ] SQLite backup on a timer, restore documented
 - [ ] Structured request log, no secrets, log rotation
 
-**Frontend (Claude Code)**
+**Web**
 - [ ] Responsive: single pane, swipe between sessions
 - [ ] Key accessory bar — Esc, Ctrl, Tab, arrows, `/`, `|`
 - [ ] Double-press confirm on kill and on destructive keys

@@ -1,7 +1,8 @@
 # Contracts
 
-This is the seam. It is the only place the two agents actually meet, and it is
-the reason they can work at the same time without blocking each other.
+This is the seam between the server and web client. One developer owns both,
+but designing the seam first still prevents the two implementations from
+drifting.
 
 **The contract is code, not prose.** Every type below lives in
 `packages/contracts/src/`. Prose here explains intent; the TypeScript is
@@ -9,20 +10,14 @@ authoritative. If they disagree, the TypeScript wins and the prose gets fixed.
 
 ## Rules for changing it
 
-1. Either agent may **propose** a change. Neither may merge one alone.
-2. To propose: append a block to `## Proposals` at the bottom of this file,
-   commit it alone with message `contract: propose <thing>`, and append a
-   `BLOCKED` entry to `docs/PROGRESS.md` naming the proposal.
-3. The other agent reads it at the start of its next session and replies in the
-   same block with `AGREED` or a counter.
-4. Once both have written `AGREED`, whoever proposed it edits
-   `packages/contracts/src/`, moves the block to `## Settled`, and appends a
-   `CONTRACT` entry to `docs/PROGRESS.md`.
-5. Never change a shipped type in place. Add the new shape, migrate, delete the
-   old one in a later commit.
-
-While a proposal is open, keep working on anything that does not depend on it.
-Do not sit idle waiting.
+1. Design the shared shape and compatibility behavior before either side uses
+   it.
+2. Implement the runtime type, fixtures, server boundary, and client parser in
+   the same development slice.
+3. Prefer additive migration. Never silently reinterpret a shipped field.
+4. Append a `CONTRACT` progress entry stating the exact old and new surface.
+5. The TypeScript in `packages/contracts/src/` is authoritative; correct this
+   prose immediately whenever it falls behind.
 
 ## Transport
 
@@ -74,6 +69,7 @@ interface Project {
   repoUrl: string | null
   defaultBranch: string
   setupCommand: string | null
+  agentCommands: Partial<Record<AgentKind, readonly string[]>>
   createdAt: number
 }
 
@@ -90,6 +86,13 @@ interface Session {
   title: string | null
   lastActivityAt: number
   createdAt: number
+}
+
+interface CreateSessionInput {
+  projectId: string
+  name: string
+  agent: AgentKind
+  cwd?: string
 }
 
 type LayoutMode = 'single' | 'split' | 'grid' | 'tabs'
@@ -128,15 +131,19 @@ Never a bare array, never a bare string. `ApiError` is
 | POST | `/api/auth/logout` | — | `{}` | 1 |
 | GET | `/api/auth/me` | — | `{user}` | 1 |
 | POST | `/api/ws-ticket` | — | `{ticket, expiresAt}` | 1 |
+| GET | `/api/config` | — | `AppConfig` | 2 |
 | GET | `/api/sessions` | — | `Session[]` | 1 |
 | POST | `/api/sessions` | `CreateSessionInput` | `Session` | 1 |
 | DELETE | `/api/sessions/:id` | — | `{}` | 1 |
 | GET | `/api/projects` | — | `Project[]` | 2 |
 | POST | `/api/projects` | `CreateProjectInput` | `Project` | 2 |
+| PATCH | `/api/projects/:id` | `UpdateProjectInput` | `Project` | 2 |
 | DELETE | `/api/projects/:id` | — | `{}` | 2 |
 | GET | `/api/layouts` | — | `Layout` | 2 |
 | PUT | `/api/layouts` | `LayoutInput` | `Layout` | 2 |
-| POST | `/api/push/subscribe` | `PushSubscription` | `{}` | 3 |
+| GET | `/api/push` | — | `PushStatus` | 3 |
+| POST | `/api/push/subscriptions` | `PushSubscriptionInput` | `{}` | 3 |
+| DELETE | `/api/push/subscriptions` | `{endpoint}` | `{}` | 3 |
 | GET | `/api/sessions/:id/diff` | — | `DiffResult` | 4 |
 
 Error codes are a closed union in `packages/contracts/src/errors.ts`. The
@@ -149,15 +156,14 @@ The frontend builds against fixtures from day one and does not wait for a live
 backend. The backend has a test asserting its real responses satisfy the same
 types.
 
-This is what makes parallel work real rather than theoretical: **the frontend
-is never blocked on the backend, because the fixture is the backend until the
-backend exists.**
+Fixtures keep UI states testable without a running gateway and make contract
+drift visible before it reaches a browser.
 
 ---
 
-## Proposals
+## Design notes
 
-_(open proposals go here — newest at the top)_
+_(active contract design goes here — newest at the top)_
 
 ## Settled
 

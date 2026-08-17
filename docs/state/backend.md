@@ -1,24 +1,24 @@
-# Current state — backend (Codex)
+# Current state — Termspace (solo)
 
-Overwritten, never appended. This is "where was I", not history — history lives
-in `docs/PROGRESS.md`.
+**Phase:** 3 is built but not verified; phases 0–2 are built and human-verified.
 
-Rewrite this file every time you stop working: at the end of a session, when
-you finish a task, when you switch tasks, and especially when you are running
-low on context. Read it first at every session start, before `PROGRESS.md`.
+**Working on:** the Phase 3 locked-phone Web Push exit gate. The repository has been
+reconciled for Codex as the sole developer across server, web, contracts, scripts, and docs.
 
-If it says you were mid-task, resume from `Next concrete step`. Do not restart
-the task and do not rewrite what is already there.
+**Done so far:** 43 of 59 checklist items are complete. The retired two-agent ownership,
+contract-proposal, status, prompt, and resume instructions have been replaced with one solo
+workflow. Contract prose matches the shipped config/project/push routes, and architecture prose
+matches the accepted root-runtime decision. All application source is unchanged.
 
----
+**Next concrete step:** the owner runs the Phase 3 exit criterion: lock the subscribed phone,
+put it aside, make an agent reach a permission prompt, confirm notification within five seconds,
+then tap it and confirm the correct pane opens focused. Record the result; only then mark Phase 3
+Verified and begin the Phase 4 worktree/diff contract.
 
-**Phase:** 1
-**Working on:** gated after both teams completed every Phase 1 checklist item
-**Done so far:** login/logout/me, 10-second user-bound tickets, authenticated session CRUD,
-  exact-Origin ticketed `/ws`, real per-viewer tmux PTYs, headless restore, and 16 ms output
-  coalescing are implemented and tested; a live API flow passed against real tmux
-**Next concrete step:** wait for human `SHIP 1`; do not begin Phase 2 before it arrives
-**Landmines:** this host defaults to unsupported Node 20.19.2 and has no pnpm shim; use a
-  Node 22 runtime for native argon2/SQLite/node-pty tests; node-pty 1.0.0 is pinned because
-  1.1.0 segfaulted on clean exit
-**Uncommitted:** none
+**Landmines:** system Node is 20 although the project requires 22+, and the installed global
+pnpm is 11 although the project pins 10.15; use an explicit compatible runtime/toolchain for
+validation. A database session can still outlive its tmux session and remain incorrectly shown
+as idle. Phase 4 must define worktree creation, dirty deletion, diff limits, and collision
+signaling in contracts before server or UI implementation.
+
+**Uncommitted:** none after the solo-workflow documentation unit is committed.
