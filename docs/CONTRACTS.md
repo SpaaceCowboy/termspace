@@ -82,17 +82,28 @@ interface Session {
   agent: AgentKind
   cwd: string
   worktreeBranch: string | null
+  hasCwdConflict: boolean
   state: SessionState
   title: string | null
   lastActivityAt: number
   createdAt: number
 }
 
-interface CreateSessionInput {
+type CreateSessionInput = {
   projectId: string
   name: string
   agent: AgentKind
-  cwd?: string
+} & (
+  | { worktree?: false; cwd?: string }
+  | { worktree: true; worktreeBranch: string }
+)
+
+interface DiffResult {
+  sessionId: string
+  baseBranch: string
+  files: readonly DiffFile[]
+  patch: string
+  truncated: boolean
 }
 
 type LayoutMode = 'single' | 'split' | 'grid' | 'tabs'
@@ -134,7 +145,7 @@ Never a bare array, never a bare string. `ApiError` is
 | GET | `/api/config` | — | `AppConfig` | 2 |
 | GET | `/api/sessions` | — | `Session[]` | 1 |
 | POST | `/api/sessions` | `CreateSessionInput` | `Session` | 1 |
-| DELETE | `/api/sessions/:id` | — | `{}` | 1 |
+| DELETE | `/api/sessions/:id?force=true` | — | `{}` | 1 / 4 |
 | GET | `/api/projects` | — | `Project[]` | 2 |
 | POST | `/api/projects` | `CreateProjectInput` | `Project` | 2 |
 | PATCH | `/api/projects/:id` | `UpdateProjectInput` | `Project` | 2 |
@@ -163,7 +174,20 @@ drift visible before it reaches a browser.
 
 ## Design notes
 
-_(active contract design goes here — newest at the top)_
+### 2026-08-17 · SOLO · Phase 4 worktrees and diffs
+
+- Existing `CreateSessionInput` requests remain valid. `worktree: true` requires
+  `worktreeBranch` and excludes caller-supplied `cwd`; the server owns the
+  worktree directory.
+- `Session.hasCwdConflict` is derived on reads. It is true only when two or more
+  non-worktree sessions use the same cwd.
+- Normal delete refuses a dirty worktree with `worktree_dirty`; `force=true` is
+  the only request that may discard its uncommitted files. Removing a worktree
+  does not delete its branch or commits.
+- `DiffResult` returns bounded file metadata and a unified tracked-file patch.
+  Untracked files appear in the file list even though the patch does not copy
+  their contents. `truncated` makes safety limits visible rather than silently
+  presenting a partial review as complete.
 
 ## Settled
 

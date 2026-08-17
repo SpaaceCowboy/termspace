@@ -118,15 +118,15 @@ permission question, and tapping the notification opens that pane focused.
 ## Phase 4 — Parallelism
 
 **Server**
-- [ ] `POST /api/sessions` with `worktree: true` creates `git worktree add`
+- [x] `POST /api/sessions` with `worktree: true` creates `git worktree add`
 - [ ] `GET /api/sessions/:id/diff` — `git diff` against the base branch
-- [ ] `DELETE` removes the worktree, refusing if dirty unless `force`
-- [ ] Detect two sessions on the same non-worktree cwd and flag it
+- [x] `DELETE` removes the worktree, refusing if dirty unless `force`
+- [x] Detect two sessions on the same non-worktree cwd and flag it
 
 **Web**
 - [ ] Diff panel per session, file list + unified diff, syntax highlight
-- [ ] Worktree toggle in the new-session dialog, branch name field
-- [ ] Warning banner when two sessions share a working directory
+- [x] Worktree toggle in the new-session dialog, branch name field
+- [x] Warning banner when two sessions share a working directory
 
 **Exit criteria**
 Two agents on the same repo in separate worktrees, both diffs reviewable

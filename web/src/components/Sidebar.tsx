@@ -181,6 +181,11 @@ function SidebarBody({
               </>
             )}
           </h2>
+          {group.sessions.some(({ hasCwdConflict }) => hasCwdConflict) ? (
+            <p className={styles.cwdWarning} role="status">
+              Sessions in this project share a working directory. Their file changes can collide.
+            </p>
+          ) : null}
           {group.sessions.length === 0 ? (
             <p className={styles.groupEmpty}>No sessions.</p>
           ) : (
@@ -207,6 +212,7 @@ function SidebarBody({
                       <span className={styles.itemMeta}>
                         {session.agent} · {STATE_LABEL[session.state]}
                         {onScreenIds?.has(session.id) === true ? ' · on screen' : ''}
+                        {session.worktreeBranch === null ? '' : ` · ${session.worktreeBranch}`}
                       </span>
                     </span>
                   </button>

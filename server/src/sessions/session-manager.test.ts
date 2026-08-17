@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import type { AgentCommand, AgentKind, Session } from '@termspace/contracts'
+import { sessionFixture } from '@termspace/contracts'
+import type { AgentCommand, Session } from '@termspace/contracts'
 
 import type { SessionProject } from './session-repository.js'
 import { SessionManager, SessionProjectNotFoundError } from './session-manager.js'
+import { WorktreeDirtyError } from '../git/worktree-manager.js'
 
 const SID = 'ses_portalui0001'
 
@@ -14,6 +16,7 @@ class FakeRepository {
   project: SessionProject | null = {
     id: 'project-1',
     path: '/srv/project',
+    defaultBranch: 'main',
     agentCommands: {},
   }
 
@@ -68,11 +71,44 @@ class FakeTmux {
   }
 }
 
-function createManager(repository: FakeRepository, tmux: FakeTmux): SessionManager {
+class FakeWorktrees {
+  dirty = false
+  readonly created: { branch: string; sessionId: string }[] = []
+  readonly removed: { cwd: string; force: boolean }[] = []
+  readonly rolledBack: string[] = []
+
+  async create(
+    _project: { readonly path: string; readonly defaultBranch: string },
+    sessionId: string,
+    branch: string,
+  ): Promise<string> {
+    this.created.push({ branch, sessionId })
+    return `/srv/projects/.termspace-worktrees/${sessionId}`
+  }
+
+  async isDirty(): Promise<boolean> {
+    return this.dirty
+  }
+
+  async remove(_projectPath: string, cwd: string, force: boolean): Promise<void> {
+    this.removed.push({ cwd, force })
+  }
+
+  async rollback(_projectPath: string, _cwd: string, branch: string): Promise<void> {
+    this.rolledBack.push(branch)
+  }
+}
+
+function createManager(
+  repository: FakeRepository,
+  tmux: FakeTmux,
+  worktrees?: FakeWorktrees,
+): SessionManager {
   return new SessionManager(repository, tmux, {
     createId: () => SID,
     isDirectory: async () => true,
     now: () => 100,
+    ...(worktrees === undefined ? {} : { worktrees }),
   })
 }
 
@@ -82,7 +118,7 @@ describe('SessionManager', () => {
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    const session = await manager.create('project-1', 'Portal', 'claude')
+    const session = await manager.create({ projectId: 'project-1', name: 'Portal', agent: 'claude' })
 
     assert.deepEqual(tmux.created, [
       { id: SID, cwd: '/srv/project', launchCommand: ['claude'] },
@@ -96,7 +132,12 @@ describe('SessionManager', () => {
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await manager.create('project-1', 'Shell', 'shell', '/srv/project/web/')
+    await manager.create({
+      projectId: 'project-1',
+      name: 'Shell',
+      agent: 'shell',
+      cwd: '/srv/project/web/',
+    })
 
     assert.deepEqual(tmux.created[0], {
       id: SID,
@@ -110,12 +151,13 @@ describe('SessionManager', () => {
     repository.setProject({
       id: 'project-1',
       path: '/srv/project',
+      defaultBranch: 'main',
       agentCommands: { claude: ['claude', '--model', 'opus'] },
     })
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await manager.create('project-1', 'Portal', 'claude')
+    await manager.create({ projectId: 'project-1', name: 'Portal', agent: 'claude' })
 
     assert.deepEqual(tmux.created[0]?.launchCommand, ['claude', '--model', 'opus'])
   })
@@ -125,12 +167,13 @@ describe('SessionManager', () => {
     repository.setProject({
       id: 'project-1',
       path: '/srv/project',
+      defaultBranch: 'main',
       agentCommands: { claude: ['claude', '--resume'] },
     })
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await manager.create('project-1', 'Codex', 'codex')
+    await manager.create({ projectId: 'project-1', name: 'Codex', agent: 'codex' })
 
     assert.deepEqual(tmux.created[0]?.launchCommand, ['codex'])
   })
@@ -140,13 +183,14 @@ describe('SessionManager', () => {
     repository.setProject({
       id: 'project-1',
       path: '/srv/project',
+      defaultBranch: 'main',
       // An empty argv is not "unset": it means start this kind at a bare shell.
       agentCommands: { claude: [] },
     })
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await manager.create('project-1', 'Portal', 'claude')
+    await manager.create({ projectId: 'project-1', name: 'Portal', agent: 'claude' })
 
     assert.deepEqual(tmux.created[0]?.launchCommand, [])
   })
@@ -163,13 +207,13 @@ describe('SessionManager', () => {
       const manager = createManager(repository, tmux)
 
       if (cwd === '/srv/project') {
-        await manager.create('project-1', 'Shell', 'shell', cwd)
+        await manager.create({ projectId: 'project-1', name: 'Shell', agent: 'shell', cwd })
         assert.equal(tmux.created.length, 1)
         continue
       }
 
       await assert.rejects(
-        manager.create('project-1', 'Shell', 'shell', cwd),
+        manager.create({ projectId: 'project-1', name: 'Shell', agent: 'shell', cwd }),
         (error: unknown) => error instanceof Error,
         `accepted ${cwd}`,
       )
@@ -184,7 +228,7 @@ describe('SessionManager', () => {
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
 
-    await assert.rejects(manager.create('project-1', 'Portal', 'codex'))
+    await assert.rejects(manager.create({ projectId: 'project-1', name: 'Portal', agent: 'codex' }))
     assert.deepEqual(tmux.killed, [SID])
   })
 
@@ -195,7 +239,7 @@ describe('SessionManager', () => {
     const manager = createManager(repository, tmux)
 
     await assert.rejects(
-      manager.create('missing', 'Portal', 'claude'),
+      manager.create({ projectId: 'missing', name: 'Portal', agent: 'claude' }),
       SessionProjectNotFoundError,
     )
     assert.deepEqual(tmux.created, [])
@@ -205,10 +249,108 @@ describe('SessionManager', () => {
     const repository = new FakeRepository()
     const tmux = new FakeTmux()
     const manager = createManager(repository, tmux)
-    await manager.create('project-1', 'Portal', 'claude')
+    await manager.create({ projectId: 'project-1', name: 'Portal', agent: 'claude' })
 
     assert.equal(await manager.delete(SID), true)
     assert.deepEqual(tmux.killed, [SID])
     assert.deepEqual(repository.sessions, [])
+  })
+
+  it('creates a worktree before tmux and persists its branch and generated cwd', async () => {
+    const repository = new FakeRepository()
+    const tmux = new FakeTmux()
+    const worktrees = new FakeWorktrees()
+    const manager = createManager(repository, tmux, worktrees)
+
+    const session = await manager.create({
+      projectId: 'project-1',
+      name: 'Parallel',
+      agent: 'codex',
+      worktree: true,
+      worktreeBranch: 'ts/parallel',
+    })
+
+    assert.deepEqual(worktrees.created, [{ sessionId: SID, branch: 'ts/parallel' }])
+    assert.equal(session.cwd, `/srv/projects/.termspace-worktrees/${SID}`)
+    assert.equal(session.worktreeBranch, 'ts/parallel')
+    assert.equal(tmux.created[0]?.cwd, session.cwd)
+  })
+
+  it('rolls a new worktree back when session persistence fails', async () => {
+    const repository = new FakeRepository()
+    repository.failInsert = true
+    const tmux = new FakeTmux()
+    const worktrees = new FakeWorktrees()
+    const manager = createManager(repository, tmux, worktrees)
+
+    await assert.rejects(manager.create({
+      projectId: 'project-1',
+      name: 'Parallel',
+      agent: 'codex',
+      worktree: true,
+      worktreeBranch: 'ts/parallel',
+    }))
+
+    assert.deepEqual(tmux.killed, [SID])
+    assert.deepEqual(worktrees.rolledBack, ['ts/parallel'])
+  })
+
+  it('refuses dirty worktree deletion before killing tmux', async () => {
+    const repository = new FakeRepository()
+    repository.sessions.push({
+      ...sessionFixture,
+      id: SID,
+      projectId: 'project-1',
+      cwd: `/srv/projects/.termspace-worktrees/${SID}`,
+      worktreeBranch: 'ts/parallel',
+    })
+    const tmux = new FakeTmux()
+    const worktrees = new FakeWorktrees()
+    worktrees.dirty = true
+    const manager = createManager(repository, tmux, worktrees)
+
+    await assert.rejects(manager.delete(SID), WorktreeDirtyError)
+
+    assert.deepEqual(tmux.killed, [])
+    assert.equal(repository.sessions.length, 1)
+  })
+
+  it('force deletion kills tmux and removes the worktree but preserves manager ownership', async () => {
+    const repository = new FakeRepository()
+    repository.sessions.push({
+      ...sessionFixture,
+      id: SID,
+      projectId: 'project-1',
+      cwd: `/srv/projects/.termspace-worktrees/${SID}`,
+      worktreeBranch: 'ts/parallel',
+    })
+    const tmux = new FakeTmux()
+    const worktrees = new FakeWorktrees()
+    worktrees.dirty = true
+    const manager = createManager(repository, tmux, worktrees)
+
+    assert.equal(await manager.delete(SID, { force: true }), true)
+    assert.deepEqual(tmux.killed, [SID])
+    assert.deepEqual(worktrees.removed, [{
+      cwd: `/srv/projects/.termspace-worktrees/${SID}`,
+      force: true,
+    }])
+    assert.deepEqual(repository.sessions, [])
+  })
+
+  it('flags only non-worktree sessions that share a cwd', () => {
+    const repository = new FakeRepository()
+    repository.sessions.push(
+      { ...sessionFixture, id: 'ses_conflict0001', cwd: '/srv/project', worktreeBranch: null },
+      { ...sessionFixture, id: 'ses_conflict0002', cwd: '/srv/project', worktreeBranch: null },
+      { ...sessionFixture, id: 'ses_worktree0001', cwd: '/srv/project', worktreeBranch: 'ts/x' },
+    )
+    const manager = createManager(repository, new FakeTmux())
+
+    assert.deepEqual(manager.list().map(({ hasCwdConflict }) => hasCwdConflict), [
+      true,
+      true,
+      false,
+    ])
   })
 })

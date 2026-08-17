@@ -3,6 +3,7 @@ import { afterEach, beforeEach, describe, it } from 'node:test'
 
 import type {
   CreateProjectInput,
+  CreateSessionInput,
   Layout,
   LayoutInput,
   Project,
@@ -32,6 +33,7 @@ import {
   ProjectPathOccupiedError,
 } from '../projects/project-manager.js'
 import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
+import { WorktreeDirtyError } from '../git/worktree-manager.js'
 import { registerPhase1Routes, type Phase1RouteServices } from './routes.js'
 
 const AUTH_TOKEN = 'a'.repeat(43)
@@ -94,22 +96,15 @@ class FakeRateLimiter {
 }
 
 class FakeSessions {
-  createdInput:
-    | { projectId: string; name: string; agent: 'claude' | 'codex' | 'shell'; cwd?: string }
-    | undefined
+  createdInput: CreateSessionInput | undefined
   createError: Error | undefined
   deleteResult = true
+  deleteError: Error | undefined
   readonly deleted: string[] = []
+  readonly deleteOptions: ({ readonly force?: boolean } | undefined)[] = []
 
-  async create(
-    projectId: string,
-    name: string,
-    agent: 'claude' | 'codex' | 'shell',
-    cwd?: string,
-  ): Promise<Session> {
-    this.createdInput = cwd === undefined
-      ? { projectId, name, agent }
-      : { projectId, name, agent, cwd }
+  async create(input: CreateSessionInput): Promise<Session> {
+    this.createdInput = input
     if (this.createError !== undefined) {
       throw this.createError
     }
@@ -120,8 +115,12 @@ class FakeSessions {
     return [sessionFixture]
   }
 
-  async delete(sessionId: string): Promise<boolean> {
+  async delete(sessionId: string, options?: { readonly force?: boolean }): Promise<boolean> {
     this.deleted.push(sessionId)
+    this.deleteOptions.push(options)
+    if (this.deleteError !== undefined) {
+      throw this.deleteError
+    }
     return this.deleteResult
   }
 }
@@ -403,6 +402,73 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.equal(missing.statusCode, 404)
     assert.equal(missing.json().error.code, 'session_not_found')
+  })
+
+  it('accepts a worktree create and rejects incoherent worktree inputs', async () => {
+    const created = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+      payload: {
+        projectId: 'project-1',
+        name: 'Parallel',
+        agent: 'codex',
+        worktree: true,
+        worktreeBranch: 'ts/parallel',
+      },
+    })
+    assert.equal(created.statusCode, 201)
+    assert.deepEqual(sessions.createdInput, {
+      projectId: 'project-1',
+      name: 'Parallel',
+      agent: 'codex',
+      worktree: true,
+      worktreeBranch: 'ts/parallel',
+    })
+
+    for (const payload of [
+      { projectId: 'project-1', name: 'x', agent: 'codex', worktree: true },
+      {
+        projectId: 'project-1', name: 'x', agent: 'codex', worktree: true,
+        worktreeBranch: 'ts/x', cwd: '/tmp',
+      },
+      { projectId: 'project-1', name: 'x', agent: 'codex', worktreeBranch: 'ts/x' },
+    ]) {
+      const response = await app.inject({
+        method: 'POST',
+        url: '/api/sessions',
+        headers: { cookie: SESSION_COOKIE },
+        payload,
+      })
+      assert.equal(response.statusCode, 400, JSON.stringify(payload))
+    }
+  })
+
+  it('requires explicit force to delete a dirty worktree', async () => {
+    sessions.deleteError = new WorktreeDirtyError('dirty')
+    const refused = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${sessionFixture.id}`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(refused.statusCode, 409)
+    assert.equal(refused.json().error.code, 'worktree_dirty')
+
+    sessions.deleteError = undefined
+    const forced = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${sessionFixture.id}?force=true`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(forced.statusCode, 200)
+    assert.deepEqual(sessions.deleteOptions.at(-1), { force: true })
+
+    const invalid = await app.inject({
+      method: 'DELETE',
+      url: `/api/sessions/${sessionFixture.id}?force=false`,
+      headers: { cookie: SESSION_COOKIE },
+    })
+    assert.equal(invalid.statusCode, 400)
   })
 
   it('rejects extra fields and malformed JSON at the HTTP boundary', async () => {

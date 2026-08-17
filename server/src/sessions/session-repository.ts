@@ -8,11 +8,13 @@ const ProjectRowSchema = z
   .object({
     id: z.string(),
     path: z.string(),
+    default_branch: z.string(),
     agent_commands: z.string(),
   })
   .transform((row) => ({
     id: row.id,
     path: row.path,
+    defaultBranch: row.default_branch,
     agentCommands: parseAgentCommands(row.agent_commands),
   }))
 
@@ -37,6 +39,7 @@ const SessionRowSchema = z
       agent: row.agent,
       cwd: row.cwd,
       worktreeBranch: row.worktree_branch,
+      hasCwdConflict: false,
       state: row.state,
       title: row.title,
       lastActivityAt: row.last_activity_at,
@@ -55,7 +58,7 @@ export class SessionRepository {
 
   findProject(projectId: string): SessionProject | null {
     const row = this.#database
-      .prepare('SELECT id, path, agent_commands FROM projects WHERE id = ?')
+      .prepare('SELECT id, path, default_branch, agent_commands FROM projects WHERE id = ?')
       .get(projectId)
     return row === undefined ? null : ProjectRowSchema.parse(row)
   }

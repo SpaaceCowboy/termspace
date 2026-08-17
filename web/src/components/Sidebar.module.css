@@ -136,6 +136,17 @@
   color: var(--ts-text-faint);
 }
 
+.cwdWarning {
+  margin: 0 var(--ts-space-1) var(--ts-space-2);
+  padding: var(--ts-space-2);
+  border: 1px solid var(--ts-state-needs-you);
+  border-radius: var(--ts-radius-sm);
+  background: color-mix(in srgb, var(--ts-state-needs-you) 10%, transparent);
+  color: var(--ts-text-dim);
+  font-size: var(--ts-text-xs);
+  line-height: 1.45;
+}
+
 .list {
   list-style: none;
   margin: 0;

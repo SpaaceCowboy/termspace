@@ -46,6 +46,12 @@ import {
   SessionDirectoryNotFoundError,
   SessionProjectNotFoundError,
 } from '../sessions/session-manager.js'
+import {
+  WorktreeConflictError,
+  WorktreeCreateFailedError,
+  WorktreeDirtyError,
+  WorktreeInvalidRepositoryError,
+} from '../git/worktree-manager.js'
 
 const LoginInputSchema = z
   .object({
@@ -55,12 +61,30 @@ const LoginInputSchema = z
   })
   .strict()
 
-const CreateSessionInputSchema = z
-  .object({
-    projectId: z.string().min(1).max(128),
-    name: z.string().min(1).max(128),
-    agent: z.enum(AGENT_KINDS),
+const SessionInputBaseSchema = z.object({
+  projectId: z.string().min(1).max(128),
+  name: z.string().min(1).max(128),
+  agent: z.enum(AGENT_KINDS),
+})
+
+const CreateSessionInputSchema = z.discriminatedUnion('worktree', [
+  SessionInputBaseSchema.extend({
+    worktree: z.literal(false).optional(),
     cwd: z.string().min(1).max(4_096).optional(),
+  }).strict(),
+  SessionInputBaseSchema.extend({
+    worktree: z.literal(true),
+    worktreeBranch: z
+      .string()
+      .min(1)
+      .max(255)
+      .refine((value) => !value.startsWith('-') && !value.includes('\0')),
+  }).strict(),
+])
+
+const DeleteSessionQuerySchema = z
+  .object({
+    force: z.literal('true').optional(),
   })
   .strict()
 
@@ -169,13 +193,8 @@ interface RateLimiter {
 }
 
 interface SessionOperations {
-  create(
-    projectId: string,
-    name: string,
-    agent: CreateSessionInput['agent'],
-    cwd?: string,
-  ): Promise<Session>
-  delete(sessionId: string): Promise<boolean>
+  create(input: CreateSessionInput): Promise<Session>
+  delete(sessionId: string, options?: { readonly force?: boolean }): Promise<boolean>
   list(): readonly Session[]
 }
 
@@ -600,26 +619,25 @@ export function registerPhase1Routes(
       return sendError(reply, 400, 'validation_failed', 'Invalid session input.')
     }
 
+    const data = parsed.data
     const input: CreateSessionInput =
-      parsed.data.cwd === undefined
+      data.worktree === true
         ? {
-            projectId: parsed.data.projectId,
-            name: parsed.data.name,
-            agent: parsed.data.agent,
+            projectId: data.projectId,
+            name: data.name,
+            agent: data.agent,
+            worktree: true,
+            worktreeBranch: data.worktreeBranch,
           }
         : {
-            projectId: parsed.data.projectId,
-            name: parsed.data.name,
-            agent: parsed.data.agent,
-            cwd: parsed.data.cwd,
+            projectId: data.projectId,
+            name: data.name,
+            agent: data.agent,
+            ...(data.worktree === false ? { worktree: false as const } : {}),
+            ...(data.cwd === undefined ? {} : { cwd: data.cwd }),
           }
     try {
-      const session = await services.sessions.create(
-        input.projectId,
-        input.name,
-        input.agent,
-        input.cwd,
-      )
+      const session = await services.sessions.create(input)
       reply.code(201)
       return ok<Session>(session)
     } catch (error) {
@@ -654,6 +672,28 @@ export function registerPhase1Routes(
           'cwd',
         )
       }
+      if (error instanceof WorktreeInvalidRepositoryError) {
+        return sendError(
+          reply,
+          400,
+          'validation_failed',
+          'The project is not a git repository.',
+          'worktree',
+        )
+      }
+      if (error instanceof WorktreeConflictError) {
+        return sendError(
+          reply,
+          409,
+          'worktree_conflict',
+          'That worktree branch or directory already exists.',
+          'worktreeBranch',
+        )
+      }
+      if (error instanceof WorktreeCreateFailedError) {
+        request.log.error({ err: error }, 'Worktree creation failed')
+        return sendError(reply, 500, 'internal_error', 'Could not create the worktree.')
+      }
       request.log.error({ err: error }, 'Session creation failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
@@ -667,12 +707,25 @@ export function registerPhase1Routes(
     if (!parsed.success) {
       return sendError(reply, 400, 'validation_failed', 'Invalid session id.', 'id')
     }
+    const query = DeleteSessionQuerySchema.safeParse(request.query)
+    if (!query.success) {
+      return sendError(reply, 400, 'validation_failed', 'Invalid delete options.', 'force')
+    }
     try {
-      if (!(await services.sessions.delete(parsed.data.id))) {
+      const options = query.data.force === 'true' ? { force: true } : {}
+      if (!(await services.sessions.delete(parsed.data.id, options))) {
         return sendError(reply, 404, 'session_not_found', 'Session was not found.')
       }
       return ok<Record<string, never>>({})
     } catch (error) {
+      if (error instanceof WorktreeDirtyError) {
+        return sendError(
+          reply,
+          409,
+          'worktree_dirty',
+          'The worktree has uncommitted changes. Force deletion to discard them.',
+        )
+      }
       request.log.error({ err: error }, 'Session deletion failed')
       return sendError(reply, 500, 'internal_error', 'Internal server error.')
     }
@@ -701,7 +754,7 @@ function ok<T>(data: T): ApiOk<T> {
 
 function sendError(
   reply: FastifyReply,
-  statusCode: 400 | 401 | 404 | 429 | 500,
+  statusCode: 400 | 401 | 404 | 409 | 429 | 500,
   code: ErrorCode,
   message: string,
   field?: string,

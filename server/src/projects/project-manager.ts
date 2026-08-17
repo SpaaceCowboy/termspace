@@ -16,6 +16,7 @@ import {
   type RealPath,
 } from '../fs/contained-path.js'
 import type { ProcessRunner } from '../tmux/process-runner.js'
+import { worktreeStoragePath } from '../git/worktree-manager.js'
 
 interface ProjectRepositoryPort {
   claimSlug(base: string): string
@@ -123,6 +124,10 @@ export class ProjectManager {
 
   async create(input: CreateProjectInput): Promise<Project> {
     const path = assertWithinRoot(this.#projectRoot, normalizeAbsolutePath(input.path))
+    const worktreeRoot = worktreeStoragePath(this.#projectRoot)
+    if (path === worktreeRoot || path.startsWith(`${worktreeRoot}/`)) {
+      throw new ProjectConflictError('That directory is reserved for Termspace worktrees')
+    }
     const slug = this.#repository.claimSlug(slugify(input.name))
 
     if (this.#repository.findConflict(slug, path) !== null) {

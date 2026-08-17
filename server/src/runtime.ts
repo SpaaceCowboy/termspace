@@ -4,6 +4,7 @@ import type { FastifyInstance, FastifyServerOptions } from 'fastify'
 import type Database from 'better-sqlite3'
 
 import { buildApp } from './app.js'
+import { WorktreeManager } from './git/worktree-manager.js'
 import { AuthService } from './auth/auth-service.js'
 import { LoginRateLimiter } from './auth/login-rate-limiter.js'
 import { AuthSessionStore } from './auth/session-store.js'
@@ -69,7 +70,9 @@ export function createServerRuntime(
   const vapid = readVapidConfig(environment)
   const processes = new ExecFileProcessRunner()
   const tmux = new TmuxClient(processes)
-  const sessions = new SessionManager(sessionRepository, tmux)
+  const sessions = new SessionManager(sessionRepository, tmux, {
+    worktrees: new WorktreeManager(processes, environment.TERMSPACE_PROJECT_ROOT),
+  })
   const layouts = new LayoutRepository(database)
   const projects = new ProjectManager(
     new ProjectRepository(database),

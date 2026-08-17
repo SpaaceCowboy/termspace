@@ -1,5 +1,6 @@
 import {
   appConfigFixture,
+  diffResultFixture,
   healthDataFixture,
   layoutFixture,
   normalizeLayout,
@@ -10,6 +11,8 @@ import {
   type AppConfig,
   type CreateProjectInput,
   type CreateSessionInput,
+  type DeleteSessionOptions,
+  type DiffResult,
   type HealthData,
   type Layout,
   type LayoutInput,
@@ -42,6 +45,20 @@ let liveLayout: Layout = layoutFixture
 function pruneLayout(layout: Layout): Layout {
   const knownSessionIds = new Set(liveSessions.map((session) => session.id))
   return { ...normalizeLayout(layout, { knownSessionIds }), updatedAt: layout.updatedAt }
+}
+
+function sessionsWithConflicts(sessions: readonly Session[]): Session[] {
+  const counts = new Map<string, number>()
+  for (const session of sessions) {
+    if (session.worktreeBranch === null) {
+      counts.set(session.cwd, (counts.get(session.cwd) ?? 0) + 1)
+    }
+  }
+  return sessions.map((session) => ({
+    ...session,
+    hasCwdConflict:
+      session.worktreeBranch === null && (counts.get(session.cwd) ?? 0) > 1,
+  }))
 }
 
 export const fixtureSource: DataSource = {
@@ -111,7 +128,7 @@ export const fixtureSource: DataSource = {
     return ok({})
   },
   listSessions(): Promise<ApiResponse<Session[]>> {
-    return ok([...liveSessions])
+    return ok(sessionsWithConflicts(liveSessions))
   },
   layout(): Promise<ApiResponse<Layout>> {
     liveLayout = pruneLayout(liveLayout)
@@ -137,22 +154,40 @@ export const fixtureSource: DataSource = {
     return ok({ ticket: 'x'.repeat(43), expiresAt: Date.now() + 10_000 })
   },
   createSession(input: CreateSessionInput): Promise<ApiResponse<Session>> {
+    const project = liveProjects.find(({ id }) => id === input.projectId)
+    if (project === undefined) {
+      return fail('project_not_found', 'Project was not found.')
+    }
+    const id = `ses_fixture${String(liveSessions.length).padStart(5, '0')}`.slice(0, 16)
     const created: Session = {
-      id: `ses_fixture${String(liveSessions.length).padStart(5, '0')}`.slice(0, 16),
+      id,
       projectId: input.projectId,
       name: input.name,
       agent: input.agent,
-      cwd: input.cwd ?? '/srv/projects/portal-ui',
-      worktreeBranch: null,
+      cwd:
+        input.worktree === true
+          ? `/srv/projects/.termspace-worktrees/${id}`
+          : (input.cwd ?? project.path),
+      worktreeBranch: input.worktree === true ? input.worktreeBranch : null,
+      hasCwdConflict: false,
       state: 'idle',
       title: null,
       lastActivityAt: Date.now(),
       createdAt: Date.now(),
     }
     liveSessions.push(created)
-    return ok(created)
+    return ok(sessionsWithConflicts(liveSessions).at(-1) ?? created)
   },
-  deleteSession(sessionId: string): Promise<ApiResponse<Empty>> {
+  sessionDiff(sessionId: string): Promise<ApiResponse<DiffResult>> {
+    if (!liveSessions.some(({ id }) => id === sessionId)) {
+      return fail('session_not_found', 'Session was not found.')
+    }
+    return ok({ ...diffResultFixture, sessionId })
+  },
+  deleteSession(
+    sessionId: string,
+    _options: DeleteSessionOptions = {},
+  ): Promise<ApiResponse<Empty>> {
     const index = liveSessions.findIndex((session) => session.id === sessionId)
     if (index === -1) {
       return fail('session_not_found', 'Session was not found.')

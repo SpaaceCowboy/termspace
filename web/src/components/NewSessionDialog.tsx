@@ -33,10 +33,15 @@ export function NewSessionDialog({
   const projectId = useId()
   const nameId = useId()
   const agentId = useId()
+  const worktreeId = useId()
+  const branchId = useId()
 
   const [project, setProject] = useState('')
   const [name, setName] = useState('')
   const [agent, setAgent] = useState<AgentKind>('claude')
+  const [worktree, setWorktree] = useState(false)
+  const [branch, setBranch] = useState('')
+  const [branchTouched, setBranchTouched] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [submitting, setSubmitting] = useState(false)
 
@@ -48,6 +53,9 @@ export function NewSessionDialog({
     setProject(initialProjectId ?? projects[0]?.id ?? '')
     setName('')
     setAgent('claude')
+    setWorktree(false)
+    setBranch('')
+    setBranchTouched(false)
     setError(null)
     setSubmitting(false)
   }, [open, initialProjectId, projects])
@@ -66,15 +74,26 @@ export function NewSessionDialog({
       setError('Give the session a name.')
       return
     }
+    const trimmedBranch = branch.trim()
+    if (worktree && trimmedBranch === '') {
+      setError('Give the worktree branch a name.')
+      return
+    }
 
     setError(null)
     setSubmitting(true)
     try {
-      const response = await dataSource.createSession({
-        projectId: project,
-        name: trimmed,
-        agent,
-      })
+      const response = await dataSource.createSession(
+        worktree
+          ? {
+              projectId: project,
+              name: trimmed,
+              agent,
+              worktree: true,
+              worktreeBranch: trimmedBranch,
+            }
+          : { projectId: project, name: trimmed, agent },
+      )
       if (!response.ok) {
         setError(response.error.message)
         return
@@ -136,7 +155,13 @@ export function NewSessionDialog({
               id={nameId}
               type="text"
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                const next = event.target.value
+                setName(next)
+                if (!branchTouched) {
+                  setBranch(suggestBranch(next))
+                }
+              }}
               disabled={submitting}
               autoComplete="off"
               spellCheck={false}
@@ -144,6 +169,48 @@ export function NewSessionDialog({
               required
             />
           </div>
+
+          <label className={styles.choice} htmlFor={worktreeId}>
+            <input
+              id={worktreeId}
+              type="checkbox"
+              checked={worktree}
+              onChange={(event) => setWorktree(event.target.checked)}
+              disabled={submitting}
+            />
+            <span>
+              <strong>Isolated worktree</strong>
+              <span className={styles.hint}>
+                Create a new branch and working directory for parallel work.
+              </span>
+            </span>
+          </label>
+
+          {worktree ? (
+            <div className={styles.field}>
+              <label className={styles.label} htmlFor={branchId}>
+                Branch
+              </label>
+              <input
+                className={`${styles.input} ${styles.mono}`}
+                id={branchId}
+                type="text"
+                value={branch}
+                onChange={(event) => {
+                  setBranch(event.target.value)
+                  setBranchTouched(true)
+                }}
+                disabled={submitting}
+                autoComplete="off"
+                spellCheck={false}
+                maxLength={255}
+                required
+              />
+              <span className={styles.hint}>
+                The branch must be new. Deleting the session keeps its commits and branch.
+              </span>
+            </div>
+          ) : null}
 
           <div className={styles.field}>
             <label className={styles.label} htmlFor={agentId}>
@@ -194,4 +261,14 @@ export function NewSessionDialog({
       )}
     </Dialog>
   )
+}
+
+function suggestBranch(name: string): string {
+  const slug = name
+    .normalize('NFKD')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 48)
+  return slug === '' ? '' : `ts/${slug}`
 }

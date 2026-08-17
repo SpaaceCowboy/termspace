@@ -15,6 +15,7 @@ const SESSION: Session = {
   agent: 'claude',
   cwd: '/srv/project',
   worktreeBranch: null,
+  hasCwdConflict: false,
   state: 'idle',
   title: null,
   lastActivityAt: 100,
@@ -46,6 +47,7 @@ describe('SessionRepository', () => {
     assert.deepEqual(repository.findProject('project-1'), {
       id: 'project-1',
       path: '/srv/project',
+      defaultBranch: 'main',
       agentCommands: {},
     })
 

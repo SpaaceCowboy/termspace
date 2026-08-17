@@ -4,6 +4,8 @@ import type {
   AgentKind,
   CreateProjectInput,
   CreateSessionInput,
+  DeleteSessionOptions,
+  DiffResult,
   Project,
   Session,
 } from './core.js'
@@ -59,6 +61,7 @@ export const sessionFixture: Session = {
   agent: 'claude',
   cwd: '/srv/projects/portal-ui',
   worktreeBranch: null,
+  hasCwdConflict: true,
   state: 'working',
   title: 'refactoring the grid layout',
   lastActivityAt: FIXED_NOW - 1_000,
@@ -74,6 +77,7 @@ export const sessionFixtures: readonly Session[] = [
     agent: 'codex',
     cwd: '/srv/projects/api-refactor',
     worktreeBranch: 'ts/api-refactor',
+    hasCwdConflict: false,
     state: 'needs-you',
     title: 'waiting on a permission prompt',
     lastActivityAt: FIXED_NOW - 12_000,
@@ -86,6 +90,7 @@ export const sessionFixtures: readonly Session[] = [
     agent: 'shell',
     cwd: '/srv/projects/portal-ui',
     worktreeBranch: null,
+    hasCwdConflict: true,
     state: 'idle',
     title: null,
     lastActivityAt: FIXED_NOW - 600_000,
@@ -169,6 +174,41 @@ export const createSessionInputFixture: CreateSessionInput = {
   projectId: projectFixture.id,
   name: 'portal-ui',
   agent: 'claude',
+}
+
+export const createWorktreeSessionInputFixture: CreateSessionInput = {
+  projectId: projectFixture.id,
+  name: 'portal-ui-worktree',
+  agent: 'codex',
+  worktree: true,
+  worktreeBranch: 'ts/portal-ui-worktree',
+}
+
+export const deleteSessionOptionsFixture: DeleteSessionOptions = { force: true }
+
+export const diffResultFixture: DiffResult = {
+  sessionId: sessionFixture.id,
+  baseBranch: 'main',
+  files: [
+    {
+      path: 'server/src/app.ts',
+      previousPath: null,
+      status: 'modified',
+      additions: 8,
+      deletions: 2,
+      binary: false,
+    },
+    {
+      path: 'server/src/new-file.ts',
+      previousPath: null,
+      status: 'untracked',
+      additions: null,
+      deletions: null,
+      binary: false,
+    },
+  ],
+  patch: 'diff --git a/server/src/app.ts b/server/src/app.ts\n',
+  truncated: false,
 }
 
 export const layoutModeFixtures: Readonly<Record<LayoutMode, LayoutMode>> = {

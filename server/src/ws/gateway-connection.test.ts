@@ -21,6 +21,7 @@ const SESSION: Session = {
   agent: 'claude',
   cwd: '/srv/project',
   worktreeBranch: null,
+  hasCwdConflict: false,
   state: 'idle',
   title: null,
   lastActivityAt: 100,

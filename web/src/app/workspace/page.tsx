@@ -32,6 +32,7 @@ import {
 import { useLayout } from '@/lib/layout/useLayout.ts'
 import { usePush } from '@/lib/push/usePush.ts'
 import { documentTitle } from '@/lib/session-summary.ts'
+import { withCwdConflicts } from '@/lib/session-conflicts.ts'
 import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
 import { useSocket } from '@/lib/socket/useSocket.ts'
 
@@ -60,6 +61,7 @@ export default function WorkspacePage() {
   /** Pending destructive confirmations, by id. */
   const [deletingProject, setDeletingProject] = useState<string | null>(null)
   const [deletingSession, setDeletingSession] = useState<string | null>(null)
+  const [forceDeletingSession, setForceDeletingSession] = useState(false)
   const [sessionDialogFor, setSessionDialogFor] = useState<string | null>(null)
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
@@ -225,7 +227,7 @@ export default function WorkspacePage() {
 
   const onSessionCreated = useCallback(
     (session: Session) => {
-      setSessions((current) => [...current, session])
+      setSessions((current) => withCwdConflicts([...current, session]))
       apply((current) => showSession(current, session.id))
       setSessionDialogOpen(false)
     },
@@ -249,7 +251,9 @@ export default function WorkspacePage() {
    */
   const onSessionDeleted = useCallback(
     (sid: string) => {
-      setSessions((current) => current.filter((session) => session.id !== sid))
+      setSessions((current) =>
+        withCwdConflicts(current.filter((session) => session.id !== sid)),
+      )
       setDeadSessions((current) => {
         if (!current.has(sid)) {
           return current
@@ -400,6 +404,7 @@ export default function WorkspacePage() {
         }}
         onDeleteSession={(sessionId) => {
           setDeletingSession(sessionId)
+          setForceDeletingSession(false)
         }}
         loading={loading}
         error={error}
@@ -490,17 +495,24 @@ export default function WorkspacePage() {
       <ConfirmDialog
         open={deletingSession !== null}
         title="Delete session"
-        confirmLabel="Delete session"
+        confirmLabel={forceDeletingSession ? 'Force delete' : 'Delete session'}
         busyLabel="Deleting…"
         onClose={() => {
           setDeletingSession(null)
+          setForceDeletingSession(false)
         }}
         onConfirm={async () => {
           if (deletingSession === null) {
             return null
           }
-          const response = await dataSource.deleteSession(deletingSession)
+          const response = await dataSource.deleteSession(deletingSession, {
+            ...(forceDeletingSession ? { force: true } : {}),
+          })
           if (!response.ok) {
+            if (response.error.code === 'worktree_dirty') {
+              setForceDeletingSession(true)
+              return 'This worktree has uncommitted files. Press “Force delete” to discard them. Its committed branch will be kept.'
+            }
             return response.error.message
           }
           onSessionDeleted(deletingSession)
@@ -515,6 +527,12 @@ export default function WorkspacePage() {
           will be stopped and removed. Whatever is running in it is killed and its
           scrollback goes with it. This cannot be undone.
         </p>
+        {forceDeletingSession ? (
+          <p className={styles.confirmText}>
+            Force deletion discards the worktree’s uncommitted and untracked files. Commits and
+            the branch remain in the repository.
+          </p>
+        ) : null}
       </ConfirmDialog>
 
       <ConfirmDialog

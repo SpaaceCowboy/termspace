@@ -4,6 +4,8 @@ import type {
   AppConfig,
   CreateProjectInput,
   CreateSessionInput,
+  DeleteSessionOptions,
+  DiffResult,
   HealthData,
   Layout,
   LayoutInput,
@@ -61,17 +63,37 @@ export const ProjectSchema = z.object({
   createdAt: z.number(),
 })
 
-const SessionSchema = z.object({
+export const SessionSchema = z.object({
   id: z.string(),
   projectId: z.string(),
   name: z.string(),
   agent: z.enum(['claude', 'codex', 'shell']),
   cwd: z.string(),
   worktreeBranch: z.string().nullable(),
+  hasCwdConflict: z.boolean(),
   state: SessionStateSchema,
   title: z.string().nullable(),
   lastActivityAt: z.number(),
   createdAt: z.number(),
+})
+
+const DiffFileSchema = z.object({
+  path: z.string(),
+  previousPath: z.string().nullable(),
+  status: z.enum([
+    'added', 'modified', 'deleted', 'renamed', 'copied', 'untracked', 'conflicted',
+  ]),
+  additions: z.number().int().nonnegative().nullable(),
+  deletions: z.number().int().nonnegative().nullable(),
+  binary: z.boolean(),
+})
+
+export const DiffResultSchema = z.object({
+  sessionId: z.string(),
+  baseBranch: z.string(),
+  files: z.array(DiffFileSchema),
+  patch: z.string(),
+  truncated: z.boolean(),
 })
 
 const UserSchema = z.object({
@@ -243,8 +265,18 @@ export const httpSource: DataSource = {
       signal,
     })
   },
-  deleteSession(sessionId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>> {
-    return request(`/api/sessions/${encodeURIComponent(sessionId)}`, EmptySchema, {
+  sessionDiff(sessionId: string, signal?: AbortSignal): Promise<ApiResponse<DiffResult>> {
+    return request(`/api/sessions/${encodeURIComponent(sessionId)}/diff`, DiffResultSchema, {
+      signal,
+    })
+  },
+  deleteSession(
+    sessionId: string,
+    options: DeleteSessionOptions = {},
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Empty>> {
+    const force = options.force === true ? '?force=true' : ''
+    return request(`/api/sessions/${encodeURIComponent(sessionId)}${force}`, EmptySchema, {
       method: 'DELETE',
       signal,
     })

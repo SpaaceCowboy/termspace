@@ -1,22 +1,23 @@
 # Current state — Termspace (solo)
 
-**Phase:** 4 — Parallelism. Phases 0–3 are built and human-verified.
+**Phase:** 4 — Parallelism. Phases 0–3 are built and human-verified; five of seven Phase 4
+checklist items are complete.
 
-**Working on:** the additive Phase 4 contract for worktree session creation, diff review,
-dirty worktree deletion, and same-directory collision signaling across server and web.
+**Working on:** `GET /api/sessions/:id/diff` and the session diff-review panel.
 
-**Done so far:** 43 of 59 checklist items are complete. Phase 3's real locked-phone Web Push
-criterion passed: delivery arrived within five seconds and tapping focused the correct pane.
-Dead tmux rows also reconcile automatically, and the whole existing suite is green.
+**Done so far:** worktree create, rollback, dirty/forced delete, the new-session worktree and
+branch controls, derived same-cwd conflict flags, and the sidebar warning are implemented.
+Worktree storage is reserved and contained. Full typecheck/unit suites, a Next production build,
+and 5/5 checks against real Git and tmux pass.
 
-**Next concrete step:** inspect the current database migrations, project/session repositories,
-HTTP parsers, frontend data schemas, and new-session/delete flows; then add tested Phase 4 types
-and fixtures without changing the meaning of existing requests.
+**Next concrete step:** implement a bounded Git diff reader that compares a session cwd with its
+project default branch, parses name-status/numstat plus untracked files, and returns the shared
+`DiffResult`; then expose the authenticated route and build the file-list/unified-patch panel.
 
-**Landmines:** system Node is 20 although the project requires 22+, and global pnpm is 11 while
-the project pins 10.15; validate with an explicit compatible toolchain. Worktree paths must stay
-under the project root but outside the repository's tracked tree, branch/path creation must roll
-back atomically, dirty deletion must never lose work without explicit `force`, and diffs need
-bounded output so a large repository cannot exhaust the gateway or browser.
+**Landmines:** system Node is 20 and global pnpm is 11, so use the explicit compatible toolchain.
+Diff generation must include staged and unstaged tracked changes plus list untracked files,
+preserve rename paths, bound subprocess output without presenting partial data as complete, and
+never allow a path argument to become a Git revision or option. Worktree branches are preserved
+on normal/forced session deletion by design.
 
-**Uncommitted:** none after the Phase 3 gate record is committed.
+**Uncommitted:** none after the worktree/collision slice is committed.

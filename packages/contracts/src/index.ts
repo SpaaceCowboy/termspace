@@ -14,6 +14,10 @@ export type {
   AgentKind,
   CreateProjectInput,
   CreateSessionInput,
+  DeleteSessionOptions,
+  DiffFile,
+  DiffFileStatus,
+  DiffResult,
   Project,
   PushStatus,
   PushSubscriptionInput,
@@ -25,6 +29,7 @@ export {
   AGENT_COMMAND_MAX_ARGS,
   AGENT_KINDS,
   DEFAULT_AGENT_COMMANDS,
+  DIFF_FILE_STATUSES,
 } from './core.js'
 
 export type { Layout, LayoutInput, LayoutMode, NormalizeLayoutOptions } from './layout.js'

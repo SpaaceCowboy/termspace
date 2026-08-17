@@ -816,3 +816,40 @@ reaching a permission prompt, and tapping it opened the correct pane focused.
 
 Both Built and Verified are now checked. Phase 4 — worktree isolation, diffs,
 and shared-directory collision warnings — is the current phase.
+
+### 2026-08-17T12:50:56+03:30 · SOLO · 4 · CONTRACT
+Phase 4 extends the session contract additively. Existing create requests are
+unchanged. A worktree request is the discriminated shape `{worktree: true,
+worktreeBranch}` and cannot supply `cwd`; `Session` now carries the derived
+`hasCwdConflict` boolean. Delete accepts only the explicit `?force=true` query
+to discard dirty worktree files. `DiffResult` is now defined as bounded file
+metadata plus a unified tracked-file patch and a visible `truncated` flag.
+
+New server error codes are `worktree_dirty`, `worktree_conflict`, and
+`diff_unavailable`. The web response schemas and shared fixtures cover both
+ordinary and worktree sessions plus the future diff response.
+
+### 2026-08-17T12:50:56+03:30 · SOLO · 4 · DONE
+Worktree lifecycle and cwd collision signaling are complete across server and
+web — five Phase 4 boxes.
+
+Worktrees live at `<project-root>/.termspace-worktrees/<session-id>`, outside
+the tracked project tree. The storage directory is reserved from project
+creation and realpath-checked after creation. Git validates the repository and
+branch, creates a new branch from the project's default branch, then tmux starts
+in the generated directory. A tmux or persistence failure rolls the worktree
+and newly-created branch back.
+
+Normal deletion checks for staged, unstaged, and untracked changes before
+killing tmux. Dirty work is refused with no process or file loss. The UI turns
+that refusal into a second explicit “Force delete” step; forced removal discards
+uncommitted files but deliberately preserves commits and the branch.
+
+Non-worktree sessions sharing a cwd are flagged on every server read and after
+optimistic UI create/delete updates. The project sidebar shows a warning banner;
+worktree sessions display their branch and never participate in the collision.
+
+Validated with all package typechecks and unit suites, a successful Next
+production build, and `server/e2e-worktree.mjs` against a temporary real Git
+repository and tmux: branch/cwd creation, live tmux, dirty refusal preserving
+both, forced removal, and branch preservation all passed (5/5).

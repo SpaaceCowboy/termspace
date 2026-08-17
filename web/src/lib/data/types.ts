@@ -3,6 +3,8 @@ import type {
   AppConfig,
   CreateProjectInput,
   CreateSessionInput,
+  DeleteSessionOptions,
+  DiffResult,
   HealthData,
   Layout,
   LayoutInput,
@@ -48,5 +50,10 @@ export interface DataSource {
     input: CreateSessionInput,
     signal?: AbortSignal,
   ): Promise<ApiResponse<Session>>
-  deleteSession(sessionId: string, signal?: AbortSignal): Promise<ApiResponse<Empty>>
+  sessionDiff(sessionId: string, signal?: AbortSignal): Promise<ApiResponse<DiffResult>>
+  deleteSession(
+    sessionId: string,
+    options?: DeleteSessionOptions,
+    signal?: AbortSignal,
+  ): Promise<ApiResponse<Empty>>
 }

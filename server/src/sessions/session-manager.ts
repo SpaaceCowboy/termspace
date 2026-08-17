@@ -3,7 +3,8 @@ import { stat } from 'node:fs/promises'
 import type {
   AgentCommand,
   AgentCommandOverrides,
-  AgentKind,
+  CreateSessionInput,
+  DeleteSessionOptions,
   Session,
 } from '@termspace/contracts'
 
@@ -15,6 +16,7 @@ import {
   type RealPath,
 } from '../fs/contained-path.js'
 import { resolveAgentCommand } from '../projects/agent-commands.js'
+import { WorktreeDirtyError } from '../git/worktree-manager.js'
 
 interface SessionRepositoryPort {
   delete(sessionId: string): boolean
@@ -22,6 +24,7 @@ interface SessionRepositoryPort {
   findProject(projectId: string): {
     readonly id: string
     readonly path: string
+    readonly defaultBranch: string
     readonly agentCommands: AgentCommandOverrides
   } | null
   insert(session: Session): void
@@ -33,11 +36,23 @@ interface TmuxPort {
   kill(id: string): Promise<void>
 }
 
+interface WorktreePort {
+  create(
+    project: { readonly path: string; readonly defaultBranch: string },
+    sessionId: string,
+    branch: string,
+  ): Promise<string>
+  isDirty(cwd: string): Promise<boolean>
+  remove(projectPath: string, cwd: string, force: boolean): Promise<void>
+  rollback(projectPath: string, cwd: string, branch: string): Promise<void>
+}
+
 interface SessionManagerOptions {
   readonly createId?: () => string
   readonly isDirectory?: (path: string) => Promise<boolean>
   readonly now?: () => number
   readonly realPath?: RealPath
+  readonly worktrees?: WorktreePort
 }
 
 export class SessionProjectNotFoundError extends Error {}
@@ -51,6 +66,7 @@ export class SessionManager {
   readonly #realPath: RealPath | undefined
   readonly #repository: SessionRepositoryPort
   readonly #tmux: TmuxPort
+  readonly #worktrees: WorktreePort | undefined
 
   constructor(
     repository: SessionRepositoryPort,
@@ -63,86 +79,134 @@ export class SessionManager {
     this.#isDirectory = options.isDirectory ?? isDirectory
     this.#now = options.now ?? Date.now
     this.#realPath = options.realPath
+    this.#worktrees = options.worktrees
   }
 
-  async create(
-    projectId: string,
-    name: string,
-    agent: AgentKind,
-    requestedCwd?: string,
-  ): Promise<Session> {
-    const project = this.#repository.findProject(projectId)
+  async create(input: CreateSessionInput): Promise<Session> {
+    const project = this.#repository.findProject(input.projectId)
     if (project === null) {
-      throw new SessionProjectNotFoundError(`Project ${projectId} was not found`)
+      throw new SessionProjectNotFoundError(`Project ${input.projectId} was not found`)
     }
-    // An explicit cwd is confined to its own project. Without this a session can
-    // be started anywhere on the box regardless of which project it claims to
-    // belong to, which makes the project boundary decorative.
-    let cwd = project.path
-    if (requestedCwd !== undefined) {
-      cwd = assertWithinRoot(project.path, normalizeAbsolutePath(requestedCwd), {
-        allowRoot: true,
-      })
-      await assertRealPathWithinRoot(project.path, cwd, {
-        allowRoot: true,
-        ...(this.#realPath === undefined ? {} : { realPath: this.#realPath }),
-      })
-    }
-    if (!(await this.#isDirectory(cwd))) {
-      throw new SessionDirectoryNotFoundError(`Directory ${cwd} was not found`)
+    const id = this.#createId()
+    let cwd: string
+    let worktreeBranch: string | null = null
+    if (input.worktree === true) {
+      if (this.#worktrees === undefined) {
+        throw new Error('Worktree support is not configured')
+      }
+      cwd = await this.#worktrees.create(project, id, input.worktreeBranch)
+      worktreeBranch = input.worktreeBranch
+    } else {
+      // An explicit cwd is confined to its own project. Without this a session
+      // can start anywhere on the box regardless of which project it claims.
+      cwd = project.path
+      if (input.cwd !== undefined) {
+        cwd = assertWithinRoot(project.path, normalizeAbsolutePath(input.cwd), {
+          allowRoot: true,
+        })
+        await assertRealPathWithinRoot(project.path, cwd, {
+          allowRoot: true,
+          ...(this.#realPath === undefined ? {} : { realPath: this.#realPath }),
+        })
+      }
+      if (!(await this.#isDirectory(cwd))) {
+        throw new SessionDirectoryNotFoundError(`Directory ${cwd} was not found`)
+      }
     }
 
-    const id = this.#createId()
     const createdAt = this.#now()
     const session: Session = {
       id,
       projectId: project.id,
-      name,
-      agent,
+      name: input.name,
+      agent: input.agent,
       cwd,
-      worktreeBranch: null,
+      worktreeBranch,
+      hasCwdConflict: false,
       state: 'idle',
       title: null,
       lastActivityAt: createdAt,
       createdAt,
     }
 
-    await this.#tmux.createDetached(
-      id,
-      cwd,
-      resolveAgentCommand(agent, project.agentCommands),
-    )
+    let tmuxCreated = false
     try {
+      await this.#tmux.createDetached(
+        id,
+        cwd,
+        resolveAgentCommand(input.agent, project.agentCommands),
+      )
+      tmuxCreated = true
       this.#repository.insert(session)
     } catch (error) {
-      try {
-        await this.#tmux.kill(id)
-      } catch (rollbackError) {
-        throw new AggregateError(
-          [error, rollbackError],
-          'Session persistence and tmux rollback both failed',
-        )
+      const rollbackErrors: unknown[] = [error]
+      if (tmuxCreated) {
+        await this.#tmux.kill(id).catch((rollbackError: unknown) => {
+          rollbackErrors.push(rollbackError)
+        })
+      }
+      if (worktreeBranch !== null && this.#worktrees !== undefined) {
+        await this.#worktrees
+          .rollback(project.path, cwd, worktreeBranch)
+          .catch((rollbackError: unknown) => {
+            rollbackErrors.push(rollbackError)
+          })
+      }
+      if (rollbackErrors.length > 1) {
+        throw new AggregateError(rollbackErrors, 'Session creation rollback failed')
       }
       throw error
     }
-    return session
+    return this.find(id) ?? session
   }
 
   list(): readonly Session[] {
-    return this.#repository.list()
+    return withCwdConflicts(this.#repository.list())
   }
 
   find(sessionId: string): Session | null {
-    return this.#repository.find(sessionId)
+    return this.list().find(({ id }) => id === sessionId) ?? null
   }
 
-  async delete(sessionId: string): Promise<boolean> {
-    if (this.#repository.find(sessionId) === null) {
+  async delete(
+    sessionId: string,
+    options: DeleteSessionOptions = {},
+  ): Promise<boolean> {
+    const session = this.#repository.find(sessionId)
+    if (session === null) {
       return false
     }
+    const project = session.worktreeBranch === null
+      ? null
+      : this.#repository.findProject(session.projectId)
+    if (session.worktreeBranch !== null) {
+      if (project === null || this.#worktrees === undefined) {
+        throw new Error('Worktree session has no project or worktree manager')
+      }
+      if (options.force !== true && await this.#worktrees.isDirty(session.cwd)) {
+        throw new WorktreeDirtyError(`Worktree ${session.cwd} has uncommitted changes`)
+      }
+    }
     await this.#tmux.kill(sessionId)
+    if (session.worktreeBranch !== null && project !== null && this.#worktrees !== undefined) {
+      await this.#worktrees.remove(project.path, session.cwd, options.force === true)
+    }
     return this.#repository.delete(sessionId)
   }
+}
+
+function withCwdConflicts(sessions: readonly Session[]): readonly Session[] {
+  const counts = new Map<string, number>()
+  for (const session of sessions) {
+    if (session.worktreeBranch === null) {
+      counts.set(session.cwd, (counts.get(session.cwd) ?? 0) + 1)
+    }
+  }
+  return sessions.map((session) => ({
+    ...session,
+    hasCwdConflict:
+      session.worktreeBranch === null && (counts.get(session.cwd) ?? 0) > 1,
+  }))
 }
 
 async function isDirectory(path: string): Promise<boolean> {

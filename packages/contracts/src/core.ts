@@ -76,17 +76,73 @@ export interface Session {
   agent: AgentKind
   cwd: string
   worktreeBranch: string | null
+  /** True only for non-worktree sessions sharing the same cwd. */
+  hasCwdConflict: boolean
   state: SessionState
   title: string | null
   lastActivityAt: number
   createdAt: number
 }
 
-export interface CreateSessionInput {
+interface CreateSessionBase {
   projectId: string
   name: string
   agent: AgentKind
-  cwd?: string
+}
+
+export type CreateSessionInput = CreateSessionBase &
+  (
+    | {
+        /** Omitted/false preserves the Phase 1 request shape. */
+        worktree?: false
+        cwd?: string
+        worktreeBranch?: never
+      }
+    | {
+        /** Creates a new branch and a dedicated git worktree. */
+        worktree: true
+        worktreeBranch: string
+        /** A worktree's cwd is computed by the server and cannot be supplied. */
+        cwd?: never
+      }
+  )
+
+export interface DeleteSessionOptions {
+  /** Required to discard uncommitted changes while removing a worktree. */
+  force?: boolean
+}
+
+export const DIFF_FILE_STATUSES = [
+  'added',
+  'modified',
+  'deleted',
+  'renamed',
+  'copied',
+  'untracked',
+  'conflicted',
+] as const
+
+export type DiffFileStatus = (typeof DIFF_FILE_STATUSES)[number]
+
+export interface DiffFile {
+  path: string
+  previousPath: string | null
+  status: DiffFileStatus
+  /** Null for binary and untracked files. */
+  additions: number | null
+  /** Null for binary and untracked files. */
+  deletions: number | null
+  binary: boolean
+}
+
+export interface DiffResult {
+  sessionId: string
+  baseBranch: string
+  files: readonly DiffFile[]
+  /** Unified diff for tracked changes. Untracked files still appear in files. */
+  patch: string
+  /** True when file metadata or patch output hit a server safety limit. */
+  truncated: boolean
 }
 
 export const AGENT_KINDS = ['claude', 'codex', 'shell'] as const

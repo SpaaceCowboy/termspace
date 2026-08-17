@@ -7,6 +7,8 @@ import {
   binaryOutputFixture,
   clientFrameFixtures,
   createSessionInputFixture,
+  createWorktreeSessionInputFixture,
+  diffResultFixture,
   layoutFixture,
   layoutModeFixtures,
   projectFixtures,
@@ -87,4 +89,16 @@ test('the binary output fixture refuses a session id that is not 16 bytes', () =
 
 test('the create-session fixture omits cwd rather than sending undefined', () => {
   assert.equal('cwd' in createSessionInputFixture, false)
+})
+
+test('the worktree create fixture carries a branch and no caller-selected cwd', () => {
+  assert.equal(createWorktreeSessionInputFixture.worktree, true)
+  assert.equal('cwd' in createWorktreeSessionInputFixture, false)
+  assert.match(createWorktreeSessionInputFixture.worktreeBranch, /^ts\//)
+})
+
+test('the diff fixture refers to a real session and distinguishes untracked files', () => {
+  assert.ok(sessionFixtures.some(({ id }) => id === diffResultFixture.sessionId))
+  assert.equal(diffResultFixture.files.at(-1)?.status, 'untracked')
+  assert.equal(diffResultFixture.files.at(-1)?.additions, null)
 })

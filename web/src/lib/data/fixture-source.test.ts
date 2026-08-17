@@ -53,3 +53,28 @@ test('the fixture source hands out a copy, not the shared fixture array', async 
   }
   assert.equal(second.data.length, 3)
 })
+
+test('the fixture source creates an isolated worktree session and exposes its diff', async () => {
+  const created = await fixtureSource.createSession({
+    projectId: 'prj_portalui0001',
+    name: 'Parallel',
+    agent: 'codex',
+    worktree: true,
+    worktreeBranch: 'ts/parallel-fixture',
+  })
+  assert.equal(created.ok, true)
+  if (!created.ok) {
+    return
+  }
+  assert.equal(created.data.worktreeBranch, 'ts/parallel-fixture')
+  assert.match(created.data.cwd, /\.termspace-worktrees/)
+  assert.equal(created.data.hasCwdConflict, false)
+
+  const diff = await fixtureSource.sessionDiff(created.data.id)
+  assert.equal(diff.ok, true)
+  if (diff.ok) {
+    assert.equal(diff.data.sessionId, created.data.id)
+  }
+
+  await fixtureSource.deleteSession(created.data.id, { force: true })
+})

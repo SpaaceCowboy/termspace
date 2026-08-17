@@ -1,9 +1,19 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
 
-import { appConfigFixture, projectFixtures } from '@termspace/contracts'
+import {
+  appConfigFixture,
+  diffResultFixture,
+  projectFixtures,
+  sessionFixtures,
+} from '@termspace/contracts'
 
-import { AppConfigSchema, ProjectSchema } from './http-source.ts'
+import {
+  AppConfigSchema,
+  DiffResultSchema,
+  ProjectSchema,
+  SessionSchema,
+} from './http-source.ts'
 
 /**
  * The response schemas are the seam where a client-side mistake looks exactly
@@ -54,6 +64,20 @@ describe('response schemas accept the shared fixtures', () => {
 
   it('parses the config fixture, whose defaults cover every agent kind', () => {
     const result = AppConfigSchema.safeParse(appConfigFixture)
+    assert.equal(result.success, true, JSON.stringify(result.error?.issues))
+  })
+
+  it('parses sessions with derived cwd conflicts and worktree branches', () => {
+    for (const session of sessionFixtures) {
+      const result = SessionSchema.safeParse(session)
+      assert.equal(result.success, true, JSON.stringify(result.error?.issues))
+    }
+    const { hasCwdConflict: _flag, ...oldShape } = sessionFixtures[0]!
+    assert.equal(SessionSchema.safeParse(oldShape).success, false)
+  })
+
+  it('parses the bounded diff fixture', () => {
+    const result = DiffResultSchema.safeParse(diffResultFixture)
     assert.equal(result.success, true, JSON.stringify(result.error?.issues))
   })
 })

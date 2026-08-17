@@ -187,6 +187,18 @@ describe('ProjectManager', () => {
     )
   })
 
+  it('reserves the internal worktree directory from project creation', async () => {
+    const { manager } = build(['/srv/projects/.termspace-worktrees'])
+    await assert.rejects(
+      manager.create({
+        name: 'Internal',
+        path: '/srv/projects/.termspace-worktrees/project',
+        createDirectory: true,
+      }),
+      ProjectConflictError,
+    )
+  })
+
   it('creates the directory when asked, and starts an empty project in it', async () => {
     const { manager, made, runner } = build()
     const project = await manager.create({
