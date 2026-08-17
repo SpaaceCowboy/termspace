@@ -48,4 +48,4 @@ verify every hardening directive on the actual agent process, not merely on gate
 The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
 high exposure score is expected and must not be described as strong containment.
 
-**Uncommitted:** Phase 5 owner-verification record and resume-state transition only.
+**Uncommitted:** none. Phase 5 owner verification landed in `fe9c6b6`.
