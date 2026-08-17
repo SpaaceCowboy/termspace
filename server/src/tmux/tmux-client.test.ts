@@ -23,6 +23,14 @@ class RecordingRunner implements ProcessRunner {
   }
 }
 
+class FailingRunner implements ProcessRunner {
+  constructor(readonly error: unknown) {}
+
+  async run(): Promise<CommandResult> {
+    throw this.error
+  }
+}
+
 describe('TmuxClient', () => {
   it('creates a detached, fixed-size session in the requested cwd', async () => {
     const runner = new RecordingRunner()
@@ -105,6 +113,30 @@ describe('TmuxClient', () => {
         `ts_${SID}`,
       ],
     })
+  })
+
+  it('lists only valid Termspace session ids from one tmux snapshot', async () => {
+    const runner = new RecordingRunner([
+      {
+        stderr: '',
+        stdout: `ts_${SID}\nunrelated\nts_not-valid!\nts_ses_scratch00003\n`,
+      },
+    ])
+    const tmux = new TmuxClient(runner, '/config/tmux.conf')
+
+    assert.deepEqual([...await tmux.listSessionIds()], [SID, 'ses_scratch00003'])
+    assert.deepEqual(runner.calls[0], {
+      command: 'tmux',
+      arguments_: ['list-sessions', '-F', '#{session_name}'],
+    })
+  })
+
+  it('treats tmux status 1 as no live sessions and propagates other failures', async () => {
+    const absent = new TmuxClient(new FailingRunner({ code: 1 }))
+    assert.equal((await absent.listSessionIds()).size, 0)
+
+    const broken = new TmuxClient(new FailingRunner({ code: 2 }))
+    await assert.rejects(broken.listSessionIds())
   })
 
   it('provides attach arguments without retaining a process handle', () => {

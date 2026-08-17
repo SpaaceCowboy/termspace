@@ -16,6 +16,7 @@ import { ProjectRepository } from './projects/project-repository.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
 import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
+import { SessionLivenessReconciler } from './sessions/session-liveness-reconciler.js'
 import { SessionRepository } from './sessions/session-repository.js'
 import { HeadlessBufferRegistry } from './terminal/headless-buffer.js'
 import { createOutputCoalescer } from './terminal/output-coalescer.js'
@@ -128,6 +129,12 @@ export function createServerRuntime(
   activity.listen((change) => {
     titles.observe(change)
   })
+  const liveness = new SessionLivenessReconciler({
+    activity,
+    sessions,
+    tmux,
+    onError: onGatewayError,
+  })
   const pushNotifier =
     vapid === null
       ? null
@@ -158,6 +165,9 @@ export function createServerRuntime(
     // Fire and forget: a slow push service must never hold up a status frame.
     void pushNotifier.notifyAll(session).catch(onGatewayError)
   })
+  // Start only after the persistence listener exists. The first reconciliation
+  // runs immediately, and an already-dead row must not lose that transition.
+  liveness.start()
   const gateway = new WebSocketGatewayServer(app.server, {
     allowedOrigin: environment.TERMSPACE_ALLOWED_ORIGIN,
     tickets,
@@ -191,6 +201,7 @@ export function createServerRuntime(
   gateway.start()
   app.addHook('onClose', async () => {
     gateway.close()
+    liveness.dispose()
     activity.dispose()
     titles.dispose()
     buffers.dispose()

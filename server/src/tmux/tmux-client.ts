@@ -62,6 +62,39 @@ export class TmuxClient {
     ])
   }
 
+  /**
+   * One snapshot for liveness reconciliation. tmux exits with status 1 when no
+   * server (and therefore no sessions) exists; that is an empty set, not an
+   * operational failure. Any other failure still propagates.
+   */
+  async listSessionIds(): Promise<ReadonlySet<string>> {
+    try {
+      const result = await this.#runner.run('tmux', [
+        'list-sessions',
+        '-F',
+        '#{session_name}',
+      ])
+      const ids = result.stdout
+        .split('\n')
+        .filter((name) => name.startsWith('ts_'))
+        .map((name) => name.slice(3))
+        .filter((id) => {
+          try {
+            parseSessionId(id)
+            return true
+          } catch {
+            return false
+          }
+        })
+      return new Set(ids)
+    } catch (error) {
+      if (commandExitCode(error) === 1) {
+        return new Set()
+      }
+      throw error
+    }
+  }
+
   async capture(untrustedId: unknown): Promise<string> {
     const result = await this.#runner.run('tmux', [
       'capture-pane',
@@ -104,6 +137,13 @@ export class TmuxClient {
       ],
     }
   }
+}
+
+function commandExitCode(error: unknown): number | null {
+  if (typeof error !== 'object' || error === null || !('code' in error)) {
+    return null
+  }
+  return typeof error.code === 'number' ? error.code : null
 }
 
 function toTmuxSessionName(untrustedId: unknown): string {

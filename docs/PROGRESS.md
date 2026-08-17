@@ -785,3 +785,26 @@ remaining containment boundary.
 
 This changes no application contract or runtime behavior. Phase 3 remains
 built but not human-verified; its locked-phone exit test is still the next gate.
+
+### 2026-08-17T12:35:06+03:30 · SOLO · 3 · FIXED
+A persisted session can no longer outlive its tmux process while claiming to be
+idle. This was the last known hole in the `dead` state: viewer attachments saw
+an exit while a browser was connected, but a command that ended with every tab
+closed left its database row alive forever.
+
+`SessionLivenessReconciler` now takes one tmux session-name snapshot every five
+seconds when persisted sessions exist. Missing rows are registered with the
+existing activity tracker and make the same edge-triggered transition to
+`dead`, so the normal listener persists the state and subscribed clients receive
+the normal status frame. Repeated snapshots emit nothing after the first edge.
+
+The row snapshot deliberately happens before the tmux snapshot. Reversing that
+order creates a race where a newly created tmux session can start just after the
+snapshot, be inserted before rows are read, and be falsely declared dead.
+Transient tmux failures are logged and retried; only tmux's status 1 (no server,
+therefore no sessions) is interpreted as an empty snapshot.
+
+Covered by unit tests for missing/live/repeated/empty/failure cases and by
+`server/e2e-liveness.mjs`: a real tmux command that exited with no viewer was
+marked dead while a second live tmux session was left alone. Full typecheck and
+all server, web, and contract unit suites pass.
