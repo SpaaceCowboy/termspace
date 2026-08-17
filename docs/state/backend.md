@@ -35,5 +35,4 @@ tmux server from the gateway service unless it is moved into its own systemd own
 Transient session scopes inherit many properties from their slice but not service sandbox settings;
 verify every hardening directive on the actual agent process, not merely on gateway or tmux.
 
-**Uncommitted:** complete first Phase 5 systemd ownership slice, decision/docs, tests, units, and
-e2e; ready for one commit.
+**Uncommitted:** none. The first Phase 5 systemd ownership slice is committed at `ec2ccf9`.
