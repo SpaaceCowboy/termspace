@@ -1,0 +1,7 @@
+[Unit]
+Description=Termspace application and persistent shell boundary
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes

@@ -155,3 +155,28 @@ recorded so nobody has to rediscover it:
 
 **Reversing this** is a matter of changing the systemd `User=`, `chown`-ing the
 project root and data directory, and accepting that sessions lose `sudo`.
+
+## 7. Foreground tmux service plus one transient scope per session
+2026-08-17 · Codex · Status: accepted
+
+**Context** — A daemonized tmux server stays in the cgroup that first launched
+it. If that is the gateway service, a normal gateway restart kills every agent.
+A single separate tmux cgroup fixes restart survival but cannot enforce a
+different memory ceiling for each session, because every pane inherits that
+same cgroup.
+
+**Options** — (a) daemonized tmux launched by the gateway with a permissive
+`KillMode`; (b) one foreground tmux service containing every shell; (c) a
+foreground tmux service for ownership, with each pane command moved into its
+own transient systemd scope.
+
+**Choice** — (c). `tmux -D` lets systemd own the real server process and keeps
+it alive while empty. `systemd-run --scope` preserves the pane's PTY while
+placing its complete agent process tree under an independent `MemoryMax` in
+`termspace-sessions.slice`.
+
+**Consequence** — systemd is now a production runtime dependency, not only an
+installer. The gateway needs permission to create and stop transient scopes;
+development leaves scope wrapping disabled. The tmux service must be started
+before the gateway, its named socket must match the gateway configuration, and
+stopping that service is destructive even though restarting the gateway is not.

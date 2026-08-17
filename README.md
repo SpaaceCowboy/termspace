@@ -41,3 +41,7 @@ flow. Never commit `.env` or `server/data/`.
 
 Run `./scripts/status.sh` at the start of a development session for the current
 phase, recent progress, and working-tree state.
+
+Production systemd units, environment examples, and the restart-survival check
+are documented in [`deploy/systemd/README.md`](deploy/systemd/README.md). The
+tmux unit is persistent; routine deploys restart only gateway and web.

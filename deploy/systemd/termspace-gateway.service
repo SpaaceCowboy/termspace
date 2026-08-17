@@ -1,0 +1,21 @@
+[Unit]
+Description=Termspace disposable HTTP and WebSocket gateway
+Documentation=file:/opt/termspace/deploy/systemd/README.md
+Requires=termspace-tmux.service
+After=network-online.target termspace-tmux.service
+Wants=network-online.target
+
+[Service]
+Type=exec
+User=root
+Slice=termspace.slice
+WorkingDirectory=/opt/termspace/server
+EnvironmentFile=-/etc/termspace/runtime.env
+EnvironmentFile=/etc/termspace/server.env
+ExecStart=/usr/bin/env NODE_ENV=production TERMSPACE_TMUX_SOCKET_NAME=termspace TERMSPACE_SYSTEMD_SESSION_SCOPES=true node dist/index.js
+Restart=on-failure
+RestartSec=2s
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

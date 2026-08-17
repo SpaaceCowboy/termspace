@@ -137,7 +137,7 @@ side by side, no file collisions.
 ## Phase 5 — Phone and hardening
 
 **Server**
-- [ ] systemd unit + slice with `MemoryMax` per session
+- [x] systemd unit + slice with `MemoryMax` per session
       ⚠ The tmux server must get its **own** unit or transient scope. Verified on
       this box: a daemonized tmux server keeps the cgroup of whatever spawned it
       (its parent becomes pid 1, its cgroup does not change). Under one service

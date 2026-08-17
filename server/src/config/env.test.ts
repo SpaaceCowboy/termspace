@@ -13,6 +13,10 @@ describe('readEnvironment', () => {
       TERMSPACE_HOST: '127.0.0.1',
       TERMSPACE_PORT: 3001,
       TERMSPACE_PROJECT_ROOT: '/srv/projects',
+      TERMSPACE_SESSION_MEMORY_MAX_BYTES: 4_294_967_296,
+      TERMSPACE_SESSION_SHELL: '/bin/bash',
+      TERMSPACE_SYSTEMD_SESSION_SCOPES: false,
+      TERMSPACE_TMUX_SOCKET_NAME: 'default',
     })
   })
 
@@ -36,6 +40,28 @@ describe('readEnvironment', () => {
         .TERMSPACE_PROJECT_ROOT,
       '/home/app/projects',
     )
+  })
+
+  it('validates systemd session scope settings at the environment boundary', () => {
+    assert.deepEqual(
+      readEnvironment({
+        TERMSPACE_SYSTEMD_SESSION_SCOPES: 'true',
+        TERMSPACE_SESSION_MEMORY_MAX_BYTES: '536870912',
+        TERMSPACE_SESSION_SHELL: '/bin/zsh',
+        TERMSPACE_TMUX_SOCKET_NAME: 'termspace-test',
+      }),
+      {
+        ...readEnvironment({}),
+        TERMSPACE_SYSTEMD_SESSION_SCOPES: true,
+        TERMSPACE_SESSION_MEMORY_MAX_BYTES: 536_870_912,
+        TERMSPACE_SESSION_SHELL: '/bin/zsh',
+        TERMSPACE_TMUX_SOCKET_NAME: 'termspace-test',
+      },
+    )
+    assert.throws(() => readEnvironment({ TERMSPACE_SYSTEMD_SESSION_SCOPES: 'yes' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_SESSION_MEMORY_MAX_BYTES: '1024' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_SESSION_SHELL: 'bash' }))
+    assert.throws(() => readEnvironment({ TERMSPACE_TMUX_SOCKET_NAME: '../escape' }))
   })
 
   it('requires an explicit allowed Origin in production', () => {

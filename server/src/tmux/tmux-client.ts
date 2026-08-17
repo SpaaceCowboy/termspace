@@ -14,17 +14,41 @@ export interface TmuxAttachCommand {
   readonly command: 'tmux'
 }
 
+export interface SessionScopeOptions {
+  readonly memoryMaxBytes: number
+  readonly shell: string
+  /** Test/development user manager; production deliberately uses system scope. */
+  readonly user?: boolean
+}
+
+export interface TmuxClientOptions {
+  readonly configPath?: string
+  readonly sessionScope?: SessionScopeOptions
+  readonly socketName?: string
+}
 
 export class TmuxClient {
   readonly #configPath: string
   readonly #runner: ProcessRunner
+  readonly #sessionScope: SessionScopeOptions | undefined
+  readonly #socketArguments: readonly string[]
 
   constructor(
     runner: ProcessRunner,
-    configPath: string = DEFAULT_TMUX_CONFIG_PATH,
+    configPathOrOptions: string | TmuxClientOptions = DEFAULT_TMUX_CONFIG_PATH,
   ) {
     this.#runner = runner
-    this.#configPath = configPath
+    if (typeof configPathOrOptions === 'string') {
+      this.#configPath = configPathOrOptions
+      this.#sessionScope = undefined
+      this.#socketArguments = []
+      return
+    }
+    this.#configPath = configPathOrOptions.configPath ?? DEFAULT_TMUX_CONFIG_PATH
+    this.#sessionScope = configPathOrOptions.sessionScope
+    this.#socketArguments = configPathOrOptions.socketName === undefined
+      ? []
+      : ['-L', configPathOrOptions.socketName]
   }
 
   async createDetached(
@@ -34,6 +58,7 @@ export class TmuxClient {
   ): Promise<void> {
     const sessionName = toTmuxSessionName(untrustedId)
     const arguments_: string[] = [
+      ...this.#socketArguments,
       '-f',
       this.#configPath,
       'new-session',
@@ -50,7 +75,7 @@ export class TmuxClient {
     // tmux takes the command as separate argv elements and execs it directly,
     // so a flag is just another element and no shell ever sees this. An empty
     // command means tmux starts the login shell, which is what `shell` wants.
-    arguments_.push(...launchCommand)
+    arguments_.push(...this.#scopedLaunchCommand(sessionName, launchCommand))
     await this.#runner.run('tmux', arguments_)
   }
 
@@ -61,22 +86,22 @@ export class TmuxClient {
     // removed the project directory manually, there may be no tmux target left
     // to kill. Treat that as the desired end state, using the same real tmux
     // snapshot and status semantics as liveness reconciliation.
-    if (!(await this.listSessionIds()).has(sessionId)) {
-      return
-    }
-    try {
-      await this.#runner.run('tmux', [
-        'kill-session',
-        '-t',
-        toTmuxSessionName(sessionId),
-      ])
-    } catch (error) {
-      // The target can disappear between the snapshot and kill command.
-      if (commandExitCode(error) === 1) {
-        return
+    if ((await this.listSessionIds()).has(sessionId)) {
+      try {
+        await this.#runner.run('tmux', [
+          ...this.#socketArguments,
+          'kill-session',
+          '-t',
+          toTmuxSessionName(sessionId),
+        ])
+      } catch (error) {
+        // The target can disappear between the snapshot and kill command.
+        if (commandExitCode(error) !== 1) {
+          throw error
+        }
       }
-      throw error
     }
+    await this.#stopSessionScope(sessionId)
   }
 
   /**
@@ -87,6 +112,7 @@ export class TmuxClient {
   async listSessionIds(): Promise<ReadonlySet<string>> {
     try {
       const result = await this.#runner.run('tmux', [
+        ...this.#socketArguments,
         'list-sessions',
         '-F',
         '#{session_name}',
@@ -114,6 +140,7 @@ export class TmuxClient {
 
   async capture(untrustedId: unknown): Promise<string> {
     const result = await this.#runner.run('tmux', [
+      ...this.#socketArguments,
       'capture-pane',
       '-e',
       '-p',
@@ -135,6 +162,7 @@ export class TmuxClient {
    */
   async paneTitle(untrustedId: unknown): Promise<string> {
     const result = await this.#runner.run('tmux', [
+      ...this.#socketArguments,
       'display-message',
       '-p',
       '-t',
@@ -148,10 +176,50 @@ export class TmuxClient {
     return {
       command: 'tmux',
       arguments_: [
+        ...this.#socketArguments,
         'attach-session',
         '-t',
         toTmuxSessionName(untrustedId),
       ],
+    }
+  }
+
+  #scopedLaunchCommand(sessionName: string, launchCommand: AgentCommand): AgentCommand {
+    if (this.#sessionScope === undefined) {
+      return launchCommand
+    }
+    const command = launchCommand.length === 0
+      ? [this.#sessionScope.shell, '-l']
+      : launchCommand
+    return [
+      '/usr/bin/systemd-run',
+      ...(this.#sessionScope.user === true ? ['--user'] : []),
+      '--scope',
+      `--unit=termspace-session-${sessionName.slice(3)}.scope`,
+      '--slice=termspace-sessions.slice',
+      `--property=MemoryMax=${String(this.#sessionScope.memoryMaxBytes)}`,
+      '--collect',
+      '--quiet',
+      '--',
+      ...command,
+    ]
+  }
+
+  async #stopSessionScope(sessionId: string): Promise<void> {
+    if (this.#sessionScope === undefined) {
+      return
+    }
+    try {
+      await this.#runner.run('/usr/bin/systemctl', [
+        ...(this.#sessionScope.user === true ? ['--user'] : []),
+        'stop',
+        `termspace-session-${sessionId}.scope`,
+      ])
+    } catch (error) {
+      // A collected scope is unloaded as soon as its command exits.
+      if (commandExitCode(error) !== 5) {
+        throw error
+      }
     }
   }
 }

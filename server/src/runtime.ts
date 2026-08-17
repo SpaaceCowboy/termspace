@@ -70,7 +70,17 @@ export function createServerRuntime(
   const pushRepository = new PushSubscriptionRepository(database)
   const vapid = readVapidConfig(environment)
   const processes = new ExecFileProcessRunner()
-  const tmux = new TmuxClient(processes)
+  const tmux = new TmuxClient(processes, {
+    socketName: environment.TERMSPACE_TMUX_SOCKET_NAME,
+    ...(environment.TERMSPACE_SYSTEMD_SESSION_SCOPES
+      ? {
+          sessionScope: {
+            memoryMaxBytes: environment.TERMSPACE_SESSION_MEMORY_MAX_BYTES,
+            shell: environment.TERMSPACE_SESSION_SHELL,
+          },
+        }
+      : {}),
+  })
   const sessions = new SessionManager(sessionRepository, tmux, {
     diffs: new GitDiffReader(processes),
     worktrees: new WorktreeManager(processes, environment.TERMSPACE_PROJECT_ROOT),

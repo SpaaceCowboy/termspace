@@ -1,0 +1,20 @@
+[Unit]
+Description=Termspace Next.js web application
+Documentation=file:/opt/termspace/deploy/systemd/README.md
+After=network-online.target termspace-gateway.service
+Wants=network-online.target
+Requires=termspace-gateway.service
+
+[Service]
+Type=exec
+User=root
+Slice=termspace.slice
+WorkingDirectory=/opt/termspace/web
+EnvironmentFile=-/etc/termspace/runtime.env
+ExecStart=/usr/bin/env NODE_ENV=production PORT=3002 node node_modules/next/dist/bin/next start
+Restart=on-failure
+RestartSec=2s
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

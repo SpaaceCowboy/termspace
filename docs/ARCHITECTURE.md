@@ -132,3 +132,29 @@ or scope (a daemonized tmux keeps the cgroup of whatever spawned it, so one
 service plus the default `KillMode` means a restart kills every agent), and the
 hardening directives belong on the unit that owns the *shells*, not only on the
 gateway.
+
+## systemd ownership
+
+Production uses a named tmux socket and a foreground server. The process tree
+is intentionally not the same as the application dependency tree:
+
+```text
+termspace.slice
+├── termspace-gateway.service       restartable Node gateway
+├── termspace-tmux.service          `tmux -L termspace -D`, systemd-owned
+└── termspace-sessions.slice
+    └── termspace-session-<id>.scope  one agent tree, one MemoryMax
+```
+
+The gateway asks the already-running named tmux server to create a pane whose
+command is `systemd-run --scope`. The transient scope moves the agent command
+out of the tmux service cgroup and applies the validated
+`TERMSPACE_SESSION_MEMORY_MAX_BYTES` ceiling to that session and every child it
+spawns. A bare-shell session runs the configured absolute login shell through
+the same wrapper. Session deletion removes the tmux session and explicitly
+stops a leftover scope; an already-collected scope is success.
+
+`termspace-gateway.service` requiring `termspace-tmux.service` controls startup
+order only. Restarting the gateway never restarts or stops tmux. Stopping the
+tmux service remains intentionally destructive and is not part of deployment.
+The checked-in units and operational procedure live in `deploy/systemd/`.

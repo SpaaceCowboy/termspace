@@ -2,8 +2,8 @@
 
 **Phase:** 5 — Phone and hardening. Phases 0–4 are built and human-verified.
 
-**Working on:** the first Phase 5 server box: separate systemd ownership for the disposable Node
-gateway and persistent tmux shells, with per-session memory control.
+**Working on:** the second Phase 5 server box: hardening the units that own tmux and scoped agent
+shells without breaking unrestricted root sessions or gateway restart persistence.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -15,11 +15,13 @@ the real-tmux regression passes 3/3 and the full package test/typecheck suites r
 Diff preflights now distinguish `not_repository`, `base_missing`, and later Git failures without
 changing the HTTP status or error code; the real Git diff integration remains 7/7.
 The owner confirmed the two-worktree, side-by-side review exit criterion; Phase 4 is verified.
+The systemd ownership box is complete: foreground named tmux service, separate disposable gateway,
+per-session transient scopes with MemoryMax, verified 9/9 against real systemd/tmux/gateway.
 
-**Next concrete step:** design and test a gateway service plus a separately-owned tmux service or
-scope, then prove with a real long-running tmux command that restarting the gateway leaves the
-session alive. Define where per-session `MemoryMax` is applied without putting tmux under the
-gateway cgroup.
+**Next concrete step:** apply `ProtectSystem=strict`, an explicit `ProtectHome` policy,
+`ReadWritePaths` for the configured project root and required runtime paths, and `PrivateTmp` to
+the shell-owning tmux/scope boundary; verify a real session can write only intended locations and
+still run root package-management workflows required by decision #6.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -30,5 +32,8 @@ Review changes requires a real Git repository with a commit at the configured de
 ordinary directory has no objective baseline and must never be initialized or committed silently.
 The tmux server inherits the cgroup that launches it even after daemonizing; never launch the first
 tmux server from the gateway service unless it is moved into its own systemd ownership first.
+Transient session scopes inherit many properties from their slice but not service sandbox settings;
+verify every hardening directive on the actual agent process, not merely on gateway or tmux.
 
-**Uncommitted:** none. The Phase 4 gate and Phase 5 transition are committed at `508cc40`.
+**Uncommitted:** complete first Phase 5 systemd ownership slice, decision/docs, tests, units, and
+e2e; ready for one commit.

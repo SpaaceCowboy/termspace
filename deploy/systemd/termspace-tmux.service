@@ -1,0 +1,18 @@
+[Unit]
+Description=Termspace persistent tmux server
+Documentation=file:/opt/termspace/deploy/systemd/README.md
+After=local-fs.target
+Before=termspace-gateway.service
+
+[Service]
+Type=exec
+User=root
+Slice=termspace.slice
+EnvironmentFile=-/etc/termspace/runtime.env
+ExecStart=/usr/bin/tmux -L termspace -D -f /opt/termspace/server/tmux.conf
+Restart=always
+RestartSec=1s
+KillMode=control-group
+
+[Install]
+WantedBy=multi-user.target

@@ -93,6 +93,64 @@ describe('TmuxClient', () => {
     assert.equal(runner.calls[0]?.arguments_.at(-1), '50', 'the last argument is still -y 50')
   })
 
+  it('launches each production command in its own memory-limited systemd scope', async () => {
+    const runner = new RecordingRunner()
+    const tmux = new TmuxClient(runner, {
+      configPath: '/config/tmux.conf',
+      socketName: 'termspace',
+      sessionScope: {
+        memoryMaxBytes: 536_870_912,
+        shell: '/bin/zsh',
+      },
+    })
+
+    await tmux.createDetached(SID, '/srv/project', [])
+
+    assert.deepEqual(runner.calls[0], {
+      command: 'tmux',
+      arguments_: [
+        '-L', 'termspace',
+        '-f', '/config/tmux.conf',
+        'new-session', '-d', '-s', `ts_${SID}`,
+        '-c', '/srv/project', '-x', '200', '-y', '50',
+        '/usr/bin/systemd-run',
+        '--scope',
+        `--unit=termspace-session-${SID}.scope`,
+        '--slice=termspace-sessions.slice',
+        '--property=MemoryMax=536870912',
+        '--collect', '--quiet', '--', '/bin/zsh', '-l',
+      ],
+    })
+  })
+
+  it('uses the user manager for scoped tests and stops a leftover scope on delete', async () => {
+    const runner = new RecordingRunner([
+      { stderr: '', stdout: '' },
+      { stderr: '', stdout: '' },
+    ])
+    const tmux = new TmuxClient(runner, {
+      socketName: 'termspace-test',
+      sessionScope: {
+        memoryMaxBytes: 536_870_912,
+        shell: '/bin/bash',
+        user: true,
+      },
+    })
+
+    await tmux.kill(SID)
+
+    assert.deepEqual(runner.calls, [
+      {
+        command: 'tmux',
+        arguments_: ['-L', 'termspace-test', 'list-sessions', '-F', '#{session_name}'],
+      },
+      {
+        command: '/usr/bin/systemctl',
+        arguments_: ['--user', 'stop', `termspace-session-${SID}.scope`],
+      },
+    ])
+  })
+
   it('kills only the named Termspace session', async () => {
     const runner = new RecordingRunner([
       { stderr: '', stdout: `ts_${SID}\n` },

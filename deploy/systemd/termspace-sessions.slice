@@ -1,0 +1,11 @@
+[Unit]
+Description=Termspace per-session scopes
+
+[Slice]
+CPUAccounting=yes
+MemoryAccounting=yes
+TasksAccounting=yes
+
+# Each transient termspace-session-<id>.scope receives its own MemoryMax from
+# the validated TERMSPACE_SESSION_MEMORY_MAX_BYTES setting. A ceiling here
+# would be shared by every session and is deliberately not a substitute.

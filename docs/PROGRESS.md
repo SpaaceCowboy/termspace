@@ -925,3 +925,29 @@ side-by-side diff reviews work, with no file collision. Built and Verified are
 checked. Phase 5 — phone operation and the production system boundary — is now
 the current phase; its first unit is separate systemd ownership for the gateway
 and tmux shells so restarting the app cannot kill an agent.
+
+### 2026-08-17T16:31:39+03:30 · SOLO · 5 · DECISION
+Production session ownership is a foreground named tmux server in its own
+service plus one transient systemd scope per session. A gateway-owned daemon
+breaks restart persistence; one tmux service containing all panes cannot apply
+`MemoryMax` independently. The accepted process tree solves both constraints
+without weakening `KillMode`.
+
+### 2026-08-17T16:31:39+03:30 · SOLO · 5 · DONE
+The first Phase 5 server box is complete. Checked-in systemd units separate the
+gateway, web process, persistent `tmux -D` server, and session slice. Production
+uses the named `termspace` socket. With scope mode enabled, every new session
+launches through `systemd-run --scope` under
+`termspace-session-<id>.scope`, with its own validated
+`TERMSPACE_SESSION_MEMORY_MAX_BYTES`; a bare shell is wrapped too. Deletion
+also stops a leftover scope, while collected scopes remain idempotent.
+
+The environment boundary validates scope enablement, the tmux socket name,
+memory range, and absolute shell. Unit tests cover exact argv, named-socket
+routing, scoped shell launch, and cleanup. systemd 257's native verifier accepts
+all five unit/slice files. `server/e2e-systemd.mjs` passed 9/9 using real user
+systemd, a foreground named tmux server, a memory-limited session scope, and the
+actual Fastify gateway: gateway and tmux/session cgroups were distinct, the
+configured `MemoryMax` was effective, restarting the gateway preserved the
+live session, and deletion removed both tmux and scope. All package tests,
+typechecks, and production builds pass.

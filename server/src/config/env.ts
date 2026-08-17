@@ -21,6 +21,27 @@ const EnvironmentSchema = z
     TERMSPACE_DATABASE_PATH: z.string().min(1).default('./data/termspace.db'),
     TERMSPACE_HOST: z.string().min(1).default('127.0.0.1'),
     TERMSPACE_PORT: z.coerce.number().int().min(1).max(65_535).default(3001),
+    TERMSPACE_TMUX_SOCKET_NAME: z
+      .string()
+      .min(1)
+      .max(64)
+      .regex(/^[A-Za-z0-9_-]+$/)
+      .default('default'),
+    TERMSPACE_SYSTEMD_SESSION_SCOPES: z
+      .enum(['true', 'false'])
+      .default('false')
+      .transform((value) => value === 'true'),
+    TERMSPACE_SESSION_MEMORY_MAX_BYTES: z.coerce
+      .number()
+      .int()
+      .min(64 * 1_024 * 1_024)
+      .max(1_024 * 1_024 * 1_024 * 1_024)
+      .default(4 * 1_024 * 1_024 * 1_024),
+    TERMSPACE_SESSION_SHELL: z
+      .string()
+      .min(1)
+      .refine((value) => value.startsWith('/'), 'Must be an absolute path')
+      .default('/bin/bash'),
     /**
      * Every project directory lives under this. Not a jail — a session is a real
      * shell and can leave it — but it bounds accidental agent damage, and it is
