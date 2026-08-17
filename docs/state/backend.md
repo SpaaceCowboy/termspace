@@ -4,7 +4,7 @@
 the owner's real two-agent worktree exit test, so Phase 5 must not start yet.
 
 **Working on:** Phase 4 gate only. A stale-session deletion bug reported during gate setup is
-fixed and ready to commit; no phase implementation box remains open.
+fixed and committed; no phase implementation box remains open.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -25,5 +25,4 @@ and files at 2,000; `truncated` must remain visible. Untracked contents are list
 into the patch. Worktree branches and commits are preserved on normal and forced session deletion.
 Projects remain deliberately non-cascading: delete their sessions first, then the project record.
 
-**Uncommitted:** stale-session tmux deletion repair, its real-tmux regression, and FIXED progress
-entry; ready for one commit.
+**Uncommitted:** none. The stale-session deletion repair is committed at `ebbc00a`.
