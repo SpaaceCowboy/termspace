@@ -42,7 +42,6 @@ export interface TerminalGridProps {
   /** False on the fixture source, where there is no gateway to attach to. */
   live: boolean
   deadSessions: ReadonlySet<string>
-  notice: string | null
   onFocusSlot: (index: number) => void
   onClearSlot: (index: number) => void
   onNewSession: () => void
@@ -55,7 +54,6 @@ export function TerminalGrid({
   panes,
   live,
   deadSessions,
-  notice,
   onFocusSlot,
   onClearSlot,
   onNewSession,
@@ -209,7 +207,6 @@ export function TerminalGrid({
               focused={index === layout.focusedSlot}
               live={live}
               dead={session !== null && deadSessions.has(session.id)}
-              notice={index === layout.focusedSlot ? notice : null}
               setContainer={panes.setContainer}
               focusTerminal={panes.focus}
               onFocusSlot={onFocusSlot}
@@ -280,7 +277,6 @@ interface PaneSlotFrameProps {
   focused: boolean
   live: boolean
   dead: boolean
-  notice: string | null
   setContainer: PanesApi['setContainer']
   focusTerminal: PanesApi['focus']
   onFocusSlot: (index: number) => void
@@ -294,7 +290,6 @@ function PaneSlotFrame({
   focused,
   live,
   dead,
-  notice,
   setContainer,
   focusTerminal,
   onFocusSlot,
@@ -406,11 +401,6 @@ function PaneSlotFrame({
           <PanePlaceholder session={session} />
         </div>
       )}
-      {notice !== null ? (
-        <p className={cx(styles.notice, dead && styles.noticeDead)} role="status">
-          {notice}
-        </p>
-      ) : null}
     </section>
   )
 }

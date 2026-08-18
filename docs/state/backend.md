@@ -1,9 +1,9 @@
 # Current state — Termspace (solo)
 
-**Phase:** Phase 6 — operations and interface refinement; server complete, web next.
+**Phase:** Phase 6 — operations and interface refinement; built, awaiting owner verification.
 
-**Working on:** the Phase 6 web slice: operations panel, attention-first ordering, and persistent
-project/session pin controls backed by the completed server APIs.
+**Working on:** Phase 6 build gate and handoff. Implementation and automated verification are
+complete; only the owner’s real-data and feel check remains.
 
 **Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
 worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
@@ -37,9 +37,15 @@ Migration 4 and authenticated GET/PUT routes persist user favorites and remove u
 Operational collection caches for five seconds, reports live tmux/storage/backup/policy metrics,
 and isolates every unavailable source. Three allowlisted structured journal event types are
 converted to safe summaries; all 43 server test files and typechecking pass.
+The web operations dialog refreshes every 15 seconds and has explicit loading, error, empty, and
+unavailable treatment. Needs-you projects/sessions lead the sidebar; project and session pins are
+persisted. Persistent pane notices became accessible toasts, dead connections have a real retry,
+and the loading/first-use/error states plus top bar and phone targets received a full consistency
+pass. A real-format review fixed the backup filename matcher before release. Repository-wide tests,
+typechecks, builds, and 6/6 production browser checks pass; desktop and phone renders were inspected.
 
-**Next concrete step:** extend the web data source and zod parsers for favorites/operations, then
-add attention/favorite ordering and pin controls before building the operations panel.
+**Next concrete step:** owner opens Operations against the real server, pins one project and one
+session, reloads on desktop and phone, and confirms the Phase 6 exit criterion; then mark Verified.
 
 **Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
 toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
@@ -57,5 +63,5 @@ high exposure score is expected and must not be described as strong containment.
 Operational events must always be rebuilt from allowlisted structured fields; never return a raw
 journal `MESSAGE`, error stack, command argv, request body, query string, ticket, or session bytes.
 
-**Uncommitted:** completed Phase 6 server implementation, tests, checklist updates, progress entry,
-and this resume update are ready for the server checkpoint commit.
+**Uncommitted:** completed Phase 6 web/UI implementation, final backup-format regression, checklist,
+progress entry, and this resume update are ready for the final Phase 6 commit and requested push.

@@ -18,8 +18,9 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--ts-space-4);
-  min-height: 32px;
-  padding: 0 var(--ts-space-1);
+  min-height: 44px;
+  padding: 0 var(--ts-space-2);
+  border-bottom: 1px solid var(--ts-border);
 }
 
 .crumbs {
@@ -40,7 +41,7 @@
 .topbarRight {
   display: inline-flex;
   align-items: center;
-  gap: var(--ts-space-4);
+  gap: var(--ts-space-2);
 }
 
 .mobileMenu,
@@ -52,8 +53,12 @@
   display: inline-flex;
 }
 
-.diffButton {
-  padding: var(--ts-space-1) var(--ts-space-3);
+.pushControls { display: inline-flex; }
+
+.diffButton,
+.secondaryButton {
+  min-height: 34px;
+  padding: 0 var(--ts-space-3);
   border: 1px solid var(--ts-border-strong);
   border-radius: var(--ts-radius-sm);
   background: var(--ts-bg-raised);
@@ -63,11 +68,15 @@
   transition: background var(--ts-ease), color var(--ts-ease), border-color var(--ts-ease);
 }
 
-.diffButton:hover {
+.diffButton:hover,
+.secondaryButton:hover {
   border-color: var(--ts-accent);
   background: var(--ts-bg-hover);
   color: var(--ts-text);
 }
+
+.secondaryButton { background: transparent; }
+.shortLabel { display: none; }
 
 /*
  * Connection state is ambient: it should be findable when something is wrong
@@ -102,7 +111,7 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--ts-space-4);
+  gap: var(--ts-space-3);
   height: 100%;
   border: 1px solid var(--ts-border);
   border-radius: var(--ts-radius-lg);
@@ -110,6 +119,69 @@
   color: var(--ts-text-dim);
   text-align: center;
   padding: var(--ts-space-6);
+}
+
+.empty h2 {
+  margin: 0;
+  color: var(--ts-text);
+  font-size: 20px;
+  letter-spacing: -0.02em;
+}
+
+.stateIcon {
+  width: 48px;
+  height: 48px;
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--ts-border-strong);
+  border-radius: 50%;
+  background: var(--ts-bg);
+  color: var(--ts-accent);
+  font-family: var(--ts-mono);
+  font-size: var(--ts-text-lg);
+}
+
+.emptyError .stateIcon { color: var(--ts-danger); border-color: var(--ts-danger); }
+
+.workspaceSkeleton {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--ts-space-3);
+}
+
+.workspaceSkeleton span {
+  min-height: 180px;
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius-lg);
+  background: linear-gradient(100deg, var(--ts-bg-raised) 30%, var(--ts-bg-hover) 50%, var(--ts-bg-raised) 70%);
+  background-size: 220% 100%;
+  animation: workspaceShimmer 1.2s linear infinite;
+}
+
+.workspaceSkeleton span:last-child { grid-column: 1 / -1; }
+
+@keyframes workspaceShimmer { to { background-position-x: -220%; } }
+
+.disconnected {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--ts-space-3);
+  padding: var(--ts-space-2) var(--ts-space-3);
+  border: 1px solid var(--ts-danger);
+  border-radius: var(--ts-radius);
+  background: var(--ts-danger-quiet);
+  color: var(--ts-text-dim);
+}
+
+.disconnected strong { color: var(--ts-text); }
+.disconnected button {
+  min-height: 34px;
+  padding: 0 var(--ts-space-3);
+  border: 1px solid var(--ts-danger);
+  border-radius: var(--ts-radius-sm);
+  background: transparent;
 }
 
 .empty p {
@@ -147,7 +219,7 @@
   }
 
   .topbar {
-    min-height: 40px;
+    min-height: 44px;
     padding: 0;
     gap: var(--ts-space-2);
   }
@@ -186,11 +258,18 @@
   }
 
   .diffButton {
-    min-height: 38px;
+    min-height: 40px;
     max-width: 116px;
     overflow: hidden;
     text-overflow: ellipsis;
   }
+
+  .secondaryButton { min-height: 40px; }
+  .wideLabel { display: none; }
+  .shortLabel { display: inline; }
+  .workspaceSkeleton { grid-template-columns: 1fr; }
+  .workspaceSkeleton span:last-child { grid-column: auto; }
+  .disconnected { align-items: flex-start; }
 }
 
 .gate {
@@ -199,7 +278,12 @@
   place-items: center;
   color: var(--ts-text-dim);
   font-size: var(--ts-text-base);
+  gap: var(--ts-space-2);
 }
+
+.gate p { margin: 0; }
+.gateMark { color: var(--ts-accent); font-family: var(--ts-mono); animation: gatePulse 1.2s ease-in-out infinite; }
+@keyframes gatePulse { 50% { opacity: 0.35; } }
 
 .confirmText {
   margin: 0;

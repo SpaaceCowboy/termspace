@@ -23,6 +23,7 @@ export interface SocketHandlers {
 
 export interface SocketApi {
   state: ConnectionState
+  reconnect: () => void
   subscribe: (sid: string, level?: VisibilityLevel) => void
   unsubscribe: (sid: string) => void
   sendInput: (sid: string, data: string) => void
@@ -82,6 +83,10 @@ export function useSocket(handlers: SocketHandlers, enabled = true): SocketApi {
     clientRef.current?.subscribe(sid, level)
   }, [])
 
+  const reconnect = useCallback(() => {
+    clientRef.current?.reconnect()
+  }, [])
+
   const unsubscribe = useCallback((sid: string) => {
     clientRef.current?.unsubscribe(sid)
   }, [])
@@ -99,7 +104,7 @@ export function useSocket(handlers: SocketHandlers, enabled = true): SocketApi {
   }, [])
 
   return useMemo(
-    () => ({ state, subscribe, unsubscribe, sendInput, sendResize, sendVisibility }),
-    [state, subscribe, unsubscribe, sendInput, sendResize, sendVisibility],
+    () => ({ state, reconnect, subscribe, unsubscribe, sendInput, sendResize, sendVisibility }),
+    [state, reconnect, subscribe, unsubscribe, sendInput, sendResize, sendVisibility],
   )
 }

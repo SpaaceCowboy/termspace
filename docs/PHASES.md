@@ -179,14 +179,14 @@ in the workspace without changing its terminal model.
       journald are unavailable; raw log messages and secrets never cross HTTP
 
 **Web**
-- [ ] Operational panel with clear health, capacity, backup, policy, and recent
+- [x] Operational panel with clear health, capacity, backup, policy, and recent
       event summaries
-- [ ] Sessions needing attention sort first; projects and sessions can be
+- [x] Sessions needing attention sort first; projects and sessions can be
       pinned, with favorites preserved across reloads
-- [ ] Cleaner top bar and less visual crowding
-- [ ] Purpose-built loading, empty, disconnected, and error states; transient
+- [x] Cleaner top bar and less visual crowding
+- [x] Purpose-built loading, empty, disconnected, and error states; transient
       notices use accessible toast notifications
-- [ ] Consistent touch targets, spacing, typography, contrast, and motion,
+- [x] Consistent touch targets, spacing, typography, contrast, and motion,
       including reduced-motion behavior
 
 **Exit criteria**
@@ -216,4 +216,4 @@ criteria happen with your own eyes.
 | 3 | [x] | [x] | Owner confirmed: locked phone notified within 5 s and tapping opened the correct pane focused. |
 | 4 | [x] | [x] | Owner confirmed two separate worktrees and both side-by-side reviews work without collisions. |
 | 5 | [x] | [x] | Owner confirmed the complete physical-phone workflow works. |
-| 6 | [ ] | [ ] | |
+| 6 | [x] | [ ] | Automated production-browser verification passes on desktop and phone; owner verification remains. |

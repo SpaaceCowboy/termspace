@@ -1,4 +1,11 @@
-import { AGENT_KINDS, CLIENT_ERROR_PREFIX, LAYOUT_MODES } from '@termspace/contracts'
+import {
+  AGENT_KINDS,
+  CLIENT_ERROR_PREFIX,
+  LAYOUT_MODES,
+  OPERATIONAL_EVENT_KINDS,
+  OPERATIONAL_EVENT_LEVELS,
+  OPERATIONAL_HEALTH_STATES,
+} from '@termspace/contracts'
 import type {
   ApiResponse,
   AppConfig,
@@ -6,10 +13,12 @@ import type {
   CreateSessionInput,
   DeleteSessionOptions,
   DiffResult,
+  Favorites,
   HealthData,
   Layout,
   LayoutInput,
   LoginInput,
+  OperationalStatus,
   Project,
   PushSubscriptionInput,
   Session,
@@ -117,6 +126,48 @@ export const AppConfigSchema = z.object({
   pushPublicKey: z.string().nullable(),
   defaultAgentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
 })
+export const FavoritesSchema = z.object({
+  projectIds: z.array(z.string()),
+  sessionIds: z.array(z.string()),
+})
+export const OperationalStatusSchema = z.object({
+  generatedAt: z.number(),
+  gateway: z.object({
+    health: z.enum(OPERATIONAL_HEALTH_STATES),
+    version: z.string(),
+    uptimeMs: z.number().nonnegative(),
+  }),
+  tmux: z.object({
+    health: z.enum(OPERATIONAL_HEALTH_STATES),
+    liveSessions: z.number().int().nonnegative().nullable(),
+    persistedSessions: z.number().int().nonnegative(),
+  }),
+  storage: z.object({
+    databaseBytes: z.number().nonnegative().nullable(),
+    projectRoot: z.object({
+      path: z.string(),
+      totalBytes: z.number().nonnegative().nullable(),
+      availableBytes: z.number().nonnegative().nullable(),
+    }),
+    backups: z.object({
+      count: z.number().int().nonnegative().nullable(),
+      latestAt: z.number().nullable(),
+      latestBytes: z.number().nonnegative().nullable(),
+    }),
+  }),
+  policy: z.object({
+    sessionMemoryMaxBytes: z.number().positive(),
+    idleSessionGraceMs: z.number().positive(),
+    backupRetentionCount: z.number().int().positive(),
+  }),
+  eventsAvailable: z.boolean(),
+  recentEvents: z.array(z.object({
+    at: z.number(),
+    kind: z.enum(OPERATIONAL_EVENT_KINDS),
+    level: z.enum(OPERATIONAL_EVENT_LEVELS),
+    summary: z.string(),
+  })),
+})
 const UserEnvelopeSchema = z.object({ user: UserSchema })
 const WsTicketSchema = z.object({ ticket: z.string(), expiresAt: z.number() })
 const EmptySchema = z.object({}).strict()
@@ -181,6 +232,15 @@ export const httpSource: DataSource = {
   },
   config(signal?: AbortSignal): Promise<ApiResponse<AppConfig>> {
     return request('/api/config', AppConfigSchema, { signal })
+  },
+  operations(signal?: AbortSignal): Promise<ApiResponse<OperationalStatus>> {
+    return request('/api/operations', OperationalStatusSchema, { signal })
+  },
+  favorites(signal?: AbortSignal): Promise<ApiResponse<Favorites>> {
+    return request('/api/favorites', FavoritesSchema, { signal })
+  },
+  saveFavorites(input: Favorites, signal?: AbortSignal): Promise<ApiResponse<Favorites>> {
+    return request('/api/favorites', FavoritesSchema, { method: 'PUT', json: input, signal })
   },
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>> {
     return request('/api/projects', z.array(ProjectSchema), { signal })

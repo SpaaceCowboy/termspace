@@ -11,10 +11,24 @@ test('the fixture source answers every method of the seam with an ok envelope', 
     await fixtureSource.listProjects(),
     await fixtureSource.listSessions(),
     await fixtureSource.layout(),
+    await fixtureSource.operations(),
+    await fixtureSource.favorites(),
   ]
   for (const response of responses) {
     assert.equal(response.ok, true)
   }
+})
+
+test('the fixture source persists and filters favorites', async () => {
+  const saved = await fixtureSource.saveFavorites({
+    projectIds: ['prj_apirefac0002', 'missing'],
+    sessionIds: ['ses_apirefac0002', 'missing'],
+  })
+  assert.deepEqual(saved, {
+    ok: true,
+    data: { projectIds: ['prj_apirefac0002'], sessionIds: ['ses_apirefac0002'] },
+  })
+  assert.deepEqual(await fixtureSource.favorites(), saved)
 })
 
 test('a layout saved against the fixture source comes back normalized', async () => {

@@ -1,9 +1,11 @@
 import {
   appConfigFixture,
   diffResultFixture,
+  favoritesFixture,
   healthDataFixture,
   layoutFixture,
   normalizeLayout,
+  operationalStatusFixture,
   projectFixtures,
   sessionFixtures,
   userFixture,
@@ -13,10 +15,12 @@ import {
   type CreateSessionInput,
   type DeleteSessionOptions,
   type DiffResult,
+  type Favorites,
   type HealthData,
   type Layout,
   type LayoutInput,
   type LoginInput,
+  type OperationalStatus,
   type Project,
   type Session,
   type UpdateProjectInput,
@@ -40,6 +44,7 @@ function fail<T>(code: string, message: string): Promise<ApiResponse<T>> {
 const liveSessions: Session[] = [...sessionFixtures]
 const liveProjects: Project[] = [...projectFixtures]
 let liveLayout: Layout = layoutFixture
+let liveFavorites: Favorites = favoritesFixture
 
 /** The same pruning the server does, so the fixture cannot show a ghost pane. */
 function pruneLayout(layout: Layout): Layout {
@@ -68,6 +73,27 @@ export const fixtureSource: DataSource = {
   },
   config(): Promise<ApiResponse<AppConfig>> {
     return ok(appConfigFixture)
+  },
+  operations(): Promise<ApiResponse<OperationalStatus>> {
+    return ok(operationalStatusFixture)
+  },
+  favorites(): Promise<ApiResponse<Favorites>> {
+    const projects = new Set(liveProjects.map(({ id }) => id))
+    const sessions = new Set(liveSessions.map(({ id }) => id))
+    liveFavorites = {
+      projectIds: liveFavorites.projectIds.filter((id) => projects.has(id)),
+      sessionIds: liveFavorites.sessionIds.filter((id) => sessions.has(id)),
+    }
+    return ok(liveFavorites)
+  },
+  saveFavorites(input: Favorites): Promise<ApiResponse<Favorites>> {
+    const projects = new Set(liveProjects.map(({ id }) => id))
+    const sessions = new Set(liveSessions.map(({ id }) => id))
+    liveFavorites = {
+      projectIds: [...new Set(input.projectIds)].filter((id) => projects.has(id)),
+      sessionIds: [...new Set(input.sessionIds)].filter((id) => sessions.has(id)),
+    }
+    return ok(liveFavorites)
   },
   listProjects(): Promise<ApiResponse<Project[]>> {
     return ok([...liveProjects])

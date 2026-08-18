@@ -12,8 +12,8 @@ test('nests every session under its project', () => {
   assert.deepEqual(
     groups.map((group) => [group.id, group.sessions.length]),
     [
-      [projectFixtures[0]?.id, 2],
       [projectFixtures[1]?.id, 1],
+      [projectFixtures[0]?.id, 2],
     ],
   )
   assert.equal(
@@ -62,4 +62,22 @@ test('groups by project id, not by array position', () => {
       assert.equal(session.projectId, group.id)
     }
   }
+})
+
+test('sorts needs-you sessions and their projects first, ahead of favorites', () => {
+  const groups = groupSessionsByProject(projectFixtures, sessionFixtures, {
+    projectIds: [projectFixtures[0]!.id],
+    sessionIds: [sessionFixtures[2]!.id],
+  })
+  assert.equal(groups[0]?.id, projectFixtures[1]?.id, 'attention outranks a pinned project')
+  assert.equal(groups[1]?.sessions[0]?.id, sessionFixtures[2]?.id, 'pin leads ordinary sessions')
+})
+
+test('a pinned session surfaces its project when nothing needs attention', () => {
+  const quiet = sessionFixtures.map((session) => ({ ...session, state: 'idle' as const }))
+  const groups = groupSessionsByProject(projectFixtures, quiet, {
+    projectIds: [],
+    sessionIds: [sessionFixtures[1]!.id],
+  })
+  assert.equal(groups[0]?.id, sessionFixtures[1]!.projectId)
 })

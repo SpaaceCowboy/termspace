@@ -141,6 +141,11 @@
   color: var(--ts-danger);
 }
 
+.favoriteActive {
+  color: var(--ts-accent);
+  opacity: 1;
+}
+
 .groupEmpty {
   padding: var(--ts-space-1) var(--ts-space-2) var(--ts-space-2);
   margin: 0;
@@ -285,7 +290,13 @@
   white-space: nowrap;
 }
 
-.itemDelete {
+.rowActions {
+  flex: none;
+  display: flex;
+  align-items: center;
+}
+
+.itemAction {
   flex: none;
   width: 24px;
   height: 24px;
@@ -302,7 +313,9 @@
 }
 
 .row:hover .itemDelete,
-.itemDelete:focus-visible {
+.row:hover .itemAction,
+.itemAction:focus-visible,
+.itemAction.favoriteActive {
   opacity: 1;
 }
 
@@ -311,9 +324,15 @@
   color: var(--ts-danger);
 }
 
+.itemAction:not(.itemDelete):hover {
+  background: var(--ts-bg-hover);
+  color: var(--ts-accent);
+}
+
 /* No hover on a touch screen, so it can never be revealed by one. */
 @media (hover: none) {
   .itemDelete,
+  .itemAction,
   .groupAction {
     opacity: 1;
   }
@@ -343,7 +362,38 @@
   background: var(--ts-danger-quiet);
   color: var(--ts-danger);
   line-height: 1.45;
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-2);
 }
+
+.error strong { color: var(--ts-text); }
+.error span { color: var(--ts-text-dim); }
+.error button {
+  align-self: flex-start;
+  min-height: 36px;
+  padding: 0 var(--ts-space-3);
+  border: 1px solid var(--ts-danger);
+  border-radius: var(--ts-radius-sm);
+  background: transparent;
+}
+
+.skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: var(--ts-space-3);
+  padding: var(--ts-space-2);
+}
+
+.skeleton span {
+  height: 72px;
+  border-radius: var(--ts-radius);
+  background: linear-gradient(100deg, var(--ts-bg-raised) 30%, var(--ts-bg-hover) 50%, var(--ts-bg-raised) 70%);
+  background-size: 220% 100%;
+  animation: shimmer 1.2s linear infinite;
+}
+
+@keyframes shimmer { to { background-position-x: -220%; } }
 
 @media (max-width: 720px) {
   .sidebar {
@@ -365,6 +415,8 @@
   .mobileClose {
     display: grid;
     place-items: center;
+    min-width: 44px;
+    min-height: 44px;
   }
 
   .header {
@@ -377,8 +429,9 @@
   }
 
   .itemDelete,
+  .itemAction,
   .groupAction {
-    min-width: 36px;
-    min-height: 36px;
+    min-width: 44px;
+    min-height: 44px;
   }
 }

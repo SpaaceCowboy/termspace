@@ -46,7 +46,8 @@ describe('operational status', () => {
     await mkdir(projectRoot)
     await mkdir(backups)
     await writeFile(database, 'database')
-    await writeFile(join(backups, 'termspace-20260817T120000.000Z.sqlite3'), 'backup')
+    await writeFile(join(backups, 'termspace-2026-08-17T12-00-00.000Z.sqlite3'), 'backup')
+    await writeFile(join(backups, 'not-a-termspace-backup.sqlite3'), 'ignore me')
     let journalCalls = 0
     let now = 1_767_225_600_000
     const service = new OperationalStatusService({

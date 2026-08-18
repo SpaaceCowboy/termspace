@@ -44,3 +44,9 @@
     opacity: 0.3;
   }
 }
+
+@media (max-width: 720px) {
+  .badge { min-width: 24px; justify-content: center; }
+  .dot { width: 8px; height: 8px; }
+  .label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+}

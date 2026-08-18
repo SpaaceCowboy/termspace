@@ -1,6 +1,6 @@
 'use client'
 
-import type { Project, Session, SessionState } from '@termspace/contracts'
+import type { Favorites, Project, Session, SessionState } from '@termspace/contracts'
 
 import { cx } from '@/lib/cx'
 import { ORPHAN_GROUP_ID, groupSessionsByProject } from '@/lib/group-sessions'
@@ -24,6 +24,7 @@ const STATE_LABEL: Record<SessionState, string> = {
 export interface SidebarProps {
   projects: readonly Project[]
   sessions: readonly Session[]
+  favorites: Favorites
   selectedId: string | null
   /** Sessions the layout currently paints, so the sidebar can say where they are. */
   onScreenIds?: ReadonlySet<string>
@@ -33,6 +34,9 @@ export interface SidebarProps {
   onEditProject?: (projectId: string) => void
   onDeleteProject?: (projectId: string) => void
   onDeleteSession?: (sessionId: string) => void
+  onToggleProjectFavorite?: (projectId: string) => void
+  onToggleSessionFavorite?: (sessionId: string) => void
+  onRetry?: () => void
   loading: boolean
   error: string | null
   sourceKind: string
@@ -43,6 +47,7 @@ export interface SidebarProps {
 export function Sidebar({
   projects,
   sessions,
+  favorites,
   selectedId,
   onScreenIds,
   onSelect,
@@ -51,6 +56,9 @@ export function Sidebar({
   onEditProject,
   onDeleteProject,
   onDeleteSession,
+  onToggleProjectFavorite,
+  onToggleSessionFavorite,
+  onRetry,
   loading,
   error,
   sourceKind,
@@ -93,6 +101,7 @@ export function Sidebar({
         <SidebarBody
           projects={projects}
           sessions={sessions}
+          favorites={favorites}
           selectedId={selectedId}
           {...(onScreenIds === undefined ? {} : { onScreenIds })}
           onSelect={onSelect}
@@ -101,13 +110,16 @@ export function Sidebar({
           {...(onEditProject === undefined ? {} : { onEditProject })}
           {...(onDeleteProject === undefined ? {} : { onDeleteProject })}
           {...(onDeleteSession === undefined ? {} : { onDeleteSession })}
+          {...(onToggleProjectFavorite === undefined ? {} : { onToggleProjectFavorite })}
+          {...(onToggleSessionFavorite === undefined ? {} : { onToggleSessionFavorite })}
+          {...(onRetry === undefined ? {} : { onRetry })}
           loading={loading}
           error={error}
         />
       </div>
 
       <div className={styles.footer}>
-        <span>phase 2</span>
+        <span>phase 6</span>
         <span>{sourceKind}</span>
       </div>
     </nav>
@@ -117,6 +129,7 @@ export function Sidebar({
 function SidebarBody({
   projects,
   sessions,
+  favorites,
   selectedId,
   onScreenIds,
   onSelect,
@@ -124,26 +137,23 @@ function SidebarBody({
   onEditProject,
   onDeleteProject,
   onDeleteSession,
+  onToggleProjectFavorite,
+  onToggleSessionFavorite,
+  onRetry,
   loading,
   error,
 }: Omit<SidebarProps, 'sourceKind' | 'mobileOpen' | 'onCloseMobile'>) {
   if (loading) {
-    return (
-      <p className={styles.state} role="status">
-        Loading projects…
-      </p>
-    )
+    return <SidebarSkeleton />
   }
 
   if (error !== null) {
-    return (
-      <p className={cx(styles.state, styles.error)} role="alert">
-        {error}
-      </p>
-    )
+    return <div className={cx(styles.state, styles.error)} role="alert"><strong>Couldn’t load the workspace</strong><span>{error}</span>{onRetry === undefined ? null : <button type="button" onClick={onRetry}>Try again</button>}</div>
   }
 
-  const groups = groupSessionsByProject(projects, sessions)
+  const groups = groupSessionsByProject(projects, sessions, favorites)
+  const favoriteProjects = new Set(favorites.projectIds)
+  const favoriteSessions = new Set(favorites.sessionIds)
   if (groups.length === 0) {
     return <p className={styles.state}>No projects yet. Add one to get started.</p>
   }
@@ -158,6 +168,18 @@ function SidebarBody({
             </span>
             {group.id === ORPHAN_GROUP_ID ? null : (
               <>
+                {onToggleProjectFavorite === undefined ? null : (
+                  <button
+                    type="button"
+                    className={cx(styles.groupAction, favoriteProjects.has(group.id) && styles.favoriteActive)}
+                    onClick={() => { onToggleProjectFavorite(group.id) }}
+                    aria-label={`${favoriteProjects.has(group.id) ? 'Unpin' : 'Pin'} project ${group.name}`}
+                    aria-pressed={favoriteProjects.has(group.id)}
+                    title={favoriteProjects.has(group.id) ? 'Unpin project' : 'Pin project'}
+                  >
+                    <PinIcon filled={favoriteProjects.has(group.id)} />
+                  </button>
+                )}
                 {onEditProject === undefined ? null : (
                   <button
                     type="button"
@@ -234,19 +256,31 @@ function SidebarBody({
                       </span>
                     </span>
                   </button>
-                  {onDeleteSession === undefined ? null : (
-                    <button
-                      type="button"
-                      className={styles.itemDelete}
-                      onClick={() => {
-                        onDeleteSession(session.id)
-                      }}
-                      aria-label={`Delete session ${session.name}`}
-                      title="Delete session"
-                    >
-                      <TrashIcon />
-                    </button>
-                  )}
+                  <span className={styles.rowActions}>
+                    {onToggleSessionFavorite === undefined ? null : (
+                      <button
+                        type="button"
+                        className={cx(styles.itemAction, favoriteSessions.has(session.id) && styles.favoriteActive)}
+                        onClick={() => { onToggleSessionFavorite(session.id) }}
+                        aria-label={`${favoriteSessions.has(session.id) ? 'Unpin' : 'Pin'} session ${session.name}`}
+                        aria-pressed={favoriteSessions.has(session.id)}
+                        title={favoriteSessions.has(session.id) ? 'Unpin session' : 'Pin session'}
+                      >
+                        <PinIcon filled={favoriteSessions.has(session.id)} />
+                      </button>
+                    )}
+                    {onDeleteSession === undefined ? null : (
+                      <button
+                        type="button"
+                        className={cx(styles.itemAction, styles.itemDelete)}
+                        onClick={() => { onDeleteSession(session.id) }}
+                        aria-label={`Delete session ${session.name}`}
+                        title="Delete session"
+                      >
+                        <TrashIcon />
+                      </button>
+                    )}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -254,6 +288,18 @@ function SidebarBody({
         </section>
       ))}
     </>
+  )
+}
+
+function SidebarSkeleton() {
+  return <div className={styles.skeleton} role="status" aria-label="Loading projects and sessions">{[0, 1, 2].map((item) => <span key={item} />)}</div>
+}
+
+function PinIcon({ filled }: { filled: boolean }) {
+  return (
+    <svg viewBox="0 0 16 16" width="13" height="13" aria-hidden="true" focusable="false">
+      <path d="M5.2 2.2h5.6l-1 4 2 2v1H8.7V14L8 14.8 7.3 14V9.2H4.2v-1l2-2-1-4Z" fill={filled ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.2" strokeLinejoin="round" />
+    </svg>
   )
 }
 

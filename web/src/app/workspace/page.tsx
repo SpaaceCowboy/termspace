@@ -2,6 +2,7 @@
 
 import type {
   AgentKind,
+  Favorites,
   LayoutMode,
   Project,
   ServerFrame,
@@ -19,9 +20,12 @@ import { NewProjectDialog } from '@/components/NewProjectDialog'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ProjectSettingsDialog } from '@/components/ProjectSettingsDialog'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
+import { OperationsDialog } from '@/components/OperationsDialog'
 import { Sidebar } from '@/components/Sidebar'
 import { TerminalGrid } from '@/components/TerminalGrid'
+import { ToastRegion, useToasts } from '@/components/ToastRegion'
 import { dataSource } from '@/lib/data'
+import { cx } from '@/lib/cx'
 import {
   clearSlot,
   focusSlot,
@@ -46,9 +50,10 @@ export default function WorkspacePage() {
   const [auth, setAuth] = useState<AuthState>('checking')
   const [projects, setProjects] = useState<readonly Project[]>([])
   const [sessions, setSessions] = useState<readonly Session[]>([])
+  const [favorites, setFavorites] = useState<Favorites>({ projectIds: [], sessionIds: [] })
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [notice, setNotice] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
   const [deadSessions, setDeadSessions] = useState<ReadonlySet<string>>(new Set())
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
   const [projectRootWritable, setProjectRootWritable] = useState(true)
@@ -67,8 +72,10 @@ export default function WorkspacePage() {
   const [sessionDialogOpen, setSessionDialogOpen] = useState(false)
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [diffDialogOpen, setDiffDialogOpen] = useState(false)
+  const [operationsOpen, setOperationsOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
+  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts()
 
   const live = dataSource.kind === 'http'
   const authenticated = auth === 'authenticated'
@@ -77,23 +84,24 @@ export default function WorkspacePage() {
   // The socket handlers and the pane store need each other: frames feed the
   // store, and the store sends on the socket. The ref is what breaks the knot.
   const panesRef = useRef<PanesApi | null>(null)
+  const favoritesGeneration = useRef(0)
 
   const onFrame = useCallback(
     (frame: ServerFrame) => {
       switch (frame.t) {
         case 'restore':
           panesRef.current?.restore(frame.sid, frame.data)
-          setNotice(null)
           return
         case 'truncated':
-          setNotice('Output was truncated to keep up. The screen was resynced.')
+          pushToast('Output was truncated to keep up. The screen was resynced.', 'warning')
           return
         case 'exit':
           setDeadSessions((current) => new Set(current).add(frame.sid))
-          setNotice(
+          pushToast(
             frame.code === null
               ? 'The session ended.'
               : `The session exited with code ${String(frame.code)}.`,
+            'warning',
           )
           return
         case 'status':
@@ -111,13 +119,13 @@ export default function WorkspacePage() {
           )
           return
         case 'error':
-          setNotice(frame.message)
+          pushToast(frame.message, 'error')
           return
         case 'pong':
           return
       }
     },
-    [],
+    [pushToast],
   )
 
   const onOutput = useCallback((sid: string, bytes: Uint8Array) => {
@@ -127,16 +135,17 @@ export default function WorkspacePage() {
   // A pane that cannot build its terminal must say so. Swallowing this leaves a
   // pane that renders nothing and accepts no input, with nothing to go on.
   const onPaneError = useCallback((cause: unknown) => {
-    setNotice(
+    pushToast(
       cause instanceof Error
         ? `The terminal failed to start: ${cause.message}`
         : 'The terminal failed to start.',
+      'error',
     )
-  }, [])
+  }, [pushToast])
 
   const onDestructiveInputArmed = useCallback((_sid: string, label: string) => {
-    setNotice(`Press ${label} again within 3 seconds to send it.`)
-  }, [])
+    pushToast(`Press ${label} again within 3 seconds to send it.`, 'warning')
+  }, [pushToast])
 
   const socket = useSocket({ onFrame, onOutput }, live && authenticated)
   const panes = usePanes(
@@ -190,8 +199,9 @@ export default function WorkspacePage() {
       dataSource.listProjects(controller.signal),
       dataSource.listSessions(controller.signal),
       dataSource.config(controller.signal),
+      dataSource.favorites(controller.signal),
     ])
-      .then(([projectResponse, sessionResponse, configResponse]) => {
+      .then(([projectResponse, sessionResponse, configResponse, favoritesResponse]) => {
         if (controller.signal.aborted) {
           return
         }
@@ -211,7 +221,19 @@ export default function WorkspacePage() {
         setProjectRootWritable(
           configResponse.ok ? configResponse.data.projectRootWritable : true,
         )
-        setError(projectResponse.ok ? null : projectResponse.error.message)
+        setFavorites(
+          favoritesResponse.ok ? favoritesResponse.data : { projectIds: [], sessionIds: [] },
+        )
+        if (!configResponse.ok) {
+          pushToast(`Some server settings could not be loaded: ${configResponse.error.message}`, 'warning')
+        }
+        if (!favoritesResponse.ok) {
+          pushToast(`Favorites could not be loaded: ${favoritesResponse.error.message}`, 'warning')
+        }
+        setError(null)
+        if (!projectResponse.ok) {
+          pushToast(`Projects could not be loaded: ${projectResponse.error.message}`, 'warning')
+        }
         setProjects(projectResponse.ok ? projectResponse.data : [])
         setSessions(sessionResponse.data)
 
@@ -239,7 +261,7 @@ export default function WorkspacePage() {
     return () => {
       controller.abort()
     }
-  }, [apply, authenticated])
+  }, [apply, authenticated, loadAttempt, pushToast])
 
   const openSessionDialog = useCallback((forProjectId: string | null) => {
     setSessionDialogFor(forProjectId)
@@ -284,6 +306,10 @@ export default function WorkspacePage() {
         return next
       })
       apply((current) => withoutSession(current, sid))
+      setFavorites((current) => ({
+        ...current,
+        sessionIds: current.sessionIds.filter((id) => id !== sid),
+      }))
     },
     [apply],
   )
@@ -292,7 +318,49 @@ export default function WorkspacePage() {
     // The server refuses to delete a project that still has sessions, so by the
     // time this runs there are none to clean up.
     setProjects((current) => current.filter((project) => project.id !== projectId))
+    setFavorites((current) => ({
+      ...current,
+      projectIds: current.projectIds.filter((id) => id !== projectId),
+    }))
   }, [])
+
+  const persistFavorites = useCallback((next: Favorites, previous: Favorites) => {
+    const generation = ++favoritesGeneration.current
+    setFavorites(next)
+    void dataSource.saveFavorites(next).then((response) => {
+      if (generation !== favoritesGeneration.current) return
+      if (response.ok) {
+        setFavorites(response.data)
+        return
+      }
+      setFavorites(previous)
+      pushToast(`Could not save favorites: ${response.error.message}`, 'error')
+    })
+  }, [pushToast])
+
+  const toggleProjectFavorite = useCallback((projectId: string) => {
+    const pinned = favorites.projectIds.includes(projectId)
+    persistFavorites({
+      ...favorites,
+      projectIds: pinned
+        ? favorites.projectIds.filter((id) => id !== projectId)
+        : [projectId, ...favorites.projectIds],
+    }, favorites)
+  }, [favorites, persistFavorites])
+
+  const toggleSessionFavorite = useCallback((sessionId: string) => {
+    const pinned = favorites.sessionIds.includes(sessionId)
+    persistFavorites({
+      ...favorites,
+      sessionIds: pinned
+        ? favorites.sessionIds.filter((id) => id !== sessionId)
+        : [sessionId, ...favorites.sessionIds],
+    }, favorites)
+  }, [favorites, persistFavorites])
+
+  useEffect(() => {
+    if (saveError !== null) pushToast(`Layout could not be saved: ${saveError}`, 'error')
+  }, [pushToast, saveError])
 
   /*
    * The tab title is the only signal that reaches someone who has switched
@@ -396,14 +464,10 @@ export default function WorkspacePage() {
     return [focusedSession, ...others].slice(0, 2)
   }, [focusedSession, layout, sessions])
 
-  const banner =
-    socket.state === 'dead'
-      ? 'Disconnected. Reload to reconnect.'
-      : (saveError ?? notice)
-
   if (!authenticated) {
     return (
       <main className={styles.gate}>
+        <span className={styles.gateMark} aria-hidden="true">▌</span>
         <p role="status">
           {auth === 'checking' ? 'Checking your session…' : 'Redirecting to sign in…'}
         </p>
@@ -419,6 +483,7 @@ export default function WorkspacePage() {
       <Sidebar
         projects={projects}
         sessions={sessions}
+        favorites={favorites}
         selectedId={focusedSessionId}
         onScreenIds={onScreenIds}
         onSelect={onSelectSession}
@@ -443,6 +508,9 @@ export default function WorkspacePage() {
           setDeletingSession(sessionId)
           setForceDeletingSession(false)
         }}
+        onToggleProjectFavorite={toggleProjectFavorite}
+        onToggleSessionFavorite={toggleSessionFavorite}
+        onRetry={() => { setLoadAttempt((current) => current + 1) }}
         loading={loading}
         error={error}
         sourceKind={dataSource.kind}
@@ -473,51 +541,67 @@ export default function WorkspacePage() {
             <span className={styles.crumbCurrent}>{focusedSession?.name ?? 'no session'}</span>
           </p>
           <div className={styles.topbarRight}>
+            <button
+              type="button"
+              className={styles.secondaryButton}
+              onClick={() => { setOperationsOpen(true) }}
+            >
+              <span className={styles.wideLabel}>Operations</span><span className={styles.shortLabel}>Ops</span>
+            </button>
             {focusedSession === null ? null : (
               <button
                 type="button"
                 className={styles.diffButton}
                 onClick={() => { setDiffDialogOpen(true) }}
               >
-                Review changes
+                <span className={styles.wideLabel}>Review changes</span><span className={styles.shortLabel}>Changes</span>
               </button>
             )}
             <span className={styles.layoutControls}>
               <LayoutToolbar mode={layout.mode} onChange={onModeChange} />
             </span>
-            <PushToggle push={push} available={pushPublicKey !== null} />
+            <span className={styles.pushControls}><PushToggle push={push} available={pushPublicKey !== null} /></span>
             <ConnectionBadge state={socket.state} />
           </div>
         </div>
 
+        {socket.state === 'dead' && live ? (
+          <div className={styles.disconnected} role="alert">
+            <span><strong>Terminal connection lost.</strong> Running sessions are safe in tmux.</span>
+            <button type="button" onClick={socket.reconnect}>Reconnect</button>
+          </div>
+        ) : null}
+
         {sessions.length === 0 ? (
           <div className={styles.grid}>
-            <div className={styles.empty}>
-              {loading ? (
-                <p>Loading sessions…</p>
-              ) : (
-                <>
-                  <p>
-                    {projects.length === 0
-                      ? 'No projects yet. Add one, then start a session in it.'
-                      : 'No sessions yet.'}
-                  </p>
-                  <button
-                    type="button"
-                    className={styles.emptyAction}
-                    onClick={() => {
-                      if (projects.length === 0) {
-                        setProjectDialogOpen(true)
-                      } else {
-                        openSessionDialog(null)
-                      }
-                    }}
-                  >
-                    {projects.length === 0 ? 'Add a project' : 'New session'}
-                  </button>
-                </>
-              )}
-            </div>
+            {loading ? (
+              <div className={styles.workspaceSkeleton} role="status" aria-label="Loading workspace">
+                <span /><span /><span />
+              </div>
+            ) : error !== null ? (
+              <div className={cx(styles.empty, styles.emptyError)} role="alert">
+                <span className={styles.stateIcon} aria-hidden="true">!</span>
+                <h2>Workspace unavailable</h2>
+                <p>{error}</p>
+                <button type="button" className={styles.emptyAction} onClick={() => { setLoadAttempt((current) => current + 1) }}>Try again</button>
+              </div>
+            ) : (
+              <div className={styles.empty}>
+                <span className={styles.stateIcon} aria-hidden="true">{projects.length === 0 ? '+' : '›_'}</span>
+                <h2>{projects.length === 0 ? 'Create your first project' : 'Start a session'}</h2>
+                <p>{projects.length === 0 ? 'Projects connect Termspace to a working directory or Git repository.' : 'This project is ready. Start an agent or shell to begin.'}</p>
+                <button
+                  type="button"
+                  className={styles.emptyAction}
+                  onClick={() => {
+                    if (projects.length === 0) setProjectDialogOpen(true)
+                    else openSessionDialog(null)
+                  }}
+                >
+                  {projects.length === 0 ? 'Add project' : 'New session'}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <TerminalGrid
@@ -526,7 +610,6 @@ export default function WorkspacePage() {
             panes={panes}
             live={live}
             deadSessions={deadSessions}
-            notice={banner}
             onFocusSlot={onFocusSlot}
             onClearSlot={onClearSlot}
             onNewSession={() => {
@@ -536,6 +619,9 @@ export default function WorkspacePage() {
           />
         )}
       </main>
+
+      <ToastRegion toasts={toasts} onDismiss={dismissToast} />
+      <OperationsDialog open={operationsOpen} onClose={() => { setOperationsOpen(false) }} />
 
       <NewSessionDialog
         open={sessionDialogOpen}

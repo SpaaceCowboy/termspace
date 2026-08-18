@@ -16,7 +16,9 @@ import { VERSION } from '../version.js'
 const CACHE_MS = 5_000
 const JOURNAL_MAX_BYTES = 256 * 1_024
 const JOURNAL_MAX_EVENTS = 20
-const BACKUP_NAME = /^termspace-\d{8}T\d{6}\.\d{3}Z\.sqlite3$/
+// Keep this in step with database/backup.ts, whose ISO timestamp replaces
+// colons with hyphens so every filename is filesystem-safe.
+const BACKUP_NAME = /^termspace-\d{4}-\d{2}-\d{2}T\d{2}-\d{2}-\d{2}\.\d{3}Z\.sqlite3$/
 
 const JournalRowSchema = z.object({
   MESSAGE: z.string().max(64 * 1_024),

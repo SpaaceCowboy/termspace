@@ -4,6 +4,8 @@ import { describe, it } from 'node:test'
 import {
   appConfigFixture,
   diffResultFixture,
+  favoritesFixture,
+  operationalStatusFixture,
   projectFixtures,
   sessionFixtures,
 } from '@termspace/contracts'
@@ -11,6 +13,8 @@ import {
 import {
   AppConfigSchema,
   DiffResultSchema,
+  FavoritesSchema,
+  OperationalStatusSchema,
   ProjectSchema,
   SessionSchema,
 } from './http-source.ts'
@@ -79,5 +83,10 @@ describe('response schemas accept the shared fixtures', () => {
   it('parses the bounded diff fixture', () => {
     const result = DiffResultSchema.safeParse(diffResultFixture)
     assert.equal(result.success, true, JSON.stringify(result.error?.issues))
+  })
+
+  it('parses favorites and the bounded operational snapshot', () => {
+    assert.equal(FavoritesSchema.safeParse(favoritesFixture).success, true)
+    assert.equal(OperationalStatusSchema.safeParse(operationalStatusFixture).success, true)
   })
 })

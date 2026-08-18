@@ -25,7 +25,7 @@ export function ConnectionBadge({ state }: { state: ConnectionState }) {
       aria-live="polite"
     >
       <span className={cx(styles.dot, DOT_CLASS[state])} aria-hidden="true" />
-      {LABEL[state]}
+      <span className={styles.label}>{LABEL[state]}</span>
     </span>
   )
 }

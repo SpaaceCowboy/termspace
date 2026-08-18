@@ -1067,3 +1067,30 @@ fails independently. Recent journal events are bounded and reconstructed only
 from three structured allowlisted schemas; tests prove query values, paths,
 remote addresses, payloads, and unknown terminal data cannot leak. All 43 server
 test files and server typechecking pass on Node 24/pnpm 10.
+
+### 2026-08-18T09:33:08+03:30 · SOLO · 6 · DONE
+Phase 6 web work is complete. Projects containing needs-you sessions lead the
+sidebar, needs-you sessions lead their groups, and project/session pins provide
+the next ordering tier. Pin controls optimistically persist through the new
+user-scoped API and remain keyboard- and touch-accessible.
+
+The new Operations dialog refreshes a compact health, tmux, storage, backup,
+policy, and sanitized-event view every 15 seconds with loading, retry, empty,
+and unavailable states. The workspace now uses transient accessible toasts for
+terminal/layout events, a reconnect action for a dead socket, deliberate
+loading/error/first-use panels, and a quieter responsive top bar. Phone sidebar
+controls render at least 44×44 px; spacing, contrast, focus, and reduced-motion
+behavior use the shared design tokens.
+
+The final real-format audit found and fixed an operations collector regex that
+did not match the backup writer’s hyphenated ISO filenames; the regression now
+uses the exact format and proves unrelated sqlite files are ignored. All three
+package test suites, typechecks, and production builds pass on Node 24/pnpm 10.
+The production fixture UI passes 6/6 browser checks for attention order, pin
+reordering, operations rendering/live counts, phone drawer behavior, and touch
+targets, with desktop and 390×844 screenshots visually inspected.
+
+### 2026-08-18T09:33:08+03:30 · SOLO · 6 · GATE
+Phase 6 is built. Owner verification remains: confirm favorites survive a real
+reload, the panel reflects this machine’s live tmux/storage/backup state, and
+the refined desktop and phone workflows feel correct in normal use.

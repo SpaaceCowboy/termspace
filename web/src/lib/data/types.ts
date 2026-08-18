@@ -5,10 +5,12 @@ import type {
   CreateSessionInput,
   DeleteSessionOptions,
   DiffResult,
+  Favorites,
   HealthData,
   Layout,
   LayoutInput,
   LoginInput,
+  OperationalStatus,
   Project,
   PushSubscriptionInput,
   Session,
@@ -23,6 +25,9 @@ export interface DataSource {
   readonly kind: 'fixtures' | 'http'
   health(signal?: AbortSignal): Promise<ApiResponse<HealthData>>
   config(signal?: AbortSignal): Promise<ApiResponse<AppConfig>>
+  operations(signal?: AbortSignal): Promise<ApiResponse<OperationalStatus>>
+  favorites(signal?: AbortSignal): Promise<ApiResponse<Favorites>>
+  saveFavorites(input: Favorites, signal?: AbortSignal): Promise<ApiResponse<Favorites>>
   listProjects(signal?: AbortSignal): Promise<ApiResponse<Project[]>>
   createProject(
     input: CreateProjectInput,
