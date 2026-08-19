@@ -60,8 +60,8 @@ the last row/column geometry and flushes its snapshot before fitting. The invisi
 textarea no longer receives the app-wide visible focus outline. Regression tests cover all three
 paths; the complete typecheck/test/build sequence passes.
 
-**Next concrete step:** push the geometry fix; then on the VPS pull the current `main`, rebuild, and
-restart both gateway and web services. The owner should first verify that clicking and typing in a
+**Next concrete step:** on the VPS pull the current `main`, rebuild, and restart both gateway and web
+services. The owner should first verify that clicking and typing in a
 real Codex/tmux pane keeps the cursor and glyphs aligned, then verify both new dialogs and exercise the
 remaining Phase 6 real-data desktop/phone exit criterion: Shell and Codex creation, gateway
 restart/reconnect, and standard/worktree deletion copy.
@@ -81,5 +81,4 @@ attachment failure and tmux process death are different states and must never be
 tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do not
 inherit service sandbox directives.
 
-**Uncommitted:** none expected after committing the in-flight resize, headless geometry, focus-helper,
-regression, progress, and resume-state updates.
+**Uncommitted:** none.
