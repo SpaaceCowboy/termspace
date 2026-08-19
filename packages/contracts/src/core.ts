@@ -69,6 +69,12 @@ export interface UpdateProjectInput {
 
 export type AgentKind = 'claude' | 'codex' | 'shell'
 
+export interface AgentAvailability {
+  available: boolean
+  /** Human-readable executable name; null for the built-in login shell. */
+  command: string | null
+}
+
 export interface Session {
   id: string
   projectId: string
@@ -88,6 +94,8 @@ interface CreateSessionBase {
   projectId: string
   name: string
   agent: AgentKind
+  /** Optional first input sent literally after the agent starts. */
+  initialPrompt?: string
 }
 
 export type CreateSessionInput = CreateSessionBase &

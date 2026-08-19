@@ -239,6 +239,39 @@
   height: 100%;
 }
 
+.exitOverlay {
+  position: absolute;
+  z-index: 2;
+  inset: 42px 0 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--ts-space-3);
+  padding: var(--ts-space-5);
+  background: color-mix(in srgb, var(--ts-bg-sunken) 94%, transparent);
+  color: var(--ts-text-dim);
+  text-align: center;
+  line-height: 1.5;
+}
+
+.exitOverlay strong { color: var(--ts-text); }
+
+.exitActions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: var(--ts-space-2);
+}
+
+.exitActions button {
+  min-height: 36px;
+  padding: 0 var(--ts-space-3);
+  border: 1px solid var(--ts-border-strong);
+  border-radius: var(--ts-radius);
+  background: var(--ts-bg-hover);
+}
+
 .mobileNavigator {
   display: none;
 }

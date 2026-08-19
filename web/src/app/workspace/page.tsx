@@ -1,6 +1,7 @@
 'use client'
 
 import type {
+  AgentAvailability,
   AgentKind,
   Favorites,
   LayoutMode,
@@ -37,6 +38,7 @@ import {
 import { useLayout } from '@/lib/layout/useLayout.ts'
 import { usePush } from '@/lib/push/usePush.ts'
 import { documentTitle } from '@/lib/session-summary.ts'
+import { sessionExitCopy } from '@/lib/session-runtime.ts'
 import { withCwdConflicts } from '@/lib/session-conflicts.ts'
 import { usePanes, type PanesApi } from '@/lib/panes/usePanes.ts'
 import { useSocket } from '@/lib/socket/useSocket.ts'
@@ -55,12 +57,20 @@ export default function WorkspacePage() {
   const [error, setError] = useState<string | null>(null)
   const [loadAttempt, setLoadAttempt] = useState(0)
   const [deadSessions, setDeadSessions] = useState<ReadonlySet<string>>(new Set())
+  const [startingSessions, setStartingSessions] = useState<ReadonlySet<string>>(new Set())
+  const [exitCodes, setExitCodes] = useState<ReadonlyMap<string, number | null>>(new Map())
+  const [viewerFailures, setViewerFailures] = useState<ReadonlySet<string>>(new Set())
   const [projectRoot, setProjectRoot] = useState<string | null>(null)
   const [projectRootWritable, setProjectRootWritable] = useState(true)
   const [defaultAgentCommands, setDefaultAgentCommands] = useState<Record<
     AgentKind,
     readonly string[]
   > | null>(null)
+  const [agentAvailability, setAgentAvailability] = useState<Record<
+    AgentKind,
+    AgentAvailability
+  > | null>(null)
+  const [initialSessionAgent, setInitialSessionAgent] = useState<AgentKind | undefined>()
   const [pushPublicKey, setPushPublicKey] = useState<string | null>(null)
   /** The project whose launch commands are being edited, if any. */
   const [settingsFor, setSettingsFor] = useState<string | null>(null)
@@ -91,20 +101,26 @@ export default function WorkspacePage() {
       switch (frame.t) {
         case 'restore':
           panesRef.current?.restore(frame.sid, frame.data)
+          setStartingSessions((current) => withoutSetValue(current, frame.sid))
+          setViewerFailures((current) => withoutSetValue(current, frame.sid))
           return
         case 'truncated':
           pushToast('Output was truncated to keep up. The screen was resynced.', 'warning')
           return
         case 'exit':
           setDeadSessions((current) => new Set(current).add(frame.sid))
+          setStartingSessions((current) => withoutSetValue(current, frame.sid))
+          setExitCodes((current) => new Map(current).set(frame.sid, frame.code))
+          setSessions((current) => current.map((session) =>
+            session.id === frame.sid ? { ...session, state: 'dead' } : session,
+          ))
           pushToast(
-            frame.code === null
-              ? 'The session ended.'
-              : `The session exited with code ${String(frame.code)}.`,
+            sessionExitCopy(frame.code).toast,
             'warning',
           )
           return
         case 'status':
+          setStartingSessions((current) => withoutSetValue(current, frame.sid))
           setSessions((current) =>
             current.map((session) =>
               session.id === frame.sid ? { ...session, state: frame.state } : session,
@@ -119,6 +135,9 @@ export default function WorkspacePage() {
           )
           return
         case 'error':
+          if (frame.code === 'viewer_attachment_failed' && frame.sid !== null) {
+            setViewerFailures((current) => new Set(current).add(frame.sid as string))
+          }
           pushToast(frame.message, 'error')
           return
         case 'pong':
@@ -129,6 +148,7 @@ export default function WorkspacePage() {
   )
 
   const onOutput = useCallback((sid: string, bytes: Uint8Array) => {
+    setStartingSessions((current) => withoutSetValue(current, sid))
     panesRef.current?.write(sid, bytes)
   }, [])
 
@@ -217,6 +237,7 @@ export default function WorkspacePage() {
         setDefaultAgentCommands(
           configResponse.ok ? configResponse.data.defaultAgentCommands : null,
         )
+        setAgentAvailability(configResponse.ok ? configResponse.data.agentAvailability : null)
         setPushPublicKey(configResponse.ok ? configResponse.data.pushPublicKey : null)
         setProjectRootWritable(
           configResponse.ok ? configResponse.data.projectRootWritable : true,
@@ -265,12 +286,14 @@ export default function WorkspacePage() {
 
   const openSessionDialog = useCallback((forProjectId: string | null) => {
     setSessionDialogFor(forProjectId)
+    setInitialSessionAgent(undefined)
     setSessionDialogOpen(true)
   }, [])
 
   const onSessionCreated = useCallback(
     (session: Session) => {
       setSessions((current) => withCwdConflicts([...current, session]))
+      setStartingSessions((current) => new Set(current).add(session.id))
       apply((current) => showSession(current, session.id))
       setSessionDialogOpen(false)
     },
@@ -305,6 +328,13 @@ export default function WorkspacePage() {
         next.delete(sid)
         return next
       })
+      setStartingSessions((current) => withoutSetValue(current, sid))
+      setExitCodes((current) => {
+        const next = new Map(current)
+        next.delete(sid)
+        return next
+      })
+      setViewerFailures((current) => withoutSetValue(current, sid))
       apply((current) => withoutSession(current, sid))
       setFavorites((current) => ({
         ...current,
@@ -455,6 +485,8 @@ export default function WorkspacePage() {
   const onScreenIds = useMemo(() => new Set(liveSessionIds(layout)), [layout])
   const focusedSession =
     sessions.find((session) => session.id === focusedSessionId) ?? null
+  const deletingSessionRecord =
+    sessions.find((session) => session.id === deletingSession) ?? null
   const reviewSessions = useMemo(() => {
     if (focusedSession === null) return []
     const others = liveSessionIds(layout)
@@ -483,6 +515,7 @@ export default function WorkspacePage() {
       <Sidebar
         projects={projects}
         sessions={sessions}
+        startingSessionIds={startingSessions}
         favorites={favorites}
         selectedId={focusedSessionId}
         onScreenIds={onScreenIds}
@@ -565,6 +598,12 @@ export default function WorkspacePage() {
           </div>
         </div>
 
+        {socket.state === 'reconnecting' && live ? (
+          <div className={styles.reconnecting} role="status">
+            <span><strong>Reconnecting terminal view…</strong> Sessions keep running and typed input is held until the screen is restored.</span>
+          </div>
+        ) : null}
+
         {socket.state === 'dead' && live ? (
           <div className={styles.disconnected} role="alert">
             <span><strong>Terminal connection lost.</strong> Running sessions are safe in tmux.</span>
@@ -610,11 +649,25 @@ export default function WorkspacePage() {
             panes={panes}
             live={live}
             deadSessions={deadSessions}
+            startingSessions={startingSessions}
+            exitCodes={exitCodes}
+            connectionState={socket.state}
+            viewerFailures={viewerFailures}
             onFocusSlot={onFocusSlot}
             onClearSlot={onClearSlot}
             onNewSession={() => {
               openSessionDialog(null)
             }}
+            onOpenAsShell={(session) => {
+              setSessionDialogFor(session.projectId)
+              setInitialSessionAgent('shell')
+              setSessionDialogOpen(true)
+            }}
+            onDeleteSession={(sessionId) => {
+              setDeletingSession(sessionId)
+              setForceDeletingSession(false)
+            }}
+            onReconnectView={(sessionId) => { socket.reattach(sessionId) }}
             mobile={mobile}
           />
         )}
@@ -627,6 +680,9 @@ export default function WorkspacePage() {
         open={sessionDialogOpen}
         projects={projects}
         initialProjectId={sessionDialogFor}
+        {...(initialSessionAgent === undefined ? {} : { initialAgent: initialSessionAgent })}
+        defaultAgentCommands={defaultAgentCommands}
+        agentAvailability={agentAvailability}
         onClose={() => {
           setSessionDialogOpen(false)
         }}
@@ -684,9 +740,22 @@ export default function WorkspacePage() {
             {sessions.find((session) => session.id === deletingSession)?.name ??
               'This session'}
           </strong>{' '}
-          will be stopped and removed. Whatever is running in it is killed and its
-          scrollback goes with it. This cannot be undone.
+          will be stopped and removed.
         </p>
+        <ul className={styles.confirmList}>
+          <li>The agent process and its tmux session will be stopped.</li>
+          <li>The live terminal scrollback and Termspace session record will be removed.</li>
+          {deletingSessionRecord === null || deletingSessionRecord.worktreeBranch === null ? (
+            <li>Project files remain on disk, including any changes made in the shared directory.</li>
+          ) : (
+            <>
+              <li>The worktree directory <code className={styles.confirmPath}>{deletingSessionRecord.cwd}</code> will be removed.</li>
+              <li>Commits and branch <code className={styles.confirmPath}>{deletingSessionRecord.worktreeBranch}</code> remain in Git.</li>
+              <li>Uncommitted changes block deletion unless you explicitly force it.</li>
+            </>
+          )}
+        </ul>
+        <p className={styles.confirmText}>This cannot be undone. Closing a pane instead keeps the session running.</p>
         {forceDeletingSession ? (
           <p className={styles.confirmText}>
             Force deletion discards the worktree’s uncommitted and untracked files. Commits and
@@ -744,4 +813,11 @@ export default function WorkspacePage() {
       />
     </div>
   )
+}
+
+function withoutSetValue(values: ReadonlySet<string>, value: string): ReadonlySet<string> {
+  if (!values.has(value)) return values
+  const next = new Set(values)
+  next.delete(value)
+  return next
 }

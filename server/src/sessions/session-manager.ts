@@ -34,6 +34,7 @@ interface SessionRepositoryPort {
 
 interface TmuxPort {
   createDetached(id: string, cwd: string, launchCommand: AgentCommand): Promise<void>
+  sendLiteral(id: string, data: string): Promise<void>
   kill(id: string): Promise<void>
 }
 
@@ -56,6 +57,7 @@ interface SessionManagerOptions {
   readonly createId?: () => string
   readonly diffs?: SessionDiffPort
   readonly isDirectory?: (path: string) => Promise<boolean>
+  readonly isCommandAvailable?: (command: AgentCommand, cwd: string) => Promise<boolean>
   readonly now?: () => number
   readonly realPath?: RealPath
   readonly worktrees?: WorktreePort
@@ -64,11 +66,13 @@ interface SessionManagerOptions {
 export class SessionProjectNotFoundError extends Error {}
 export class SessionDirectoryNotFoundError extends Error {}
 export class SessionCwdOutsideProjectError extends Error {}
+export class SessionAgentUnavailableError extends Error {}
 
 export class SessionManager {
   readonly #createId: () => string
   readonly #diffs: SessionDiffPort | undefined
   readonly #isDirectory: (path: string) => Promise<boolean>
+  readonly #isCommandAvailable: (command: AgentCommand, cwd: string) => Promise<boolean>
   readonly #now: () => number
   readonly #realPath: RealPath | undefined
   readonly #repository: SessionRepositoryPort
@@ -85,6 +89,7 @@ export class SessionManager {
     this.#createId = options.createId ?? createSessionId
     this.#diffs = options.diffs
     this.#isDirectory = options.isDirectory ?? isDirectory
+    this.#isCommandAvailable = options.isCommandAvailable ?? (async () => true)
     this.#now = options.now ?? Date.now
     this.#realPath = options.realPath
     this.#worktrees = options.worktrees
@@ -94,6 +99,12 @@ export class SessionManager {
     const project = this.#repository.findProject(input.projectId)
     if (project === null) {
       throw new SessionProjectNotFoundError(`Project ${input.projectId} was not found`)
+    }
+    const launchCommand = resolveAgentCommand(input.agent, project.agentCommands)
+    if (!(await this.#isCommandAvailable(launchCommand, project.path))) {
+      throw new SessionAgentUnavailableError(
+        `${launchCommand[0] ?? input.agent} is not available`,
+      )
     }
     const id = this.#createId()
     let cwd: string
@@ -142,9 +153,12 @@ export class SessionManager {
       await this.#tmux.createDetached(
         id,
         cwd,
-        resolveAgentCommand(input.agent, project.agentCommands),
+        launchCommand,
       )
       tmuxCreated = true
+      if (input.initialPrompt !== undefined && input.initialPrompt !== '') {
+        await this.#tmux.sendLiteral(id, `${input.initialPrompt}\r`)
+      }
       this.#repository.insert(session)
     } catch (error) {
       const rollbackErrors: unknown[] = [error]

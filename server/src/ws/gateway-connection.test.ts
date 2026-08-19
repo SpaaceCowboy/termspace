@@ -71,6 +71,7 @@ class FakeCoalescer implements GatewayCoalescer {
 function createHarness(
   session: Session | null = SESSION,
   paneTitle = '',
+  sessionAlive = false,
 ): {
   attachment: FakeAttachment
   callbacks: {
@@ -125,6 +126,7 @@ function createHarness(
       },
     },
     capture: async () => 'captured-screen',
+    sessionAlive: async () => sessionAlive,
     feeds: new SessionFeedCoordinator(),
     createCoalescer: (onFlush) => {
       const coalescer = new FakeCoalescer(onFlush)
@@ -226,8 +228,26 @@ describe('GatewayConnection', () => {
     await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
 
     harness.callbacks[0]?.onExit({ exitCode: 0 })
+    await new Promise((settle) => setImmediate(settle))
 
     assert.deepEqual(harness.frames.at(-1), { t: 'exit', sid: SID, code: 0 })
+    assert.equal(harness.attachment.closed, true)
+  })
+
+  it('reports a recoverable viewer failure without killing a live tmux session', async () => {
+    const harness = createHarness(SESSION, '', true)
+    await harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+
+    harness.callbacks[0]?.onExit({ exitCode: 1 })
+    await new Promise((settle) => setImmediate(settle))
+
+    assert.deepEqual(harness.frames.at(-1), {
+      t: 'error',
+      sid: SID,
+      code: 'viewer_attachment_failed',
+      message: 'The terminal viewer disconnected, but the session is still running.',
+    })
+    assert.equal(harness.activity.snapshot(SID)?.state, 'idle')
     assert.equal(harness.attachment.closed, true)
   })
 

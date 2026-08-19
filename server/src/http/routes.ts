@@ -1,4 +1,6 @@
 import type {
+  AgentAvailability,
+  AgentKind,
   ApiErr,
   ApiOk,
   AppConfig,
@@ -47,6 +49,7 @@ import {
 } from '../projects/project-manager.js'
 import {
   SessionCwdOutsideProjectError,
+  SessionAgentUnavailableError,
   SessionDirectoryNotFoundError,
   SessionProjectNotFoundError,
 } from '../sessions/session-manager.js'
@@ -70,6 +73,7 @@ const SessionInputBaseSchema = z.object({
   projectId: z.string().min(1).max(128),
   name: z.string().min(1).max(128),
   agent: z.enum(AGENT_KINDS),
+  initialPrompt: z.string().min(1).max(8_192).refine((value) => !value.includes('\0')).optional(),
 })
 
 const CreateSessionInputSchema = z.discriminatedUnion('worktree', [
@@ -262,6 +266,7 @@ interface Tickets {
 }
 
 export interface Phase1RouteServices {
+  readonly agentAvailability: () => Promise<Record<AgentKind, AgentAvailability>>
   readonly auth: Authenticator
   readonly authSessionTtlMs: number
   readonly authSessions: AuthSessions
@@ -370,6 +375,7 @@ export function registerPhase1Routes(
       projectRoot: services.projects.projectRoot,
       projectRootWritable: await services.projects.projectRootWritable(),
       defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+      agentAvailability: await services.agentAvailability(),
       pushPublicKey: services.push.publicKey,
     })
   })
@@ -709,6 +715,7 @@ export function registerPhase1Routes(
             projectId: data.projectId,
             name: data.name,
             agent: data.agent,
+            ...(data.initialPrompt === undefined ? {} : { initialPrompt: data.initialPrompt }),
             worktree: true,
             worktreeBranch: data.worktreeBranch,
           }
@@ -716,6 +723,7 @@ export function registerPhase1Routes(
             projectId: data.projectId,
             name: data.name,
             agent: data.agent,
+            ...(data.initialPrompt === undefined ? {} : { initialPrompt: data.initialPrompt }),
             ...(data.worktree === false ? { worktree: false as const } : {}),
             ...(data.cwd === undefined ? {} : { cwd: data.cwd }),
           }
@@ -724,6 +732,15 @@ export function registerPhase1Routes(
       reply.code(201)
       return ok<Session>(session)
     } catch (error) {
+      if (error instanceof SessionAgentUnavailableError) {
+        return sendError(
+          reply,
+          409,
+          'agent_unavailable',
+          'This agent command is not installed or executable on the server.',
+          'agent',
+        )
+      }
       if (error instanceof SessionProjectNotFoundError) {
         return sendError(
           reply,

@@ -93,10 +93,24 @@ type CreateSessionInput = {
   projectId: string
   name: string
   agent: AgentKind
+  initialPrompt?: string
 } & (
   | { worktree?: false; cwd?: string }
   | { worktree: true; worktreeBranch: string }
 )
+
+interface AgentAvailability {
+  available: boolean
+  command: string | null
+}
+
+interface AppConfig {
+  projectRoot: string
+  projectRootWritable: boolean
+  defaultAgentCommands: Record<AgentKind, readonly string[]>
+  agentAvailability: Record<AgentKind, AgentAvailability>
+  pushPublicKey: string | null
+}
 
 interface DiffResult {
   sessionId: string
@@ -162,6 +176,16 @@ Never a bare array, never a bare string. `ApiError` is
 
 Error codes are a closed union in `packages/contracts/src/errors.ts`. The
 frontend switches on `code`, never on `message`.
+
+`initialPrompt` is additive and optional. The server validates it as bounded
+terminal input, never logs it, and sends it literally only after the selected
+agent has launched. The UI does not offer it for `shell`, where terminal input
+would be a command rather than an agent prompt.
+
+`AppConfig.agentAvailability` describes the server defaults in the gateway
+service's actual runtime `PATH`. A project override is checked authoritatively
+at session creation. An unavailable resolved command returns
+`agent_unavailable` before tmux, worktree, or persistence state is created.
 
 ## Fixtures
 

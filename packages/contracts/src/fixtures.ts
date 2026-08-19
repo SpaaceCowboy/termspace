@@ -243,6 +243,11 @@ export const appConfigFixture: AppConfig = {
   projectRoot: '/srv/projects',
   projectRootWritable: true,
   defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+  agentAvailability: {
+    claude: { available: true, command: 'claude' },
+    codex: { available: true, command: 'codex' },
+    shell: { available: true, command: null },
+  },
   pushPublicKey: 'BExampleVapidPublicKeyForFixturesOnly0000000000000000000000000000000000000000000000000',
 }
 

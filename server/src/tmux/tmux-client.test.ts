@@ -134,6 +134,21 @@ describe('TmuxClient', () => {
     ])
   })
 
+  it('sends initial input literally through the configured socket', async () => {
+    const runner = new RecordingRunner()
+    const tmux = new TmuxClient(runner, { socketPath: '/run/termspace/tmux.sock' })
+
+    await tmux.sendLiteral(SID, 'review this; literally\r')
+
+    assert.deepEqual(runner.calls, [{
+      command: 'tmux',
+      arguments_: [
+        '-S', '/run/termspace/tmux.sock', 'send-keys', '-t', `ts_${SID}`,
+        '-l', '--', 'review this; literally\r',
+      ],
+    }])
+  })
+
   it('uses the user manager for scoped tests and stops a leftover scope on delete', async () => {
     const runner = new RecordingRunner([
       { stderr: '', stdout: '' },

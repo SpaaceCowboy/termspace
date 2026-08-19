@@ -9,6 +9,7 @@ export type {
 export { BINARY_SID_BYTES, SESSION_STATES, VISIBILITY_LEVELS } from './transport.js'
 
 export type {
+  AgentAvailability,
   AgentCommand,
   AgentCommandOverrides,
   AgentKind,

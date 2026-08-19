@@ -39,6 +39,9 @@ export interface PaneTerminal {
   focus: () => void
   setRenderer: (kind: RendererKind) => void
   serialize: () => string
+  /** Lines between the viewport and live output; zero means following output. */
+  scrollOffsetFromBottom: () => number
+  restoreScrollOffset: (offset: number) => void
   fit: () => PaneSize | null
   onData: (handler: (data: string) => void) => PaneDisposable
   dispose: () => void
@@ -109,6 +112,13 @@ export class PaneStore {
   readonly #now: () => number
   #disposed = false
 
+  setConnected(connected: boolean): void {
+    if (connected) return
+    // Keep every painted terminal intact, but hold new input until the fresh
+    // server restore proves the replacement attachment is ready.
+    for (const entry of this.#panes.values()) entry.restored = false
+  }
+
   constructor(options: PaneStoreOptions) {
     this.#options = options
     this.#resizeDebounceMs = options.resizeDebounceMs ?? RESIZE_DEBOUNCE_MS
@@ -161,14 +171,17 @@ export class PaneStore {
       if (terminal === null) {
         return
       }
+      const scrollOffset = terminal.scrollOffsetFromBottom()
       terminal.reset()
       entry.buffered = []
       entry.bufferedBytes = 0
       terminal.write(data)
       await terminal.flush()
+      terminal.restoreScrollOffset(scrollOffset)
       entry.restored = true
       this.#flushInput(entry)
       this.#fit(entry)
+      if (entry.visibility === 'focused' && entry.container !== null) terminal.focus()
     })
   }
 

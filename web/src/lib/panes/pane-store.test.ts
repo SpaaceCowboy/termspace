@@ -28,6 +28,8 @@ class FakeTerminal implements PaneTerminal {
   inputHandler: ((data: string) => void) | null = null
   inputDisposed = false
   size: PaneSize | null = { cols: 80, rows: 24 }
+  scrollOffset = 0
+  restoredScrollOffsets: number[] = []
 
   constructor() {
     FakeTerminal.instances.push(this)
@@ -64,6 +66,14 @@ class FakeTerminal implements PaneTerminal {
 
   serialize(): string {
     return this.text
+  }
+
+  scrollOffsetFromBottom(): number {
+    return this.scrollOffset
+  }
+
+  restoreScrollOffset(offset: number): void {
+    this.restoredScrollOffsets.push(offset)
   }
 
   fit(): PaneSize | null {
@@ -446,6 +456,27 @@ describe('PaneStore', () => {
     assert.equal(terminal?.text, 'second')
     terminal?.inputHandler?.('k')
     assert.deepEqual(socket.input, [`${SID_A}:k`], 'one handler, one send')
+  })
+
+  it('keeps the painted screen and queues input while reconnecting', async () => {
+    store.sync([{ sid: SID_A, visibility: 'focused', container: container('a') }])
+    await settle()
+    store.restore(SID_A, 'before outage')
+    await settle()
+    const terminal = FakeTerminal.instances[0]
+    if (terminal !== undefined) terminal.scrollOffset = 12
+
+    store.setConnected(false)
+    terminal?.inputHandler?.('held')
+    assert.equal(terminal?.text, 'before outage')
+    assert.deepEqual(socket.input, [])
+
+    store.restore(SID_A, 'after reconnect')
+    await settle()
+    assert.equal(terminal?.text, 'after reconnect')
+    assert.deepEqual(terminal?.restoredScrollOffsets.at(-1), 12)
+    assert.deepEqual(socket.input, [`${SID_A}:held`])
+    assert.ok((terminal?.focusCount ?? 0) > 0)
   })
 })
 

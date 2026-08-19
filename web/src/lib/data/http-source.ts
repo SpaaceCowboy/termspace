@@ -125,6 +125,10 @@ export const AppConfigSchema = z.object({
   projectRootWritable: z.boolean(),
   pushPublicKey: z.string().nullable(),
   defaultAgentCommands: z.record(z.enum(AGENT_KINDS), z.array(z.string())),
+  agentAvailability: z.record(
+    z.enum(AGENT_KINDS),
+    z.object({ available: z.boolean(), command: z.string().nullable() }),
+  ),
 })
 export const FavoritesSchema = z.object({
   projectIds: z.array(z.string()),

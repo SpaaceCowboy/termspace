@@ -106,6 +106,14 @@ export class GatewayClient {
     this.#send({ t: 'unsub', sid })
   }
 
+  reattach(sid: string): void {
+    const level = this.#subscriptions.get(sid)
+    if (level === undefined) return
+    this.#writeToSocket({ t: 'unsub', sid })
+    this.#writeToSocket({ t: 'sub', sid })
+    this.#writeToSocket({ t: 'vis', sid, level })
+  }
+
   sendInput(sid: string, data: string): void {
     for (const chunk of chunkInput(data)) {
       this.#send({ t: 'in', sid, data: chunk })

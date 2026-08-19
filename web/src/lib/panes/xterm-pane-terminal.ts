@@ -118,6 +118,14 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
     serialize(): string {
       return serializeAddon.serialize({ scrollback: SCROLLBACK_LINES })
     },
+    scrollOffsetFromBottom(): number {
+      const buffer = terminal.buffer.active
+      return Math.max(0, buffer.baseY - buffer.viewportY)
+    },
+    restoreScrollOffset(offset: number): void {
+      const buffer = terminal.buffer.active
+      terminal.scrollToLine(Math.max(0, buffer.baseY - offset))
+    },
     fit(): PaneSize | null {
       if (!opened) {
         return null

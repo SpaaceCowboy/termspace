@@ -15,15 +15,16 @@ const DOT_CLASS: Record<SessionState, string | undefined> = {
 }
 
 const STATE_LABEL: Record<SessionState, string> = {
-  working: 'working',
-  idle: 'idle',
-  'needs-you': 'needs you',
-  dead: 'dead',
+  working: 'agent working',
+  idle: 'ready',
+  'needs-you': 'needs your input',
+  dead: 'exited',
 }
 
 export interface SidebarProps {
   projects: readonly Project[]
   sessions: readonly Session[]
+  startingSessionIds?: ReadonlySet<string>
   favorites: Favorites
   selectedId: string | null
   /** Sessions the layout currently paints, so the sidebar can say where they are. */
@@ -47,6 +48,7 @@ export interface SidebarProps {
 export function Sidebar({
   projects,
   sessions,
+  startingSessionIds,
   favorites,
   selectedId,
   onScreenIds,
@@ -101,6 +103,7 @@ export function Sidebar({
         <SidebarBody
           projects={projects}
           sessions={sessions}
+          {...(startingSessionIds === undefined ? {} : { startingSessionIds })}
           favorites={favorites}
           selectedId={selectedId}
           {...(onScreenIds === undefined ? {} : { onScreenIds })}
@@ -129,6 +132,7 @@ export function Sidebar({
 function SidebarBody({
   projects,
   sessions,
+  startingSessionIds,
   favorites,
   selectedId,
   onScreenIds,
@@ -250,7 +254,9 @@ function SidebarBody({
                     <span className={styles.itemText}>
                       <span className={styles.itemName}>{session.name}</span>
                       <span className={styles.itemMeta}>
-                        {session.agent} · {STATE_LABEL[session.state]}
+                        {session.agent} · {startingSessionIds?.has(session.id) === true
+                          ? 'starting'
+                          : STATE_LABEL[session.state]}
                         {onScreenIds?.has(session.id) === true ? ' · on screen' : ''}
                         {session.worktreeBranch === null ? '' : ` · ${session.worktreeBranch}`}
                       </span>

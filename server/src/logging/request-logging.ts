@@ -24,6 +24,7 @@ export function createLoggerOptions(level: string) {
         'body.password',
         'body.totp',
         'body.ticket',
+        'body.initialPrompt',
       ],
     },
     serializers: {

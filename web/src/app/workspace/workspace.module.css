@@ -184,6 +184,27 @@
   background: transparent;
 }
 
+.reconnecting {
+  display: flex;
+  align-items: center;
+  padding: var(--ts-space-2) var(--ts-space-3);
+  border: 1px solid var(--ts-accent);
+  border-radius: var(--ts-radius);
+  background: var(--ts-accent-quiet);
+  color: var(--ts-text-dim);
+}
+
+.reconnecting strong { color: var(--ts-text); }
+
+.confirmList {
+  display: grid;
+  gap: var(--ts-space-2);
+  margin: 0;
+  padding-left: var(--ts-space-5);
+  color: var(--ts-text-dim);
+  line-height: 1.5;
+}
+
 .empty p {
   margin: 0;
   max-width: 42ch;

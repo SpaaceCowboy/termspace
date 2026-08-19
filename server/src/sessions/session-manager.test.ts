@@ -61,9 +61,14 @@ class FakeTmux {
     launchCommand: AgentCommand
   }[] = []
   readonly killed: string[] = []
+  readonly input: { id: string; data: string }[] = []
 
   async createDetached(id: string, cwd: string, launchCommand: AgentCommand): Promise<void> {
     this.created.push({ id, cwd, launchCommand })
+  }
+
+  async sendLiteral(id: string, data: string): Promise<void> {
+    this.input.push({ id, data })
   }
 
   async kill(id: string): Promise<void> {
@@ -113,11 +118,13 @@ function createManager(
   tmux: FakeTmux,
   worktrees?: FakeWorktrees,
   diffs?: FakeDiffs,
+  isCommandAvailable?: (command: AgentCommand, cwd: string) => Promise<boolean>,
 ): SessionManager {
   return new SessionManager(repository, tmux, {
     createId: () => SID,
     isDirectory: async () => true,
     now: () => 100,
+    ...(isCommandAvailable === undefined ? {} : { isCommandAvailable }),
     ...(diffs === undefined ? {} : { diffs }),
     ...(worktrees === undefined ? {} : { worktrees }),
   })
@@ -136,6 +143,37 @@ describe('SessionManager', () => {
     ])
     assert.deepEqual(repository.sessions, [session])
     assert.equal(session.state, 'idle')
+  })
+
+  it('sends an optional initial prompt literally after launch', async () => {
+    const repository = new FakeRepository()
+    const tmux = new FakeTmux()
+    const manager = createManager(repository, tmux)
+
+    await manager.create({
+      projectId: 'project-1',
+      name: 'Portal',
+      agent: 'codex',
+      initialPrompt: 'Review this repository; do not deploy.',
+    })
+
+    assert.deepEqual(tmux.input, [{
+      id: SID,
+      data: 'Review this repository; do not deploy.\r',
+    }])
+  })
+
+  it('refuses an unavailable agent before creating tmux state', async () => {
+    const repository = new FakeRepository()
+    const tmux = new FakeTmux()
+    const manager = createManager(repository, tmux, undefined, undefined, async () => false)
+
+    await assert.rejects(
+      manager.create({ projectId: 'project-1', name: 'Missing', agent: 'claude' }),
+      { name: 'Error', message: 'claude is not available' },
+    )
+    assert.deepEqual(tmux.created, [])
+    assert.deepEqual(repository.sessions, [])
   })
 
   it('uses an explicit cwd and leaves shell sessions at the shell', async () => {

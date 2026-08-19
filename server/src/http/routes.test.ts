@@ -36,7 +36,10 @@ import {
   ProjectPathNotCreatableError,
   ProjectPathOccupiedError,
 } from '../projects/project-manager.js'
-import { SessionProjectNotFoundError } from '../sessions/session-manager.js'
+import {
+  SessionAgentUnavailableError,
+  SessionProjectNotFoundError,
+} from '../sessions/session-manager.js'
 import { WorktreeDirtyError } from '../git/worktree-manager.js'
 import { DiffUnavailableError } from '../git/diff-reader.js'
 import { registerPhase1Routes, type Phase1RouteServices } from './routes.js'
@@ -233,6 +236,11 @@ describe('Phase 1 HTTP routes', () => {
     issuedTicket = { ticket: 'b'.repeat(43), expiresAt: 10_000 }
     savedFavorites = { projectIds: [], sessionIds: [] }
     const services: Phase1RouteServices = {
+      agentAvailability: async () => ({
+        claude: { available: false, command: 'claude' },
+        codex: { available: true, command: 'codex' },
+        shell: { available: true, command: null },
+      }),
       auth,
       authSessionTtlMs: 60_000,
       authSessions,
@@ -454,6 +462,23 @@ describe('Phase 1 HTTP routes', () => {
     })
     assert.deepEqual(deleted.json(), { ok: true, data: {} })
     assert.deepEqual(sessions.deleted, [sessionFixture.id])
+  })
+
+  it('returns an actionable conflict when an agent command is unavailable', async () => {
+    sessions.createError = new SessionAgentUnavailableError('claude is not available')
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/sessions',
+      headers: { cookie: SESSION_COOKIE },
+      payload: { projectId: 'project-1', name: 'Claude', agent: 'claude' },
+    })
+
+    assert.equal(response.statusCode, 409)
+    assert.deepEqual(response.json().error, {
+      code: 'agent_unavailable',
+      message: 'This agent command is not installed or executable on the server.',
+      field: 'agent',
+    })
   })
 
   it('returns an authenticated session diff and maps missing or unavailable diffs', async () => {
@@ -857,6 +882,11 @@ describe('Phase 1 HTTP routes', () => {
         projectRoot: '/srv/projects',
         projectRootWritable: true,
         defaultAgentCommands: DEFAULT_AGENT_COMMANDS,
+        agentAvailability: {
+          claude: { available: false, command: 'claude' },
+          codex: { available: true, command: 'codex' },
+          shell: { available: true, command: null },
+        },
         pushPublicKey: 'BFakeVapidPublicKey',
       },
     })

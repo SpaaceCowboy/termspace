@@ -123,6 +123,26 @@ test('a subscription made before the socket opens is replayed on open', async ()
   ])
 })
 
+test('a failed viewer can be reattached without replacing the page socket', async () => {
+  const h = harness()
+  h.client.subscribe(SID, 'focused')
+  h.client.connect()
+  await flush()
+  const socket = h.sockets[0]
+  assert.ok(socket)
+  socket.onopen?.()
+  socket.sent.length = 0
+
+  h.client.reattach(SID)
+
+  assert.deepEqual(socket.frames, [
+    { t: 'unsub', sid: SID },
+    { t: 'sub', sid: SID },
+    { t: 'vis', sid: SID, level: 'focused' },
+  ])
+  assert.equal(h.sockets.length, 1)
+})
+
 test('every pane is resubscribed on a reopened socket, not just the first', async () => {
   const h = harness()
   h.client.connect()

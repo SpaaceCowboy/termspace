@@ -40,6 +40,7 @@ export interface GatewayConnectionDependencies {
     write(sessionId: string, data: string): Promise<void>
   }
   readonly capture: (sessionId: string) => Promise<string>
+  readonly sessionAlive: (sessionId: string) => Promise<boolean>
   readonly feeds: SessionFeedCoordinator
   readonly activity: SessionActivityTracker
   readonly titles: SessionTitler
@@ -223,35 +224,27 @@ export class GatewayConnection {
           outputCoalescer.push(data)
         },
         onExit: ({ exitCode }) => {
-          this.#dependencies.activity.markDead(sessionId)
           if (!this.#subscriptions.has(sessionId)) {
             earlyExitCode = exitCode
             return
           }
-          this.#dependencies.transport.sendFrame({
-            t: 'exit',
-            sid: sessionId,
-            code: exitCode,
-          })
-          this.#unsubscribe(sessionId)
+          void this.#handleAttachmentExit(sessionId, exitCode)
         },
       })
       if (earlyExitCode !== undefined) {
-        this.#dependencies.transport.sendFrame({
-          t: 'exit',
-          sid: sessionId,
-          code: earlyExitCode,
+        this.#subscriptions.set(sessionId, {
+          attachment,
+          coalescer: outputCoalescer,
+          feedLease: acquiredFeedLease,
         })
-        attachment.close()
-        outputCoalescer.dispose()
-        acquiredFeedLease.release()
-        return
+        void this.#handleAttachmentExit(sessionId, earlyExitCode)
+      } else {
+        this.#subscriptions.set(sessionId, {
+          attachment,
+          coalescer: outputCoalescer,
+          feedLease: acquiredFeedLease,
+        })
       }
-      this.#subscriptions.set(sessionId, {
-        attachment,
-        coalescer: outputCoalescer,
-        feedLease: acquiredFeedLease,
-      })
     } catch (error) {
       coalescer?.dispose()
       feedLease?.release()
@@ -269,6 +262,38 @@ export class GatewayConnection {
     subscription.coalescer.dispose()
     subscription.feedLease.release()
     subscription.attachment.close()
+  }
+
+  async #handleAttachmentExit(sessionId: string, exitCode: number): Promise<void> {
+    try {
+      const alive = await this.#dependencies.sessionAlive(sessionId)
+      if (this.#closed || !this.#subscriptions.has(sessionId)) return
+      this.#unsubscribe(sessionId)
+      if (alive) {
+        this.#sendError(
+          sessionId,
+          'viewer_attachment_failed',
+          'The terminal viewer disconnected, but the session is still running.',
+        )
+        return
+      }
+      this.#dependencies.activity.markDead(sessionId)
+      this.#dependencies.transport.sendFrame({
+        t: 'exit',
+        sid: sessionId,
+        code: exitCode,
+      })
+    } catch (error) {
+      this.#dependencies.onError(error)
+      if (!this.#closed && this.#subscriptions.has(sessionId)) {
+        this.#unsubscribe(sessionId)
+        this.#sendError(
+          sessionId,
+          'viewer_attachment_failed',
+          'The terminal viewer disconnected; session status could not be confirmed.',
+        )
+      }
+    }
   }
 
   async #resync(sessionId: string): Promise<void> {

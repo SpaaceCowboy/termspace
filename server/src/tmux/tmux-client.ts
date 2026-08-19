@@ -107,6 +107,18 @@ export class TmuxClient {
     await this.#stopSessionScope(sessionId)
   }
 
+  async sendLiteral(untrustedId: unknown, data: string): Promise<void> {
+    await this.#runner.run('tmux', [
+      ...this.#socketArguments,
+      'send-keys',
+      '-t',
+      toTmuxSessionName(untrustedId),
+      '-l',
+      '--',
+      data,
+    ])
+  }
+
   /**
    * One snapshot for liveness reconciliation. tmux exits with status 1 when no
    * server (and therefore no sessions) exists; that is an empty set, not an

@@ -10,6 +10,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 
 import { cx } from '@/lib/cx'
+import type { ConnectionState } from '@/lib/socket/gateway-client.ts'
+import { sessionExitCopy } from '@/lib/session-runtime.ts'
 import type { PaneSlot, PanesApi } from '@/lib/panes/usePanes.ts'
 import {
   adjacentOccupiedSlot,
@@ -42,9 +44,16 @@ export interface TerminalGridProps {
   /** False on the fixture source, where there is no gateway to attach to. */
   live: boolean
   deadSessions: ReadonlySet<string>
+  startingSessions: ReadonlySet<string>
+  exitCodes: ReadonlyMap<string, number | null>
+  connectionState: ConnectionState
+  viewerFailures: ReadonlySet<string>
   onFocusSlot: (index: number) => void
   onClearSlot: (index: number) => void
   onNewSession: () => void
+  onOpenAsShell: (session: Session) => void
+  onDeleteSession: (sessionId: string) => void
+  onReconnectView: (sessionId: string) => void
   mobile?: boolean
 }
 
@@ -54,9 +63,16 @@ export function TerminalGrid({
   panes,
   live,
   deadSessions,
+  startingSessions,
+  exitCodes,
+  connectionState,
+  viewerFailures,
   onFocusSlot,
   onClearSlot,
   onNewSession,
+  onOpenAsShell,
+  onDeleteSession,
+  onReconnectView,
   mobile = false,
 }: TerminalGridProps) {
   const capacity = LAYOUT_SLOT_CAPACITY[layout.mode]
@@ -207,11 +223,18 @@ export function TerminalGrid({
               focused={index === layout.focusedSlot}
               live={live}
               dead={session !== null && deadSessions.has(session.id)}
+              starting={session !== null && startingSessions.has(session.id)}
+              exitCode={session === null ? undefined : exitCodes.get(session.id)}
+              connectionState={connectionState}
+              viewerFailed={session !== null && viewerFailures.has(session.id)}
               setContainer={panes.setContainer}
               focusTerminal={panes.focus}
               onFocusSlot={onFocusSlot}
               onClearSlot={onClearSlot}
               onNewSession={onNewSession}
+              onOpenAsShell={onOpenAsShell}
+              onDeleteSession={onDeleteSession}
+              onReconnectView={onReconnectView}
             />
           )
         })}
@@ -277,11 +300,18 @@ interface PaneSlotFrameProps {
   focused: boolean
   live: boolean
   dead: boolean
+  starting: boolean
+  exitCode: number | null | undefined
+  connectionState: ConnectionState
+  viewerFailed: boolean
   setContainer: PanesApi['setContainer']
   focusTerminal: PanesApi['focus']
   onFocusSlot: (index: number) => void
   onClearSlot: (index: number) => void
   onNewSession: () => void
+  onOpenAsShell: (session: Session) => void
+  onDeleteSession: (sessionId: string) => void
+  onReconnectView: (sessionId: string) => void
 }
 
 function PaneSlotFrame({
@@ -290,11 +320,18 @@ function PaneSlotFrame({
   focused,
   live,
   dead,
+  starting,
+  exitCode,
+  connectionState,
+  viewerFailed,
   setContainer,
   focusTerminal,
   onFocusSlot,
   onClearSlot,
   onNewSession,
+  onOpenAsShell,
+  onDeleteSession,
+  onReconnectView,
 }: PaneSlotFrameProps) {
   const sid = session?.id ?? null
 
@@ -370,7 +407,17 @@ function PaneSlotFrame({
         </span>
         <span className={styles.chromeRight}>
           <span className={cx(styles.pill, PILL_CLASS[dead ? 'dead' : session.state])}>
-            {dead ? 'dead' : session.state}
+            {dead
+              ? 'exited'
+              : starting
+                ? 'starting'
+                : connectionState === 'reconnecting'
+                  ? 'reconnecting'
+                  : session.state === 'idle'
+                    ? 'ready'
+                    : session.state === 'needs-you'
+                      ? 'needs input'
+                      : session.state}
           </span>
           <button
             type="button"
@@ -386,16 +433,34 @@ function PaneSlotFrame({
         </span>
       </div>
       {live ? (
-        <div
-          className={styles.screen}
-          ref={attach}
-          onMouseDown={() => {
-            onFocusSlot(index)
-            if (sid !== null) {
-              focusTerminal(sid)
-            }
-          }}
-        />
+        <>
+          <div
+            className={styles.screen}
+            ref={attach}
+            onMouseDown={() => {
+              onFocusSlot(index)
+              if (sid !== null) focusTerminal(sid)
+            }}
+          />
+          {dead ? (
+            <div className={styles.exitOverlay} role="status">
+              <strong>{sessionExitCopy(exitCode).title}</strong>
+              <span>Your project files remain on disk. The terminal process and live scrollback have ended.</span>
+              <span className={styles.exitActions}>
+                <button type="button" onClick={() => { onOpenAsShell(session) }}>Open as Shell</button>
+                <button type="button" onClick={() => { onDeleteSession(session.id) }}>Delete session</button>
+              </span>
+            </div>
+          ) : viewerFailed ? (
+            <div className={styles.exitOverlay} role="alert">
+              <strong>Terminal view disconnected.</strong>
+              <span>The tmux session is still running; reconnecting only replaces this viewer.</span>
+              <span className={styles.exitActions}>
+                <button type="button" onClick={() => { onReconnectView(session.id) }}>Reconnect view</button>
+              </span>
+            </div>
+          ) : null}
+        </>
       ) : (
         <div className={styles.screen}>
           <PanePlaceholder session={session} />

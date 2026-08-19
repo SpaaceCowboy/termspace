@@ -17,6 +17,7 @@ import { OperationalStatusService } from './operations/operational-status.js'
 import { FavoritesRepository } from './preferences/favorites-repository.js'
 import { ProjectManager } from './projects/project-manager.js'
 import { ProjectRepository } from './projects/project-repository.js'
+import { defaultAgentAvailability, isAgentCommandAvailable } from './projects/agent-availability.js'
 import { NodePtySpawner } from './pty/node-pty-spawner.js'
 import { ViewerAttachmentFactory } from './pty/viewer-attachment.js'
 import { SessionManager } from './sessions/session-manager.js'
@@ -89,6 +90,7 @@ export function createServerRuntime(
   })
   const sessions = new SessionManager(sessionRepository, tmux, {
     diffs: new GitDiffReader(processes),
+    isCommandAvailable: isAgentCommandAvailable,
     worktrees: new WorktreeManager(processes, environment.TERMSPACE_PROJECT_ROOT),
   })
   const layouts = new LayoutRepository(database)
@@ -105,6 +107,7 @@ export function createServerRuntime(
     tmux,
   })
   registerPhase1Routes(app, {
+    agentAvailability: () => defaultAgentAvailability(environment.TERMSPACE_PROJECT_ROOT),
     auth,
     authSessionTtlMs: environment.TERMSPACE_AUTH_SESSION_TTL_MS,
     authSessions,
@@ -225,6 +228,7 @@ export function createServerRuntime(
         attachments,
         buffers,
         capture: (sessionId) => tmux.capture(sessionId),
+        sessionAlive: async (sessionId) => (await tmux.listSessionIds()).has(sessionId),
         feeds,
         activity,
         titles,

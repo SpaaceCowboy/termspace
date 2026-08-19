@@ -7,6 +7,7 @@ export const ERROR_CODES = [
   'origin_rejected',
   'session_not_found',
   'session_dead',
+  'agent_unavailable',
   'worktree_dirty',
   'worktree_conflict',
   'diff_unavailable',

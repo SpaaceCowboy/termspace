@@ -1,4 +1,4 @@
-import type { AgentCommand, AgentKind } from './core.js'
+import type { AgentAvailability, AgentCommand, AgentKind } from './core.js'
 
 export interface ApiError {
   code: string
@@ -42,6 +42,8 @@ export interface AppConfig {
    * UI can show the real command as a placeholder instead of inventing one.
    */
   defaultAgentCommands: Record<AgentKind, AgentCommand>
+  /** Availability of each server-default command in the service runtime PATH. */
+  agentAvailability: Record<AgentKind, AgentAvailability>
   /**
    * The VAPID public key a browser needs to subscribe, or null when push is
    * not configured. Null is the signal for the UI to hide push entirely rather

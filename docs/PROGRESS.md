@@ -1103,3 +1103,29 @@ shell remained alive under `/run/termspace/tmux.sock`, but the browser-side
 viewer exited with code 1 and incorrectly marked the session dead. The unit
 regression asserts the exact named-socket argv; all package tests, typechecks,
 and production builds pass on Node 24/pnpm 10.
+
+### 2026-08-19T11:05:16+03:30 · SOLO · 6 · CONTRACT
+Session creation gained two additive fields. The old `CreateSessionInput` base
+was `{ projectId, name, agent }`; the new base is
+`{ projectId, name, agent, initialPrompt?: string }`. The old `AppConfig` was
+`{ projectRoot, projectRootWritable, defaultAgentCommands, pushPublicKey }`; the
+new shape adds
+`agentAvailability: Record<AgentKind, { available: boolean; command: string | null }>`.
+The closed `ErrorCode` union adds `agent_unavailable`. Existing requests remain
+valid. Initial prompts are bounded, redacted terminal input, and unavailable
+resolved commands are refused before worktree, tmux, or database mutation.
+
+The production creation dialog now exposes project path, server-reported agent
+availability, optional initial prompt, worktree choice, and an advanced real
+command preview. UI lifecycle copy distinguishes starting, ready, working,
+needs-input, reconnecting, recoverable viewer failure, and true process exit.
+A viewer attachment exit is verified against the real tmux namespace instead
+of marking the session dead unconditionally. Reconnection keeps the painted
+terminal, queues typed input, restores viewport position and focus, and can
+reattach one failed viewer without replacing the page socket. Session deletion
+now enumerates the exact tmux, scrollback, shared-directory, worktree,
+uncommitted-file, commit, and branch effects before confirmation.
+
+All package tests and typechecks plus the HTTP production build pass on Node
+24/pnpm 10. A production fixture build was rendered in headless Chrome and the
+new compiled session creation and lifecycle UI was inspected.

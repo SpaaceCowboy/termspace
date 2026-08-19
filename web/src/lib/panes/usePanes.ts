@@ -111,6 +111,10 @@ export function usePanes(
     }
   }, [enabled, requests, resync])
 
+  useEffect(() => {
+    storeRef.current?.setConnected(socket.state === 'connected')
+  }, [socket.state])
+
   const setContainer = useCallback(
     (sid: string, element: HTMLElement | null) => {
       if (element === null) {
