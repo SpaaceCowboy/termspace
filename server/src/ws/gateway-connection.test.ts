@@ -72,6 +72,7 @@ function createHarness(
   session: Session | null = SESSION,
   paneTitle = '',
   sessionAlive = false,
+  restore: () => Promise<string> = async () => 'restored-screen',
 ): {
   attachment: FakeAttachment
   callbacks: {
@@ -82,6 +83,7 @@ function createHarness(
   frames: ServerFrame[]
   binaries: Buffer[]
   bufferWrites: string[]
+  bufferResizes: { cols: number; rows: number }[]
   errors: unknown[]
   activity: SessionActivityTracker
   titles: SessionTitler
@@ -95,6 +97,7 @@ function createHarness(
   const frames: ServerFrame[] = []
   const binaries: Buffer[] = []
   const bufferWrites: string[] = []
+  const bufferResizes: { cols: number; rows: number }[] = []
   const errors: unknown[] = []
   const coalescers: FakeCoalescer[] = []
   const activity = new SessionActivityTracker({
@@ -120,9 +123,12 @@ function createHarness(
       },
     },
     buffers: {
-      restore: async () => 'restored-screen',
+      restore,
       write: async (_sessionId, data) => {
         bufferWrites.push(data)
+      },
+      resize: async (_sessionId, cols, rows) => {
+        bufferResizes.push({ cols, rows })
       },
     },
     capture: async () => 'captured-screen',
@@ -146,6 +152,7 @@ function createHarness(
     frames,
     binaries,
     bufferWrites,
+    bufferResizes,
     errors,
     activity,
     titles,
@@ -203,6 +210,29 @@ describe('GatewayConnection', () => {
     assert.deepEqual(harness.attachment.resizes, [{ cols: 120, rows: 40 }])
     assert.equal(harness.attachment.closed, true)
     assert.deepEqual(harness.frames.at(-1), { t: 'pong' })
+  })
+
+  it('keeps the latest resize that arrives while attachment creation is pending', async () => {
+    let finishRestore: ((screen: string) => void) | undefined
+    const harness = createHarness(
+      SESSION,
+      '',
+      false,
+      () => new Promise((resolve) => { finishRestore = resolve }),
+    )
+
+    const subscription = harness.connection.handleText(`{"t":"sub","sid":"${SID}"}`)
+    await Promise.resolve()
+    await harness.connection.handleText(`{"t":"resize","sid":"${SID}","cols":132,"rows":48}`)
+    await harness.connection.handleText(`{"t":"resize","sid":"${SID}","cols":140,"rows":52}`)
+    finishRestore?.('restored-screen')
+    await subscription
+
+    assert.deepEqual(harness.attachment.resizes, [{ cols: 140, rows: 52 }])
+    assert.deepEqual(harness.bufferResizes, [
+      { cols: 132, rows: 48 },
+      { cols: 140, rows: 52 },
+    ])
   })
 
   it('reports invalid frames and unknown sessions without attaching', async () => {

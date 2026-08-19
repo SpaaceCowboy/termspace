@@ -106,6 +106,9 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
         try { fitAddon.fit() } catch { /* The pane may be between layout hosts. */ }
       }
     },
+    resize(size: PaneSize): void {
+      if (!disposed) terminal.resize(size.cols, size.rows)
+    },
     fit(): PaneSize | null {
       if (!opened) {
         return null

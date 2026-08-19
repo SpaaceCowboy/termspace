@@ -29,6 +29,13 @@ class HeadlessTerminalBuffer {
     return this.#writeQueue
   }
 
+  resize(cols: number, rows: number): Promise<void> {
+    this.#writeQueue = this.#writeQueue.then(() => {
+      this.#terminal.resize(cols, rows)
+    })
+    return this.#writeQueue
+  }
+
   async serialize(): Promise<string> {
     await this.#writeQueue
     return this.#serializeAddon.serialize({ scrollback: 2_000 })
@@ -79,6 +86,15 @@ export class HeadlessBufferRegistry {
     }
     await entry.initialized
     await entry.buffer.write(data)
+  }
+
+  async resize(sessionId: string, cols: number, rows: number): Promise<void> {
+    const entry = this.#buffers.get(sessionId)
+    if (entry === undefined) return
+    // Do not await capture initialization here. A browser resize commonly
+    // arrives while capture-pane is still running; queueing geometry first
+    // makes that captured screen parse at the real viewer dimensions.
+    await entry.buffer.resize(cols, rows)
   }
 
   dispose(): void {

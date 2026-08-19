@@ -38,6 +38,7 @@ export interface GatewayConnectionDependencies {
   readonly buffers: {
     restore(sessionId: string, capture: () => Promise<string>): Promise<string>
     write(sessionId: string, data: string): Promise<void>
+    resize(sessionId: string, cols: number, rows: number): Promise<void>
   }
   readonly capture: (sessionId: string) => Promise<string>
   readonly sessionAlive: (sessionId: string) => Promise<boolean>
@@ -58,6 +59,8 @@ export interface GatewayConnectionDependencies {
 export class GatewayConnection {
   readonly #dependencies: GatewayConnectionDependencies
   readonly #subscriptions = new Map<string, GatewaySubscription>()
+  readonly #subscribing = new Set<string>()
+  readonly #pendingResizes = new Map<string, { readonly cols: number; readonly rows: number }>()
   readonly #stopListening: () => void
   readonly #stopListeningTitles: () => void
   #closed = false
@@ -114,9 +117,7 @@ export class GatewayConnection {
         this.#subscriptions.get(frame.sid)?.attachment.write(frame.data)
         return
       case 'resize':
-        this.#subscriptions
-          .get(frame.sid)
-          ?.attachment.resize(frame.cols, frame.rows)
+        await this.#resize(frame.sid, frame.cols, frame.rows)
         return
       case 'vis':
         // Visibility is a property of this viewer, not of the session: two tabs
@@ -140,10 +141,11 @@ export class GatewayConnection {
     for (const sessionId of [...this.#subscriptions.keys()]) {
       this.#unsubscribe(sessionId)
     }
+    this.#pendingResizes.clear()
   }
 
   async #subscribe(sessionId: string): Promise<void> {
-    if (this.#subscriptions.has(sessionId)) {
+    if (this.#subscriptions.has(sessionId) || this.#subscribing.has(sessionId)) {
       return
     }
     const session = this.#dependencies.sessions.find(sessionId)
@@ -151,6 +153,7 @@ export class GatewayConnection {
       this.#sendError(sessionId, 'session_not_found', 'Session was not found.')
       return
     }
+    this.#subscribing.add(sessionId)
     // The tracker needs the agent kind to know what a question looks like, and
     // the persisted state so a freshly started gateway does not claim every
     // session is idle before any output arrives.
@@ -245,11 +248,39 @@ export class GatewayConnection {
           feedLease: acquiredFeedLease,
         })
       }
+      const pendingResize = this.#pendingResizes.get(sessionId)
+      if (pendingResize !== undefined) {
+        attachment.resize(pendingResize.cols, pendingResize.rows)
+      }
     } catch (error) {
-      coalescer?.dispose()
-      feedLease?.release()
+      if (this.#subscriptions.has(sessionId)) {
+        this.#unsubscribe(sessionId)
+      } else {
+        coalescer?.dispose()
+        feedLease?.release()
+      }
       this.#dependencies.onError(error)
       this.#sendError(sessionId, 'internal_error', 'Unable to attach to session.')
+    } finally {
+      this.#subscribing.delete(sessionId)
+      this.#pendingResizes.delete(sessionId)
+    }
+  }
+
+  async #resize(sessionId: string, cols: number, rows: number): Promise<void> {
+    const subscription = this.#subscriptions.get(sessionId)
+    if (subscription === undefined) {
+      if (this.#subscribing.has(sessionId)) {
+        // xterm is measured before capture and tmux attachment creation finish.
+        // Retain the latest dimensions instead of leaving node-pty at 80x24.
+        this.#pendingResizes.set(sessionId, { cols, rows })
+        await this.#dependencies.buffers.resize(sessionId, cols, rows)
+      }
+      return
+    }
+    await this.#dependencies.buffers.resize(sessionId, cols, rows)
+    if (this.#subscriptions.get(sessionId) === subscription) {
+      subscription.attachment.resize(cols, rows)
     }
   }
 

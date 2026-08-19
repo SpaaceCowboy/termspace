@@ -51,4 +51,20 @@ describe('HeadlessBufferRegistry', () => {
     assert.match(await second, /captured/)
     assert.equal(captures, 1)
   })
+
+  it('tracks live viewer geometry before parsing later full-screen output', async () => {
+    registry = new HeadlessBufferRegistry()
+    let finishCapture: ((screen: string) => void) | undefined
+    const restore = registry.restore(
+      SID,
+      () => new Promise((resolve) => { finishCapture = resolve }),
+    )
+    await Promise.resolve()
+    await registry.resize(SID, 132, 48)
+    finishCapture?.('initial')
+    await restore
+    await registry.write(SID, '\r\nafter resize')
+
+    assert.match(await registry.restore(SID, async () => 'unused'), /after resize/)
+  })
 })

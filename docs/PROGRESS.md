@@ -1150,3 +1150,17 @@ focus changes preserve the same terminal and cell grid.
 The WebGL dependency and lockfile entries are removed. Frozen offline installation, all package
 typechecks and tests, the HTTP production build, diff validation, and a compiled-bundle check for
 WebGL code pass on Node 24/pnpm 10.
+
+### 2026-08-19T12:18:08+03:30 · SOLO · 6 · FIXED
+The remaining Codex/tmux corruption was traced to terminal geometry, not process output. The browser
+could send its initial resize while subscription capture and viewer attachment were still pending;
+the gateway discarded that frame and left node-pty at 80×24 inside a much larger xterm. Separately,
+visible-to-headless rehosting discarded the last cell dimensions and parsed serialized full-screen
+output against a new default grid.
+
+The gateway now retains the latest in-flight resize, applies it to both the tmux attachment and the
+server headless parser, and queues parser geometry before a pending capture is parsed. Browser panes
+carry their row/column geometry through headless rehosting and flush the serialized snapshot before
+fitting. The invisible xterm keyboard textarea is excluded from the global focus outline. Regression
+tests cover the subscription race, pre-capture resize ordering, and rehosted geometry. All package
+typechecks and tests and the HTTP production build pass on Node 24/pnpm 10.

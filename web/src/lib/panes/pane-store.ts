@@ -41,6 +41,8 @@ export interface PaneTerminal {
   scrollOffsetFromBottom: () => number
   restoreScrollOffset: (offset: number) => void
   applyAppearance: (appearance: TerminalAppearance) => void
+  /** Preserves cell geometry while a visible terminal moves headless. */
+  resize: (size: PaneSize) => void
   fit: () => PaneSize | null
   onData: (handler: (data: string) => void) => PaneDisposable
   dispose: () => void
@@ -131,8 +133,10 @@ export class PaneStore {
     this.#terminalAppearance = appearance
     for (const entry of this.#panes.values()) {
       entry.terminal?.applyAppearance(appearance)
-      entry.lastSize = null
-      this.#fit(entry)
+      if (entry.container !== null) {
+        entry.lastSize = null
+        this.#fit(entry)
+      }
     }
   }
 
@@ -298,6 +302,7 @@ export class PaneStore {
    */
   async #rehost(entry: PaneEntry, container: HTMLElement | null): Promise<void> {
     let snapshot = ''
+    const previousSize = entry.lastSize
     const previous = entry.terminal
     if (previous !== null) {
       await previous.flush()
@@ -312,9 +317,11 @@ export class PaneStore {
     }
     entry.terminal = terminal
     terminal.applyAppearance(this.#terminalAppearance)
-    entry.lastSize = null
+    entry.lastSize = previousSize
+    if (previousSize !== null) terminal.resize(previousSize)
     if (snapshot !== '') {
       terminal.write(snapshot)
+      await terminal.flush()
     }
 
     if (container !== null) {

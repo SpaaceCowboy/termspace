@@ -30,6 +30,7 @@ class FakeTerminal implements PaneTerminal {
   scrollOffset = 0
   restoredScrollOffsets: number[] = []
   appearances: TerminalAppearance[] = []
+  resizes: PaneSize[] = []
 
   constructor() {
     FakeTerminal.instances.push(this)
@@ -76,8 +77,13 @@ class FakeTerminal implements PaneTerminal {
     this.appearances.push(appearance)
   }
 
+  resize(size: PaneSize): void {
+    this.size = size
+    this.resizes.push(size)
+  }
+
   fit(): PaneSize | null {
-    return this.size
+    return this.opened === null ? null : this.size
   }
 
   onData(handler: (data: string) => void): PaneDisposable {
@@ -352,6 +358,7 @@ describe('PaneStore', () => {
 
     const hidden = FakeTerminal.instances[1]
     assert.equal(hidden?.opened, null, 'the pane went back to headless')
+    assert.deepEqual(hidden?.resizes, [{ cols: 80, rows: 24 }], 'cell geometry survives rehosting')
     assert.equal(hidden?.text, 'on screen$ ')
     store.write(SID_A, bytes('still coming\r\n'))
     await settle()

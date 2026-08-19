@@ -239,6 +239,13 @@
   height: 100%;
 }
 
+/* xterm's textarea is an invisible keyboard/IME bridge. The pane border is
+   the visible focus indicator; outlining this zero-sized helper paints a stray
+   blue cursor at the last click position. */
+.screen :global(.xterm-helper-textarea:focus-visible) {
+  outline: none;
+}
+
 .exitOverlay {
   position: absolute;
   z-index: 2;

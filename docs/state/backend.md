@@ -5,7 +5,7 @@ verification.
 
 **Working on:** Deploying and owner-verifying the Phase 6 UX reliability and personalization pass:
 guided session creation, explicit lifecycle state, resilient viewer reconnection, appearance
-preferences, persistent notification history, and the production terminal-renderer fix.
+preferences, persistent notification history, and the production terminal geometry fixes.
 
 **Done so far:** Phases 0–5 are implemented and verified. Phase 6 favorites, operational telemetry,
 sanitized journal summaries, attention ordering, operations UI, reconnect behavior, responsive
@@ -48,8 +48,20 @@ removed. Every pane remains on xterm's built-in renderer and keeps one stable ce
 offline install, full typecheck/test suite, production build, and compiled-bundle WebGL absence check
 pass.
 
-**Next concrete step:** on the VPS pull the current `main`, rebuild, and restart the web service. The
-owner should first verify that clicking and typing in a
+Further production screenshots exposed a second, independent geometry failure. `sub` starts an
+asynchronous restore before creating the tmux viewer, while xterm measures and sends `resize`
+immediately; the gateway discarded that resize because the subscription did not exist yet. The tmux
+client therefore stayed at node-pty's 80×24 default inside a much larger browser pane, fragmenting
+Codex full-screen redraws and duplicating tmux status rows. Visible/headless rehosting also recreated
+xterm at default dimensions before replaying its serialized screen. The gateway now retains the
+latest resize during subscription, queues that geometry into the headless parser before a pending
+capture is parsed, and applies it to the finished tmux attachment. Browser rehosting carries forward
+the last row/column geometry and flushes its snapshot before fitting. The invisible xterm input
+textarea no longer receives the app-wide visible focus outline. Regression tests cover all three
+paths; the complete typecheck/test/build sequence passes.
+
+**Next concrete step:** push the geometry fix; then on the VPS pull the current `main`, rebuild, and
+restart both gateway and web services. The owner should first verify that clicking and typing in a
 real Codex/tmux pane keeps the cursor and glyphs aligned, then verify both new dialogs and exercise the
 remaining Phase 6 real-data desktop/phone exit criterion: Shell and Codex creation, gateway
 restart/reconnect, and standard/worktree deletion copy.
@@ -59,7 +71,9 @@ explicit Node 24/pnpm 10 toolchain. Appearance and notification history are inte
 each browser profile and are not account-synced. Notification history must remain limited to
 sanitized UI notices; never persist terminal bytes, raw push payloads, credentials, tickets, or
 server log data. Do not reintroduce focus-time renderer switching: xterm 6 WebGL and DOM cell grids
-can disagree and corrupt cursor/glyph placement. Every session operation and viewer attachment must use the same configured tmux
+can disagree and corrupt cursor/glyph placement. An initial resize can arrive while subscription
+capture is pending and must never be dropped; server and browser headless terminals must parse
+full-screen output at the live tmux geometry. Every session operation and viewer attachment must use the same configured tmux
 socket; falling back to tmux's default socket recreates the production failure. Claude is not
 installed on the VPS, so the default Claude option must remain disabled until its CLI is installed.
 An initial prompt is terminal input: keep it bounded and absent from every log/error surface. Viewer
@@ -67,5 +81,5 @@ attachment failure and tmux process death are different states and must never be
 tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do not
 inherit service sandbox directives.
 
-**Uncommitted:** none expected after committing the terminal renderer fix, dependency removal,
-regression update, decision/progress records, and this resume update.
+**Uncommitted:** none expected after committing the in-flight resize, headless geometry, focus-helper,
+regression, progress, and resume-state updates.
