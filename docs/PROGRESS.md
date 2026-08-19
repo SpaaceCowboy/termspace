@@ -1094,3 +1094,12 @@ targets, with desktop and 390×844 screenshots visually inspected.
 Phase 6 is built. Owner verification remains: confirm favorites survive a real
 reload, the panel reflects this machine’s live tmux/storage/backup state, and
 the refined desktop and phone workflows feel correct in normal use.
+
+### 2026-08-19T10:34:19+03:30 · SOLO · 6 · FIXED
+Production viewer attachments now use the configured tmux attach command,
+including its named socket, instead of spawning against tmux's default socket.
+This fixes the real deployment failure where session creation succeeded and the
+shell remained alive under `/run/termspace/tmux.sock`, but the browser-side
+viewer exited with code 1 and incorrectly marked the session dead. The unit
+regression asserts the exact named-socket argv; all package tests, typechecks,
+and production builds pass on Node 24/pnpm 10.

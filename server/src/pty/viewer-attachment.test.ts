@@ -3,7 +3,7 @@ import { describe, it } from 'node:test'
 
 import type { IDisposable, IPty } from 'node-pty'
 
-import type { PtySpawner } from './viewer-attachment.js'
+import type { PtySpawner, TmuxAttacher } from './viewer-attachment.js'
 import { ViewerAttachmentFactory } from './viewer-attachment.js'
 
 const SID = 'ses_portalui0001'
@@ -59,28 +59,59 @@ class FakePty implements IPty {
 
 class FakeSpawner implements PtySpawner {
   readonly ptys: FakePty[] = []
+  readonly calls: { command: string; arguments_: string[] }[] = []
 
-  spawn(): IPty {
+  spawn(command: string, arguments_: string[]): IPty {
+    this.calls.push({ command, arguments_ })
     const pty = new FakePty()
     this.ptys.push(pty)
     return pty
   }
 }
 
+const tmux: TmuxAttacher = {
+  attachCommand: (sessionId) => ({
+    command: 'tmux',
+    arguments_: ['-S', '/run/termspace/tmux.sock', 'attach-session', '-t', `ts_${String(sessionId)}`],
+  }),
+}
+
 describe('ViewerAttachmentFactory', () => {
   it('spawns one independent tmux attachment per viewer', () => {
     const spawner = new FakeSpawner()
-    const factory = new ViewerAttachmentFactory(spawner)
+    const factory = new ViewerAttachmentFactory(spawner, tmux)
 
     factory.attach(SID, { onData: () => {}, onExit: () => {} })
     factory.attach(SID, { onData: () => {}, onExit: () => {} })
 
     assert.equal(spawner.ptys.length, 2)
+    assert.deepEqual(spawner.calls, [
+      {
+        command: 'tmux',
+        arguments_: [
+          '-S',
+          '/run/termspace/tmux.sock',
+          'attach-session',
+          '-t',
+          `ts_${SID}`,
+        ],
+      },
+      {
+        command: 'tmux',
+        arguments_: [
+          '-S',
+          '/run/termspace/tmux.sock',
+          'attach-session',
+          '-t',
+          `ts_${SID}`,
+        ],
+      },
+    ])
   })
 
   it('forwards data, input, resize, exit, and viewer-only close', () => {
     const spawner = new FakeSpawner()
-    const factory = new ViewerAttachmentFactory(spawner)
+    const factory = new ViewerAttachmentFactory(spawner, tmux)
     const output: string[] = []
     const exits: number[] = []
     const attachment = factory.attach(SID, {

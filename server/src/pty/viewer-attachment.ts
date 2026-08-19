@@ -1,9 +1,14 @@
 import type { IDisposable, IPty } from 'node-pty'
 
 import { parseSessionId } from '../sessions/session-id.js'
+import type { TmuxAttachCommand } from '../tmux/tmux-client.js'
 
 export interface PtySpawner {
   spawn(command: string, arguments_: string[]): IPty
+}
+
+export interface TmuxAttacher {
+  attachCommand(untrustedId: unknown): TmuxAttachCommand
 }
 
 export interface ViewerAttachmentCallbacks {
@@ -50,9 +55,11 @@ export class ViewerAttachment {
 
 export class ViewerAttachmentFactory {
   readonly #spawner: PtySpawner
+  readonly #tmux: TmuxAttacher
 
-  constructor(spawner: PtySpawner) {
+  constructor(spawner: PtySpawner, tmux: TmuxAttacher) {
     this.#spawner = spawner
+    this.#tmux = tmux
   }
 
   attach(
@@ -60,11 +67,8 @@ export class ViewerAttachmentFactory {
     callbacks: ViewerAttachmentCallbacks,
   ): ViewerAttachment {
     const sessionId = parseSessionId(untrustedSessionId)
-    const pty = this.#spawner.spawn('tmux', [
-      'attach-session',
-      '-t',
-      `ts_${sessionId}`,
-    ])
+    const command = this.#tmux.attachCommand(sessionId)
+    const pty = this.#spawner.spawn(command.command, [...command.arguments_])
     return new ViewerAttachment(pty, callbacks)
   }
 }

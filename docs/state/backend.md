@@ -1,67 +1,42 @@
 # Current state — Termspace (solo)
 
-**Phase:** Phase 6 — operations and interface refinement; built, awaiting owner verification.
+**Phase:** Phase 6 — operations and interface refinement; built, deployed, awaiting owner
+verification.
 
-**Working on:** Phase 6 build gate and handoff. Implementation and automated verification are
-complete; only the owner’s real-data and feel check remains.
+**Working on:** Real production verification. The first VPS session attempt exposed a tmux viewer
+socket mismatch; the repository fix is complete and must now be deployed and checked through the
+real browser path.
 
-**Done so far:** all seven Phase 4 boxes are implemented across server and web: contained
-worktree lifecycle, dirty/forced deletion, same-cwd warnings, bounded default-branch diffs, and
-simultaneous side-by-side reviews for two visible sessions. All unit suites, typechecks,
-production builds, 7/7 real Git diff checks, 5/5 real Git/tmux worktree checks, and a headless
-Chrome visual interaction pass.
-Stale standard sessions whose tmux target and cwd are already absent can now be deleted cleanly;
-the real-tmux regression passes 3/3 and the full package test/typecheck suites remain green.
-Diff preflights now distinguish `not_repository`, `base_missing`, and later Git failures without
-changing the HTTP status or error code; the real Git diff integration remains 7/7.
-The owner confirmed the two-worktree, side-by-side review exit criterion; Phase 4 is verified.
-The systemd ownership box is complete: foreground named tmux service, separate disposable gateway,
-per-session transient scopes with MemoryMax, verified 9/9 against real systemd/tmux/gateway.
-The shell-owning tmux namespace, gateway, and web units now apply the planned filesystem/private
-tmp directives; the expanded real hardening/restart integration passes 12/12.
-The idle reaper selects only continuously idle rows older than its bounded grace, rechecks every
-candidate, and uses non-force SessionManager cleanup; unit/workspace checks and 4/4 real tmux
-checks pass.
-SQLite backup uses the live-safe online API, verifies and atomically publishes mode-0600 files,
-retains a configurable count, and has a 6/6 disposable restore check plus verified systemd units.
-Structured request logging emits one bounded record, redacts or omits every credential/body/query
-surface, safely classifies errors, and writes to an isolated, size/time-bounded journal namespace.
-The phone workspace is single-pane with swipe navigation and a drawer; its key bar has one-shot
-Ctrl plus guarded Ctrl+C/Ctrl+D, destructive dialogs double-confirm, and visibility recovery
-replaces frozen sockets with generation-safe fresh-ticket reconnects. All repository checks and a
-5/5 390×844 production-browser interaction pass are green.
-Phase 6 now has a written checklist and exit criterion. Shared contracts define ordered favorites
-and an operational snapshot with nullable telemetry plus sanitized, allowlisted recent events;
-fixtures cover all new union members.
-Migration 4 and authenticated GET/PUT routes persist user favorites and remove unknown ids.
-Operational collection caches for five seconds, reports live tmux/storage/backup/policy metrics,
-and isolates every unavailable source. Three allowlisted structured journal event types are
-converted to safe summaries; all 43 server test files and typechecking pass.
-The web operations dialog refreshes every 15 seconds and has explicit loading, error, empty, and
-unavailable treatment. Needs-you projects/sessions lead the sidebar; project and session pins are
-persisted. Persistent pane notices became accessible toasts, dead connections have a real retry,
-and the loading/first-use/error states plus top bar and phone targets received a full consistency
-pass. A real-format review fixed the backup filename matcher before release. Repository-wide tests,
-typechecks, builds, and 6/6 production browser checks pass; desktop and phone renders were inspected.
+**Done so far:** Phases 0–5 are implemented and verified. Phase 6 favorites, operational telemetry,
+sanitized journal summaries, attention ordering, operations UI, reconnect behavior, responsive
+polish, and accessibility refinements are built. Repository-wide tests, typechecks, production
+builds, real Git/tmux checks, and desktop/phone browser checks pass on the declared Node 24/pnpm 10
+toolchain. The owner deployed Termspace to Ubuntu 26.04 with a dedicated named tmux server, gateway,
+web service, backup timer, isolated journal, Caddy HTTPS, SQLite storage, and `/srv/projects`; login
+and HTTP health work at `https://termspace.94-184-36-243.sslip.io`.
 
-**Next concrete step:** owner opens Operations against the real server, pins one project and one
-session, reloads on desktop and phone, and confirms the Phase 6 exit criterion; then mark Verified.
+Production diagnostics proved session creation itself was healthy: the transient scope remained
+active, the pane was alive under zsh, and manual attachment through `/run/termspace/tmux.sock`
+worked. `ViewerAttachmentFactory` had ignored `TmuxClient.attachCommand()` and attached through the
+default socket, so its viewer exited with code 1 and persisted a false dead state. It now consumes
+the configured attach command. The regression asserts the exact `-S /run/termspace/tmux.sock`
+argv; all package tests, typechecks, and builds pass.
 
-**Landmines:** system Node is 20 and global pnpm is 11, so use the explicit Node 24/pnpm 10
-toolchain. Diff patch output is deliberately capped at 1 MiB, metadata at 512 KiB per Git call,
-and files at 2,000; `truncated` must remain visible. Untracked contents are listed but never copied
-into the patch. Worktree branches and commits are preserved on normal and forced session deletion.
-Projects remain deliberately non-cascading: delete their sessions first, then the project record.
-Review changes requires a real Git repository with a commit at the configured default branch; an
-ordinary directory has no objective baseline and must never be initialized or committed silently.
-The tmux server inherits the cgroup that launches it even after daemonizing; never launch the first
-tmux server from the gateway service unless it is moved into its own systemd ownership first.
-Transient session scopes inherit many properties from their slice but not service sandbox settings;
-verify every hardening directive on the actual agent process, not merely on gateway or tmux.
-The tmux namespace has broad package-manager write exceptions by owner decision; systemd-analyze's
-high exposure score is expected and must not be described as strong containment.
-Operational events must always be rebuilt from allowlisted structured fields; never return a raw
-journal `MESSAGE`, error stack, command argv, request body, query string, ticket, or session bytes.
+**Next concrete step:** push this fix, then on the VPS pull it, build `@termspace/server`, restart
+`termspace-gateway.service`, delete the disposable dead test session, and create a fresh Shell
+session. Once terminal attachment works, verify a Codex session and complete the Phase 6 real-data
+desktop/phone exit criterion.
 
-**Uncommitted:** completed Phase 6 web/UI implementation, final backup-format regression, checklist,
-progress entry, and this resume update are ready for the final Phase 6 commit and requested push.
+**Landmines:** system Node is 20 and global pnpm is 11 on the development machine, so use the
+explicit Node 24/pnpm 10 toolchain. Every session operation and viewer attachment must use the same
+configured tmux socket; falling back to tmux's default socket recreates the production failure.
+The current persisted test row is dead even though its old pane is alive; deleting that disposable
+session is safe after deploying the fix. Claude is not installed on the VPS, so Claude sessions are
+expected to fail until its CLI is installed and authenticated; this does not affect Shell or Codex.
+The tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do
+not inherit service sandbox directives. Operational events must only be reconstructed from
+allowlisted structured fields; never expose raw journal messages, argv, request data, credentials,
+tickets, or terminal bytes.
+
+**Uncommitted:** none expected after committing the production tmux viewer socket regression fix,
+its test, progress entry, and this resume update.

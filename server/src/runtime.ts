@@ -126,7 +126,7 @@ export function createServerRuntime(
     users,
   })
   const buffers = new HeadlessBufferRegistry()
-  const attachments = new ViewerAttachmentFactory(new NodePtySpawner())
+  const attachments = new ViewerAttachmentFactory(new NodePtySpawner(), tmux)
   const feeds = new SessionFeedCoordinator()
   const onGatewayError = (error: unknown): void => {
     app.log.error(safeErrorLog(error), 'WebSocket gateway failure')
