@@ -201,3 +201,27 @@ bounded panes, while hidden panes remain headless, so the built-in renderer is f
 **Consequence** — `@xterm/addon-webgl` is removed. Focus changes no longer swap renderers or recreate
 cell geometry. GPU acceleration is unavailable for now; it may return only after xterm provides one
 stable renderer/grid across focus transitions and a real Codex/tmux browser regression passes.
+
+## 9. Keep tmux invisible and run the default Codex TUI in alternate-screen mode
+2026-08-19 · Codex · Status: accepted
+
+**Context** — Correcting renderer selection and propagating the live browser geometry to tmux
+removed two Termspace bugs, but Codex 0.147's inline TUI still corrupts in xterm.js. Its inline
+history uses terminal scroll-region operations that xterm.js does not preserve reliably. The tmux
+status line also duplicates workspace chrome and makes the browser render another full-screen row.
+tmux itself remains necessary because it owns sessions independently of the browser and gateway.
+
+**Options** — (a) remove tmux and give up restart-safe sessions; (b) interpret or rewrite Codex's
+terminal stream in the gateway; (c) keep tmux as an invisible persistence layer, hide its status
+line, and launch the default Codex command with its supported alternate-screen mode forced on.
+
+**Choice** — (c). The default Codex argv is now
+`["codex", "-c", "tui.alternate_screen=\"always\""]`, and the production tmux configuration uses
+`status off`. Project-specific command overrides remain authoritative.
+
+**Consequence** — new default Codex sessions isolate full-screen redraws from shell scrollback and
+the green tmux status bar is no longer visible. Exiting Codex returns to the shell without leaving
+its alternate-screen transcript behind. Existing sessions keep their original launch arguments,
+and custom Codex command overrides must opt into alternate-screen mode themselves. The tmux service
+must not be restarted merely to apply the status setting because that would terminate its sessions;
+source the configuration into the running server instead.

@@ -13,7 +13,11 @@ import {
 describe('agent command overrides', () => {
   it('falls back to the default for an agent the project does not override', () => {
     assert.deepEqual(resolveAgentCommand('claude', {}), ['claude'])
-    assert.deepEqual(resolveAgentCommand('codex', { claude: ['claude', '-r'] }), ['codex'])
+    assert.deepEqual(resolveAgentCommand('codex', { claude: ['claude', '-r'] }), [
+      'codex',
+      '-c',
+      'tui.alternate_screen="always"',
+    ])
   })
 
   it('treats an empty override as a real value, not as unset', () => {

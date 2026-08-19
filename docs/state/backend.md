@@ -3,9 +3,9 @@
 **Phase:** Phase 6 — operations and interface refinement; built, deployed, awaiting owner
 verification.
 
-**Working on:** Deploying and owner-verifying the Phase 6 UX reliability and personalization pass:
-guided session creation, explicit lifecycle state, resilient viewer reconnection, appearance
-preferences, persistent notification history, and the production terminal geometry fixes.
+**Working on:** Deploying and owner-verifying the final Phase 6 terminal compatibility pass: tmux
+remains the invisible restart-safe session owner, while new default Codex sessions explicitly use
+alternate-screen mode so their full-screen redraws do not corrupt xterm.js scrollback.
 
 **Done so far:** Phases 0–5 are implemented and verified. Phase 6 favorites, operational telemetry,
 sanitized journal summaries, attention ordering, operations UI, reconnect behavior, responsive
@@ -60,9 +60,18 @@ the last row/column geometry and flushes its snapshot before fitting. The invisi
 textarea no longer receives the app-wide visible focus outline. Regression tests cover all three
 paths; the complete typecheck/test/build sequence passes.
 
-**Next concrete step:** on the VPS pull the current `main`, rebuild, and restart both gateway and web
-services. The owner should first verify that clicking and typing in a
-real Codex/tmux pane keeps the cursor and glyphs aligned, then verify both new dialogs and exercise the
+The owner then confirmed the browser geometry reaches tmux as `101x41 xterm-256color`, but Codex's
+inline TUI still produced displaced and duplicated screen regions. That remaining symptom matches
+Codex 0.147's inline scroll-region incompatibility with xterm.js rather than another geometry or
+tmux failure. The default Codex command now explicitly sets `tui.alternate_screen="always"`, which
+Codex 0.147 accepts under strict configuration validation. tmux stays in place for persistence but
+its browser-visible status line is disabled. Command-resolution tests cover the new argv, and the
+full typecheck/test/build sequence passes.
+
+**Next concrete step:** on the VPS pull the current `main`, rebuild, restart gateway and web (not the
+tmux service), and source `server/tmux.conf` into the live named tmux server. The owner should create
+a new default Codex session and verify that the green tmux bar is absent and clicking, typing, and
+Codex redraws remain aligned, then verify both new dialogs and exercise the
 remaining Phase 6 real-data desktop/phone exit criterion: Shell and Codex creation, gateway
 restart/reconnect, and standard/worktree deletion copy.
 
@@ -76,6 +85,12 @@ capture is pending and must never be dropped; server and browser headless termin
 full-screen output at the live tmux geometry. Every session operation and viewer attachment must use the same configured tmux
 socket; falling back to tmux's default socket recreates the production failure. Claude is not
 installed on the VPS, so the default Claude option must remain disabled until its CLI is installed.
+Codex inline mode remains incompatible with xterm.js region scrolling; keep the default
+`tui.alternate_screen="always"` argument unless upstream behavior is verified fixed. Existing
+sessions do not adopt changed launch arguments, and project-specific Codex overrides bypass this
+default. Alternate-screen mode intentionally does not leave the Codex transcript in shell
+scrollback after exit. Apply tmux configuration with `source-file`; restarting
+`termspace-tmux.service` destroys every running session.
 An initial prompt is terminal input: keep it bounded and absent from every log/error surface. Viewer
 attachment failure and tmux process death are different states and must never be collapsed. The
 tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do not

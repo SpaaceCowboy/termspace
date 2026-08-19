@@ -224,7 +224,11 @@ describe('SessionManager', () => {
 
     await manager.create({ projectId: 'project-1', name: 'Codex', agent: 'codex' })
 
-    assert.deepEqual(tmux.created[0]?.launchCommand, ['codex'])
+    assert.deepEqual(tmux.created[0]?.launchCommand, [
+      'codex',
+      '-c',
+      'tui.alternate_screen="always"',
+    ])
   })
 
   it('honours an override that is deliberately empty', async () => {

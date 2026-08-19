@@ -37,7 +37,10 @@ export const AGENT_COMMAND_MAX_ARG_LENGTH = 512
  */
 export const DEFAULT_AGENT_COMMANDS: Record<AgentKind, AgentCommand> = {
   claude: ['claude'],
-  codex: ['codex'],
+  // Codex's inline TUI uses scroll-region history operations that xterm does
+  // not preserve reliably. Alternate-screen mode keeps full-screen repainting
+  // isolated and is explicitly accepted by Codex 0.147's strict config.
+  codex: ['codex', '-c', 'tui.alternate_screen="always"'],
   shell: [],
 }
 

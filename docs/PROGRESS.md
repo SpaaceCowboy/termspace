@@ -1164,3 +1164,15 @@ carry their row/column geometry through headless rehosting and flush the seriali
 fitting. The invisible xterm keyboard textarea is excluded from the global focus outline. Regression
 tests cover the subscription race, pre-capture resize ordering, and rehosted geometry. All package
 typechecks and tests and the HTTP production build pass on Node 24/pnpm 10.
+
+### 2026-08-19T13:00:43+03:30 · SOLO · 6 · CONTRACT
+The default `AppConfig.defaultAgentCommands.codex` value changed from the exact old argv
+`["codex"]` to the exact new argv
+`["codex", "-c", "tui.alternate_screen=\"always\""]`. Codex 0.147's inline TUI uses scroll-region
+history operations that xterm.js does not retain correctly; forcing its supported alternate screen
+isolates those full-screen redraws. Project overrides remain unchanged and authoritative.
+
+tmux remains the required session owner but no longer exposes its duplicate green status bar in the
+browser. New default Codex sessions use alternate-screen mode; existing sessions retain their old
+launch command. Regression expectations, all package typechecks and tests, and the production build
+pass on Node 24/pnpm 10.
