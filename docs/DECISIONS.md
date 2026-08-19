@@ -181,3 +181,23 @@ installer. The gateway needs permission to create and stop transient scopes;
 development leaves scope wrapping disabled. The tmux service must be started
 before the gateway, its socket path must match the gateway configuration, and
 stopping that service is destructive even though restarting the gateway is not.
+
+## 8. Use xterm's built-in renderer instead of switching WebGL by focus
+2026-08-19 · Codex · Status: accepted
+
+**Context** — Termspace loaded `@xterm/addon-webgl` only for the focused pane and disposed it when
+focus moved. In xterm 6 the WebGL and DOM renderers can calculate different cell widths. Production
+then showed corrupted glyph blocks, a duplicated tmux status line, and a cursor painted at the click
+position instead of the shell cursor. The terminal input path and tmux session remained healthy;
+the GPU-rendered view was wrong.
+
+**Options** — (a) keep switching WebGL and try to refresh or refit after every focus change; (b)
+keep one WebGL context for every visible terminal; (c) use xterm's built-in renderer for every pane.
+
+**Choice** — (c). A forced refresh cannot reconcile two different cell grids, and keeping several
+WebGL contexts increases browser-specific failure and lifecycle risk. Termspace renders at most four
+bounded panes, while hidden panes remain headless, so the built-in renderer is fast enough.
+
+**Consequence** — `@xterm/addon-webgl` is removed. Focus changes no longer swap renderers or recreate
+cell geometry. GPU acceleration is unavailable for now; it may return only after xterm provides one
+stable renderer/grid across focus transitions and a real Codex/tmux browser regression passes.

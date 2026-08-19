@@ -1140,3 +1140,13 @@ sanitized UI notices are stored.
 All package tests and typechecks and the HTTP production build pass on Node 24/pnpm 10. The compiled
 fixture UI was personally inspected in desktop and 390-pixel mobile Chrome, including appearance
 application, notification persistence and unread state, and absence of horizontal overflow.
+
+### 2026-08-19T11:54:19+03:30 · SOLO · 6 · FIXED
+Production evidence isolated displaced typing, glyph blocks, and duplicated tmux status rows to
+xterm 6 WebGL rendering rather than the tmux or WebSocket input path. Termspace no longer loads or
+switches `@xterm/addon-webgl`; every visible terminal now stays on xterm's built-in renderer, and
+focus changes preserve the same terminal and cell grid.
+
+The WebGL dependency and lockfile entries are removed. Frozen offline installation, all package
+typechecks and tests, the HTTP production build, diff validation, and a compiled-bundle check for
+WebGL code pass on Node 24/pnpm 10.

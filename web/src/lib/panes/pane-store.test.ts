@@ -10,7 +10,6 @@ import {
   type PaneDisposable,
   type PaneSize,
   type PaneTerminal,
-  type RendererKind,
 } from './pane-store.ts'
 
 const SID_A = 'ses_aaaaaaaa0001'
@@ -21,7 +20,6 @@ class FakeTerminal implements PaneTerminal {
   static instances: FakeTerminal[] = []
 
   readonly writes: (string | Uint8Array)[] = []
-  readonly renderers: RendererKind[] = []
   opened: HTMLElement | null = null
   focusCount = 0
   resets = 0
@@ -60,10 +58,6 @@ class FakeTerminal implements PaneTerminal {
 
   focus(): void {
     this.focusCount += 1
-  }
-
-  setRenderer(kind: RendererKind): void {
-    this.renderers.push(kind)
   }
 
   serialize(): string {
@@ -224,7 +218,7 @@ describe('PaneStore', () => {
     assert.deepEqual(socket.calls, [`sub:${SID_A}:focused`, `sub:${SID_B}:hidden`])
   })
 
-  it('gives WebGL to the focused pane and the plain renderer to every other one', async () => {
+  it('changes focus without replacing either terminal', async () => {
     const focused = container('a')
     const beside = container('b')
     store.sync([
@@ -234,17 +228,14 @@ describe('PaneStore', () => {
     await settle()
 
     const [a, b] = FakeTerminal.instances
-    assert.deepEqual(a?.renderers, ['webgl'])
-    assert.deepEqual(b?.renderers, ['dom'])
-
-    // Focus moves: the old pane must give its context up before the new one takes one.
     store.sync([
       { sid: SID_A, visibility: 'visible', container: focused },
       { sid: SID_B, visibility: 'focused', container: beside },
     ])
     await settle()
-    assert.deepEqual(a?.renderers, ['webgl', 'dom'])
-    assert.deepEqual(b?.renderers, ['dom', 'webgl'])
+    assert.equal(FakeTerminal.instances[0], a)
+    assert.equal(FakeTerminal.instances[1], b)
+    assert.equal(FakeTerminal.instances.length, 2)
     assert.deepEqual(socket.calls.slice(-2), [`vis:${SID_A}:visible`, `vis:${SID_B}:focused`])
   })
 

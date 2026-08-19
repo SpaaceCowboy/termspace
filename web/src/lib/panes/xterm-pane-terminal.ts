@@ -1,6 +1,6 @@
 'use client'
 
-import type { PaneDisposable, PaneSize, PaneTerminal, RendererKind } from './pane-store.ts'
+import type { PaneDisposable, PaneSize, PaneTerminal } from './pane-store.ts'
 import type { TerminalAppearance } from '@/lib/appearance.ts'
 
 const SCROLLBACK_LINES = 5_000
@@ -33,10 +33,10 @@ const SLATE_THEME = {
  * The real `xterm.js` behind `PaneTerminal`. Everything here is browser-only —
  * the store itself stays free of it so it can be tested without a DOM.
  *
- * Note on renderers: `@xterm/addon-canvas` has no release for xterm 6, so the
- * non-WebGL renderer is xterm's own. WebGL is still confined to the focused
- * pane, which is what the rule is protecting: browsers cap live WebGL contexts
- * and a blown context renders blank.
+ * Termspace deliberately uses xterm's built-in DOM renderer. xterm 6's WebGL
+ * renderer and DOM renderer can calculate different cell widths, and switching
+ * between them as focus moves corrupts glyph and cursor placement. Reliability
+ * matters more than GPU acceleration for four bounded panes.
  */
 export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
   const [{ Terminal }, { FitAddon }, { SerializeAddon }] = await Promise.all([
@@ -60,15 +60,7 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
   terminal.loadAddon(serializeAddon)
 
   let opened = false
-  let renderer: RendererKind = 'dom'
-  let webgl: { dispose: () => void } | null = null
   let disposed = false
-
-  const dropWebgl = (): void => {
-    webgl?.dispose()
-    webgl = null
-    renderer = 'dom'
-  }
 
   return {
     write(data: string | Uint8Array): void {
@@ -95,34 +87,6 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
         return
       }
       terminal.focus()
-    },
-    setRenderer(kind: RendererKind): void {
-      if (disposed || !opened || kind === renderer) {
-        return
-      }
-      if (kind === 'dom') {
-        dropWebgl()
-        return
-      }
-      void (async () => {
-        const { WebglAddon } = await import('@xterm/addon-webgl')
-        if (disposed || renderer === 'webgl') {
-          return
-        }
-        try {
-          const addon = new WebglAddon()
-          // A lost context paints nothing at all, so fall back rather than
-          // leave the pane blank.
-          addon.onContextLoss(() => {
-            dropWebgl()
-          })
-          terminal.loadAddon(addon)
-          webgl = addon
-          renderer = 'webgl'
-        } catch {
-          dropWebgl()
-        }
-      })()
     },
     serialize(): string {
       return serializeAddon.serialize({ scrollback: SCROLLBACK_LINES })
@@ -163,7 +127,6 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
     },
     dispose(): void {
       disposed = true
-      dropWebgl()
       terminal.dispose()
     },
   }

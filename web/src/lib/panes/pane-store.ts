@@ -14,8 +14,6 @@ const MAX_BUFFERED_BYTES = 1_048_576
 /** Keystrokes held while waiting for the first `restore`. A human types slowly. */
 const MAX_PENDING_INPUT_CHUNKS = 64
 
-export type RendererKind = 'webgl' | 'dom'
-
 export interface PaneSize {
   readonly cols: number
   readonly rows: number
@@ -38,7 +36,6 @@ export interface PaneTerminal {
   open: (container: HTMLElement) => void
   /** Puts DOM focus on the terminal, without which it receives no keystrokes. */
   focus: () => void
-  setRenderer: (kind: RendererKind) => void
   serialize: () => string
   /** Lines between the viewport and live output; zero means following output. */
   scrollOffsetFromBottom: () => number
@@ -286,15 +283,6 @@ export class PaneStore {
     if (entry.visibility !== request.visibility) {
       entry.visibility = request.visibility
       this.#options.socket.sendVisibility(entry.sid, request.visibility)
-      if (entry.container !== null) {
-        // Same terminal, different renderer: browsers cap live WebGL contexts,
-        // so only the focused pane is allowed to hold one.
-        const terminal = entry.terminal
-        this.#enqueue(entry, async () => {
-          terminal?.setRenderer(request.visibility === 'focused' ? 'webgl' : 'dom')
-          await Promise.resolve()
-        })
-      }
     }
     if (entry.container !== request.container) {
       entry.container = request.container
@@ -331,7 +319,6 @@ export class PaneStore {
 
     if (container !== null) {
       terminal.open(container)
-      terminal.setRenderer(entry.visibility === 'focused' ? 'webgl' : 'dom')
       entry.resize = this.#observeResize(container, () => {
         this.#scheduleFit(entry)
       })
