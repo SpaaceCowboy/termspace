@@ -1,6 +1,7 @@
 'use client'
 
 import type { PaneDisposable, PaneSize, PaneTerminal, RendererKind } from './pane-store.ts'
+import type { TerminalAppearance } from '@/lib/appearance.ts'
 
 const SCROLLBACK_LINES = 5_000
 
@@ -18,6 +19,14 @@ const TERMINAL_THEME = {
   cursor: '#7c8cf8',
   cursorAccent: '#0b0d12',
   selectionBackground: '#2b3350',
+}
+
+const SLATE_THEME = {
+  background: '#161a22',
+  foreground: '#f1f3f7',
+  cursor: '#9aa8ff',
+  cursorAccent: '#161a22',
+  selectionBackground: '#3a4568',
 }
 
 /**
@@ -125,6 +134,13 @@ export async function createXtermPaneTerminal(): Promise<PaneTerminal> {
     restoreScrollOffset(offset: number): void {
       const buffer = terminal.buffer.active
       terminal.scrollToLine(Math.max(0, buffer.baseY - offset))
+    },
+    applyAppearance(appearance: TerminalAppearance): void {
+      terminal.options.fontSize = appearance.fontSize
+      terminal.options.theme = appearance.theme === 'slate' ? SLATE_THEME : TERMINAL_THEME
+      if (opened) {
+        try { fitAddon.fit() } catch { /* The pane may be between layout hosts. */ }
+      }
     },
     fit(): PaneSize | null {
       if (!opened) {

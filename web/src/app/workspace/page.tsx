@@ -14,6 +14,7 @@ import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { ConnectionBadge } from '@/components/ConnectionBadge'
+import { AppearanceDialog } from '@/components/AppearanceDialog'
 import { DiffDialog } from '@/components/DiffDialog'
 import { PushToggle } from '@/components/PushToggle'
 import { LayoutToolbar } from '@/components/LayoutToolbar'
@@ -22,6 +23,7 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ProjectSettingsDialog } from '@/components/ProjectSettingsDialog'
 import { NewSessionDialog } from '@/components/NewSessionDialog'
 import { OperationsDialog } from '@/components/OperationsDialog'
+import { NotificationCenter } from '@/components/NotificationCenter'
 import { Sidebar } from '@/components/Sidebar'
 import { TerminalGrid } from '@/components/TerminalGrid'
 import { ToastRegion, useToasts } from '@/components/ToastRegion'
@@ -36,6 +38,7 @@ import {
   withoutSession,
 } from '@/lib/layout/layout-actions.ts'
 import { useLayout } from '@/lib/layout/useLayout.ts'
+import { useAppearance } from '@/lib/appearance.ts'
 import { usePush } from '@/lib/push/usePush.ts'
 import { documentTitle } from '@/lib/session-summary.ts'
 import { sessionExitCopy } from '@/lib/session-runtime.ts'
@@ -83,9 +86,24 @@ export default function WorkspacePage() {
   const [projectDialogOpen, setProjectDialogOpen] = useState(false)
   const [diffDialogOpen, setDiffDialogOpen] = useState(false)
   const [operationsOpen, setOperationsOpen] = useState(false)
+  const [appearanceOpen, setAppearanceOpen] = useState(false)
+  const [notificationsOpen, setNotificationsOpen] = useState(false)
   const [mobile, setMobile] = useState(false)
   const [mobileNavOpen, setMobileNavOpen] = useState(false)
-  const { toasts, push: pushToast, dismiss: dismissToast } = useToasts()
+  const {
+    toasts,
+    notifications,
+    unreadCount,
+    push: pushToast,
+    dismiss: dismissToast,
+    markAllRead,
+    clearHistory,
+  } = useToasts()
+  const appearance = useAppearance()
+  const terminalAppearance = useMemo(() => ({
+    theme: appearance.preferences.terminalTheme,
+    fontSize: appearance.preferences.terminalFontSize,
+  }), [appearance.preferences.terminalFontSize, appearance.preferences.terminalTheme])
 
   const live = dataSource.kind === 'http'
   const authenticated = auth === 'authenticated'
@@ -173,6 +191,7 @@ export default function WorkspacePage() {
     live && authenticated,
     onPaneError,
     onDestructiveInputArmed,
+    terminalAppearance,
   )
   panesRef.current = panes
 
@@ -576,6 +595,25 @@ export default function WorkspacePage() {
           <div className={styles.topbarRight}>
             <button
               type="button"
+              className={styles.iconButton}
+              onClick={() => { setNotificationsOpen(true) }}
+              aria-label={`Notifications${unreadCount === 0 ? '' : `, ${String(unreadCount)} unread`}`}
+              title="Notifications"
+            >
+              <span aria-hidden="true">◉</span>
+              {unreadCount === 0 ? null : <span className={styles.notificationCount}>{unreadCount > 99 ? '99+' : unreadCount}</span>}
+            </button>
+            <button
+              type="button"
+              className={styles.iconButton}
+              onClick={() => { setAppearanceOpen(true) }}
+              aria-label="Appearance settings"
+              title="Appearance"
+            >
+              <span aria-hidden="true" className={styles.appearanceGlyph}>Aa</span>
+            </button>
+            <button
+              type="button"
               className={styles.secondaryButton}
               onClick={() => { setOperationsOpen(true) }}
             >
@@ -675,6 +713,22 @@ export default function WorkspacePage() {
 
       <ToastRegion toasts={toasts} onDismiss={dismissToast} />
       <OperationsDialog open={operationsOpen} onClose={() => { setOperationsOpen(false) }} />
+      <AppearanceDialog
+        open={appearanceOpen}
+        preferences={appearance.preferences}
+        onClose={() => { setAppearanceOpen(false) }}
+        onSave={(preferences) => {
+          appearance.save(preferences)
+          pushToast('Appearance updated.', 'info')
+        }}
+      />
+      <NotificationCenter
+        open={notificationsOpen}
+        notifications={notifications}
+        onMarkAllRead={markAllRead}
+        onClear={clearHistory}
+        onClose={() => { setNotificationsOpen(false) }}
+      />
 
       <NewSessionDialog
         open={sessionDialogOpen}

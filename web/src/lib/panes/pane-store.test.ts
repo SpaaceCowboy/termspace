@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { beforeEach, describe, it } from 'node:test'
 
 import type { VisibilityLevel } from '@termspace/contracts'
+import type { TerminalAppearance } from '@/lib/appearance.ts'
 
 import {
   applyControlModifier,
@@ -30,6 +31,7 @@ class FakeTerminal implements PaneTerminal {
   size: PaneSize | null = { cols: 80, rows: 24 }
   scrollOffset = 0
   restoredScrollOffsets: number[] = []
+  appearances: TerminalAppearance[] = []
 
   constructor() {
     FakeTerminal.instances.push(this)
@@ -74,6 +76,10 @@ class FakeTerminal implements PaneTerminal {
 
   restoreScrollOffset(offset: number): void {
     this.restoredScrollOffsets.push(offset)
+  }
+
+  applyAppearance(appearance: TerminalAppearance): void {
+    this.appearances.push(appearance)
   }
 
   fit(): PaneSize | null {
@@ -158,6 +164,7 @@ describe('PaneStore', () => {
     destructivePrompts = []
     store = new PaneStore({
       createTerminal: () => Promise.resolve(new FakeTerminal()),
+      terminalAppearance: { theme: 'midnight', fontSize: 13 },
       socket,
       observeResize: (element, onResize) => {
         resizeHandlers.set(element, onResize)
@@ -477,6 +484,16 @@ describe('PaneStore', () => {
     assert.deepEqual(terminal?.restoredScrollOffsets.at(-1), 12)
     assert.deepEqual(socket.input, [`${SID_A}:held`])
     assert.ok((terminal?.focusCount ?? 0) > 0)
+  })
+
+  it('applies appearance changes to existing and replacement terminals', async () => {
+    store.sync([{ sid: SID_A, visibility: 'focused', container: container('a') }])
+    await settle()
+    const first = FakeTerminal.instances[0]
+    assert.deepEqual(first?.appearances, [{ theme: 'midnight', fontSize: 13 }])
+
+    store.setTerminalAppearance({ theme: 'slate', fontSize: 15 })
+    assert.deepEqual(first?.appearances.at(-1), { theme: 'slate', fontSize: 15 })
   })
 })
 

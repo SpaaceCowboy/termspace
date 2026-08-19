@@ -274,3 +274,43 @@
 @media (max-width: 560px) {
   .agentGrid { grid-template-columns: 1fr; }
 }
+
+.segmented {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: var(--ts-space-2);
+}
+
+.segmented label {
+  position: relative;
+  cursor: pointer;
+}
+
+.segmented input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.segmented span {
+  display: grid;
+  place-items: center;
+  min-height: 38px;
+  padding: var(--ts-space-2);
+  border: 1px solid var(--ts-border);
+  border-radius: var(--ts-radius);
+  background: var(--ts-bg-sunken);
+  color: var(--ts-text-dim);
+  text-align: center;
+}
+
+.segmented input:checked + span {
+  border-color: var(--ts-accent);
+  background: var(--ts-accent-quiet);
+  color: var(--ts-text);
+}
+
+.segmented input:focus-visible + span {
+  outline: 2px solid var(--ts-focus);
+  outline-offset: 2px;
+}

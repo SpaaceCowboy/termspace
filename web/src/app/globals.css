@@ -69,6 +69,35 @@
   color-scheme: dark;
 }
 
+:root[data-ts-font='mono'] {
+  --ts-sans: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+:root[data-ts-density='compact'] {
+  --ts-space-2: 6px;
+  --ts-space-3: 9px;
+  --ts-space-4: 12px;
+  --ts-space-5: 18px;
+  --ts-space-6: 24px;
+  --ts-text-base: 12px;
+}
+
+:root[data-ts-contrast='high'] {
+  --ts-bg-sunken: #000;
+  --ts-bg: #050505;
+  --ts-bg-raised: #111;
+  --ts-bg-hover: #1b1b1b;
+  --ts-bg-active: #262626;
+  --ts-border: #666;
+  --ts-border-strong: #aaa;
+  --ts-text: #fff;
+  --ts-text-dim: #dedede;
+  --ts-text-faint: #b8b8b8;
+  --ts-accent: #aeb8ff;
+  --ts-accent-hover: #c5ccff;
+  --ts-focus: #fff;
+}
+
 *,
 *::before,
 *::after {

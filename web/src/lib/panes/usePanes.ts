@@ -4,6 +4,7 @@ import type { VisibilityLevel } from '@termspace/contracts'
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 
 import type { SocketApi } from '@/lib/socket/useSocket.ts'
+import type { TerminalAppearance } from '@/lib/appearance.ts'
 
 import { PaneStore, type PaneRequest } from './pane-store.ts'
 import { createXtermPaneTerminal } from './xterm-pane-terminal.ts'
@@ -38,6 +39,7 @@ export function usePanes(
   enabled: boolean,
   onError?: (error: unknown) => void,
   onDestructiveInputArmed?: (sid: string, label: string) => void,
+  terminalAppearance: TerminalAppearance = { theme: 'midnight', fontSize: 13 },
 ): PanesApi {
   const storeRef = useRef<PaneStore | null>(null)
   const containers = useRef(new Map<string, HTMLElement>())
@@ -94,6 +96,7 @@ export function usePanes(
       onDestructiveInputArmed: (sid, label) => {
         onDestructiveInputArmedRef.current?.(sid, label)
       },
+      terminalAppearance,
     })
     storeRef.current = store
     store.sync(requests())
@@ -110,6 +113,10 @@ export function usePanes(
       store.dispose()
     }
   }, [enabled, requests, resync])
+
+  useEffect(() => {
+    storeRef.current?.setTerminalAppearance(terminalAppearance)
+  }, [terminalAppearance])
 
   useEffect(() => {
     storeRef.current?.setConnected(socket.state === 'connected')

@@ -3,8 +3,9 @@
 **Phase:** Phase 6 — operations and interface refinement; built, deployed, awaiting owner
 verification.
 
-**Working on:** Deploying and owner-verifying the Phase 6 UX reliability pass: guided session
-creation, explicit lifecycle state, resilient viewer reconnection, and contextual deletion.
+**Working on:** Deploying and owner-verifying the Phase 6 UX reliability and personalization pass:
+guided session creation, explicit lifecycle state, resilient viewer reconnection, appearance
+preferences, and persistent notification history.
 
 **Done so far:** Phases 0–5 are implemented and verified. Phase 6 favorites, operational telemetry,
 sanitized journal summaries, attention ordering, operations UI, reconnect behavior, responsive
@@ -28,25 +29,32 @@ recoverable per-view reattach when tmux remains alive, and only marks a genuinel
 dead. During socket recovery the existing terminal stays painted, input is queued, viewport offset
 is restored, and the focused pane regains focus. Deletion confirmation now states exactly what
 happens to tmux, scrollback, project files, worktrees, uncommitted changes, commits, and branches.
-All package tests/typechecks and the HTTP production build pass; the compiled production fixture UI
-was rendered and inspected in headless Chrome.
 
-**Next concrete step:** push the UX reliability commit; on the VPS pull, rebuild contracts/server/web,
-restart gateway and web, then verify Claude is disabled while absent, create Shell and Codex sessions,
-exercise a gateway restart/reconnect, inspect standard/worktree delete copy, and finish the Phase 6
-real-data desktop/phone exit criterion.
+The workspace now has validated, browser-local appearance preferences for UI font, interface
+density, contrast, terminal theme, and terminal font size. Applying terminal preferences updates all
+open xterm panes immediately and preserves the current viewer. Transient toasts are also retained in
+a validated, capped 50-item browser-local notification history with unread count, timestamps,
+mark-read behavior, and clear-all. Only sanitized UI notices are retained; terminal output and raw
+server data are never stored. All package tests and typechecks and the HTTP production build pass.
+The compiled fixture UI was rendered in desktop and 390-pixel mobile Chrome: both dialogs, high
+contrast, large terminal text, history persistence, unread state, and no horizontal overflow were
+personally observed.
+
+**Next concrete step:** on the VPS pull the current `main`, rebuild, and restart the web service. The
+owner should verify both dialogs against real data, then exercise the
+remaining Phase 6 real-data desktop/phone exit criterion: Shell and Codex creation, gateway
+restart/reconnect, and standard/worktree deletion copy.
 
 **Landmines:** system Node is 20 and global pnpm is 11 on the development machine, so use the
-explicit Node 24/pnpm 10 toolchain. Every session operation and viewer attachment must use the same
-configured tmux socket; falling back to tmux's default socket recreates the production failure.
-Claude is not installed on the VPS, so the default Claude option must remain disabled until its CLI
-is installed; project overrides are checked on submit because they can name a different executable.
+explicit Node 24/pnpm 10 toolchain. Appearance and notification history are intentionally local to
+each browser profile and are not account-synced. Notification history must remain limited to
+sanitized UI notices; never persist terminal bytes, raw push payloads, credentials, tickets, or
+server log data. Every session operation and viewer attachment must use the same configured tmux
+socket; falling back to tmux's default socket recreates the production failure. Claude is not
+installed on the VPS, so the default Claude option must remain disabled until its CLI is installed.
 An initial prompt is terminal input: keep it bounded and absent from every log/error surface. Viewer
-attachment failure and tmux process death are different states and must never be collapsed again.
-The tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do
-not inherit service sandbox directives. Operational events must only be reconstructed from
-allowlisted structured fields; never expose raw journal messages, argv, request data, credentials,
-tickets, or terminal bytes.
+attachment failure and tmux process death are different states and must never be collapsed. The
+tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do not
+inherit service sandbox directives.
 
-**Uncommitted:** none expected after committing the Phase 6 UX reliability pass, shared contract and
-fixtures, regressions, progress entry, and this resume update.
+**Uncommitted:** none.

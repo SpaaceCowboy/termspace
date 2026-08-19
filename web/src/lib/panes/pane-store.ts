@@ -1,4 +1,5 @@
 import type { VisibilityLevel } from '@termspace/contracts'
+import type { TerminalAppearance } from '@/lib/appearance.ts'
 
 export const RESIZE_DEBOUNCE_MS = 100
 export const DESTRUCTIVE_INPUT_CONFIRM_MS = 3_000
@@ -42,6 +43,7 @@ export interface PaneTerminal {
   /** Lines between the viewport and live output; zero means following output. */
   scrollOffsetFromBottom: () => number
   restoreScrollOffset: (offset: number) => void
+  applyAppearance: (appearance: TerminalAppearance) => void
   fit: () => PaneSize | null
   onData: (handler: (data: string) => void) => PaneDisposable
   dispose: () => void
@@ -71,6 +73,7 @@ export interface PaneStoreOptions {
   readonly onError?: (error: unknown) => void
   readonly onDestructiveInputArmed?: (sid: string, label: string) => void
   readonly now?: () => number
+  readonly terminalAppearance: TerminalAppearance
 }
 
 interface PaneEntry {
@@ -111,6 +114,7 @@ export class PaneStore {
   readonly #resizeDebounceMs: number
   readonly #now: () => number
   #disposed = false
+  #terminalAppearance: TerminalAppearance
 
   setConnected(connected: boolean): void {
     if (connected) return
@@ -123,6 +127,16 @@ export class PaneStore {
     this.#options = options
     this.#resizeDebounceMs = options.resizeDebounceMs ?? RESIZE_DEBOUNCE_MS
     this.#now = options.now ?? Date.now
+    this.#terminalAppearance = options.terminalAppearance
+  }
+
+  setTerminalAppearance(appearance: TerminalAppearance): void {
+    this.#terminalAppearance = appearance
+    for (const entry of this.#panes.values()) {
+      entry.terminal?.applyAppearance(appearance)
+      entry.lastSize = null
+      this.#fit(entry)
+    }
   }
 
   get sessionIds(): readonly string[] {
@@ -309,6 +323,7 @@ export class PaneStore {
       return
     }
     entry.terminal = terminal
+    terminal.applyAppearance(this.#terminalAppearance)
     entry.lastSize = null
     if (snapshot !== '') {
       terminal.write(snapshot)

@@ -1129,3 +1129,14 @@ uncommitted-file, commit, and branch effects before confirmation.
 All package tests and typechecks plus the HTTP production build pass on Node
 24/pnpm 10. A production fixture build was rendered in headless Chrome and the
 new compiled session creation and lifecycle UI was inspected.
+
+### 2026-08-19T11:48:23+03:30 · SOLO · 6 · DONE
+The workspace now provides validated, browser-local appearance preferences for UI font, interface
+density, contrast, terminal theme, and terminal font size. Open xterm panes adopt terminal changes
+immediately without replacing their viewers. Transient toasts are retained in a validated, capped
+50-item notification center with unread state, timestamps, mark-read behavior, and clear-all; only
+sanitized UI notices are stored.
+
+All package tests and typechecks and the HTTP production build pass on Node 24/pnpm 10. The compiled
+fixture UI was personally inspected in desktop and 390-pixel mobile Chrome, including appearance
+application, notification persistence and unread state, and absence of horizontal overflow.
