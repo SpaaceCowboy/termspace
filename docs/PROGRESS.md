@@ -1217,3 +1217,13 @@ destroy both live sessions. Exact-client graceful detach remains because it fixe
 lifecycle behavior. The residual harmless warning is an upstream tmux/libevent issue whose relevant
 fix is documented after 3.7b on the future 3.8 line; activation waits for a session-safe maintenance
 window and a verified fixed release.
+
+### 2026-08-20T08:35:05Z · SOLO · 6 · DEPLOYED
+Production is deployed at `92f7abe`. Gateway and web restarted with zero failures while the tmux
+server and both attached sessions remained continuously active. Ports 3001 and 3002 now listen only
+on `127.0.0.1`; direct public port 3002 is unreachable, Caddy HTTPS health returns version `1.0.0`,
+and no Fastify deprecation or application warning/error signatures appear after restart. Installed
+Termspace units validate without repository-owned warnings, both development and production
+checkouts are clean, and the generated compile-cache artifact is gone. The only residual audit item
+is the confirmed harmless upstream tmux/libevent warning, explicitly deferred because applying a
+future fixed tmux binary requires a session-destructive restart.

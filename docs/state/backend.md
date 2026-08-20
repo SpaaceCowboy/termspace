@@ -2,8 +2,9 @@
 
 **Phase:** Phase 6 — built and deployed; owner verification remains open.
 
-**Working on:** Deploying and live-verifying the completed Phase 6 audit fixes without restarting the
-session-owning tmux service.
+**Working on:** Phase 6 audit fixes are deployed and live-verified. Owner browser verification remains
+the only product gate; the upstream tmux/libevent warning awaits a session-safe future maintenance
+window.
 
 **Done so far:** Phases 0–5 are built and owner-verified. Phase 6 is built. The deployed checkout is
 clean at commit `184dcf2a0d294bcbd33cf21cedee370cde392392` and includes the final stable xterm renderer,
@@ -40,10 +41,18 @@ mask tmux stderr or restart the live tmux server: activating a patched/new binar
 running sessions. The application lifecycle fix remains valid, but this harmless upstream warning
 must wait for a session-safe maintenance window and a verified fixed tmux release.
 
-**Next concrete step:** commit and push the audit fixes, update and build `/opt/termspace`, install the
-web unit, daemon-reload, and restart only gateway and web. Confirm both tmux sessions survive, ports
-3001/3002 are loopback-only, direct public port 3002 is unreachable, HTTPS health reports `1.0.0`,
-and a controlled viewer detach adds no tmux/libevent warning.
+Production is now at commit `92f7abe`. Gateway and web restarted cleanly with zero restarts/failures;
+the tmux server retained its original 2026-08-18 process and both attached sessions. Ports 3001 and
+3002 listen only on `127.0.0.1`, direct public port 3002 is unreachable, Caddy HTTPS health returns
+`1.0.0`, and post-restart gateway logs contain no Fastify deprecation or application warning/error
+signature. Installed Termspace units validate without repository-owned warnings. Both checkouts are
+clean and the compile-cache artifact is absent.
+
+**Next concrete step:** the owner should complete the remaining Phase 6 desktop/phone browser exit
+criterion. When all tmux sessions can be intentionally stopped in a future maintenance window,
+verify a released tmux containing the post-3.7b zero-event deletion fix, upgrade, restart the tmux
+service once, and rerun controlled attach/detach journal checks before declaring that upstream warning
+closed.
 
 **Landmines:** Never restart `termspace-tmux.service` during a deploy; source `server/tmux.conf`
 instead, because restarting it destroys every running session. Every session operation and viewer
@@ -55,5 +64,4 @@ credentials, or push payloads. Claude is not installed on this VPS. Existing pro
 overrides bypass defaults. The direct-port finding is externally relevant even though secure cookies
 prevent an authenticated session from being sent over plain HTTP.
 
-**Uncommitted:** the complete audit-fix implementation and its progress/state documentation; no
-unrelated user changes are present.
+**Uncommitted:** none.
