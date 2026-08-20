@@ -33,11 +33,12 @@ typechecks, 66 test files, and the production build pass on the VPS. Production 
 post-deploy checks remain. Obsolete, ignored `CPUAccounting=` slice directives found during installed
 unit verification are also removed; memory/tasks accounting and session limits are unchanged.
 
-A controlled live test proved graceful exact-client detach still triggers tmux 3.6's warning. Its
-zero lock timeout initializes a timer without attaching it to libevent; the next activity deletes
-that unattached timer. `tmux.conf` now uses the maximum 32-bit timeout (about 68 years), preserving
-effectively-disabled locking while keeping the event attached. This can be sourced live without a
-tmux restart; regression coverage fixes the workaround in the deployed configuration.
+A controlled live test proved graceful exact-client detach still triggers tmux 3.6's warning. A
+candidate lock-timer workaround was tested live and rejected because the warning persisted. Upstream
+tmux documents the relevant zero-event deletion fix only after 3.7b, on the future 3.8 line. Do not
+mask tmux stderr or restart the live tmux server: activating a patched/new binary would destroy both
+running sessions. The application lifecycle fix remains valid, but this harmless upstream warning
+must wait for a session-safe maintenance window and a verified fixed tmux release.
 
 **Next concrete step:** commit and push the audit fixes, update and build `/opt/termspace`, install the
 web unit, daemon-reload, and restart only gateway and web. Confirm both tmux sessions survive, ports

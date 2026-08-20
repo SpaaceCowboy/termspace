@@ -1208,3 +1208,12 @@ while `lock-after-time=0` but does not add that timer to an event base, then war
 it. Termspace now uses the maximum 32-bit timeout (about 68 years), which keeps the timer attached
 while preserving effectively-disabled auto-locking; the setting can be sourced into the live server
 without restarting tmux or any session.
+
+### 2026-08-20T08:25:00Z · SOLO · 6 · DECISION
+The candidate tmux lock-timer workaround was rejected after two controlled production detach cycles
+still emitted `event_del_: event has no event_base set`. The configuration is restored to normal;
+masking all tmux stderr would hide real failures, and restarting into a patched/new tmux binary would
+destroy both live sessions. Exact-client graceful detach remains because it fixes application-owned
+lifecycle behavior. The residual harmless warning is an upstream tmux/libevent issue whose relevant
+fix is documented after 3.7b on the future 3.8 line; activation waits for a session-safe maintenance
+window and a verified fixed release.
