@@ -1,6 +1,7 @@
 import { fileURLToPath } from 'node:url'
 
 import type { AgentCommand } from '@termspace/contracts'
+import { z } from 'zod'
 
 import { parseSessionId } from '../sessions/session-id.js'
 import type { ProcessRunner } from './process-runner.js'
@@ -13,6 +14,8 @@ export interface TmuxAttachCommand {
   readonly arguments_: readonly string[]
   readonly command: 'tmux'
 }
+
+const TmuxClientLineSchema = z.string().regex(/^\d+\t[^\r\n\t]{1,256}$/)
 
 export interface SessionScopeOptions {
   readonly memoryMaxBytes: number
@@ -197,6 +200,40 @@ export class TmuxClient {
         toTmuxSessionName(untrustedId),
       ],
     }
+  }
+
+  async detachClient(untrustedPid: unknown): Promise<boolean> {
+    const pid = z.number().int().positive().safe().parse(untrustedPid)
+    let result
+    try {
+      result = await this.#runner.run('tmux', [
+        ...this.#socketArguments,
+        'list-clients',
+        '-F',
+        '#{client_pid}\t#{client_name}',
+      ])
+    } catch (error) {
+      if (commandExitCode(error) === 1) {
+        return false
+      }
+      throw error
+    }
+    const target = result.stdout
+      .split('\n')
+      .filter((line) => line.length > 0)
+      .map((line) => TmuxClientLineSchema.parse(line))
+      .find((line) => line.startsWith(`${String(pid)}\t`))
+      ?.split('\t', 2)[1]
+    if (target === undefined) {
+      return false
+    }
+    await this.#runner.run('tmux', [
+      ...this.#socketArguments,
+      'detach-client',
+      '-t',
+      target,
+    ])
+    return true
   }
 
   #scopedLaunchCommand(sessionName: string, launchCommand: AgentCommand): AgentCommand {

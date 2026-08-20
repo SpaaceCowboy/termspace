@@ -12,7 +12,7 @@ Slice=termspace.slice
 LogNamespace=termspace
 WorkingDirectory=/opt/termspace/web
 EnvironmentFile=-/etc/termspace/runtime.env
-ExecStart=/usr/bin/env NODE_ENV=production PORT=3002 node node_modules/next/dist/bin/next start
+ExecStart=/usr/bin/env NODE_ENV=production PORT=3002 node node_modules/next/dist/bin/next start --hostname 127.0.0.1
 Restart=on-failure
 RestartSec=2s
 KillMode=control-group

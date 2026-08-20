@@ -1,6 +1,6 @@
 {
   "name": "@termspace/server",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -14,7 +14,7 @@
     "dev": "tsc -p tsconfig.build.json --watch",
     "seed:user": "tsc -p tsconfig.build.json && node --env-file-if-exists=.env dist/seed/seed-user-cli.js",
     "start": "node --env-file-if-exists=.env dist/index.js",
-    "test": "tsc -p tsconfig.build.json && node --test dist/*.test.js dist/**/*.test.js",
+    "test": "tsc -p tsconfig.build.json && node --test --test-concurrency=2 dist/*.test.js dist/**/*.test.js",
     "typecheck": "tsc --noEmit",
     "vapid:generate": "tsc -p tsconfig.build.json && node dist/push/generate-vapid-cli.js"
   },

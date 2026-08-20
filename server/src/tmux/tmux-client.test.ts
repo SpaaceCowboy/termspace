@@ -264,4 +264,40 @@ describe('TmuxClient', () => {
       arguments_: ['attach-session', '-t', `ts_${SID}`],
     })
   })
+
+  it('detaches only the viewer client matching the node-pty child PID', async () => {
+    const runner = new RecordingRunner([
+      { stderr: '', stdout: '410\t/dev/pts/4\n411\t/dev/pts/5\n' },
+      { stderr: '', stdout: '' },
+    ])
+    const tmux = new TmuxClient(runner, { socketPath: '/run/termspace/tmux.sock' })
+
+    assert.equal(await tmux.detachClient(411), true)
+    assert.deepEqual(runner.calls, [
+      {
+        command: 'tmux',
+        arguments_: [
+          '-S', '/run/termspace/tmux.sock',
+          'list-clients', '-F', '#{client_pid}\t#{client_name}',
+        ],
+      },
+      {
+        command: 'tmux',
+        arguments_: [
+          '-S', '/run/termspace/tmux.sock',
+          'detach-client', '-t', '/dev/pts/5',
+        ],
+      },
+    ])
+  })
+
+  it('does not detach another viewer when the target client has already exited', async () => {
+    const runner = new RecordingRunner([
+      { stderr: '', stdout: '410\t/dev/pts/4\n' },
+    ])
+    const tmux = new TmuxClient(runner)
+
+    assert.equal(await tmux.detachClient(411), false)
+    assert.equal(runner.calls.length, 1)
+  })
 })

@@ -1,99 +1,51 @@
 # Current state — Termspace (solo)
 
-**Phase:** Phase 6 — operations and interface refinement; built, deployed, awaiting owner
-verification.
+**Phase:** Phase 6 — built and deployed; owner verification remains open.
 
-**Working on:** Deploying and owner-verifying the final Phase 6 terminal compatibility pass: tmux
-remains the invisible restart-safe session owner, while new default Codex sessions explicitly use
-alternate-screen mode so their full-screen redraws do not corrupt xterm.js scrollback.
+**Working on:** Deploying and live-verifying the completed Phase 6 audit fixes without restarting the
+session-owning tmux service.
 
-**Done so far:** Phases 0–5 are implemented and verified. Phase 6 favorites, operational telemetry,
-sanitized journal summaries, attention ordering, operations UI, reconnect behavior, responsive
-polish, and accessibility refinements are built. Repository-wide tests, typechecks, production
-builds, real Git/tmux checks, and desktop/phone browser checks pass on the declared Node 24/pnpm 10
-toolchain. The owner deployed Termspace to Ubuntu 26.04 with a dedicated named tmux server, gateway,
-web service, backup timer, isolated journal, Caddy HTTPS, SQLite storage, and `/srv/projects`; login
-and HTTP health work at `https://termspace.94-184-36-243.sslip.io`.
+**Done so far:** Phases 0–5 are built and owner-verified. Phase 6 is built. The deployed checkout is
+clean at commit `184dcf2a0d294bcbd33cf21cedee370cde392392` and includes the final stable xterm renderer,
+initial-resize preservation, named tmux socket, hidden tmux status line, and default Codex
+`tui.alternate_screen="always"` fixes. Live inspection confirmed gateway, web, tmux, Caddy, and the
+backup timer are healthy with zero restarts; the gateway and web were restarted for this deployment
+while the tmux server and its Shell/Codex sessions survived. Live viewer geometry reaches tmux, the
+Codex scope uses the alternate-screen command, and each transient session scope has a 2 GiB memory
+limit. The daily SQLite backup exists, completed successfully, and passes the real backup verifier.
+The public health endpoint, exact WebSocket origin configuration, authentication boundary, database
+permissions, and TLS proxy path are active. Repository-wide typechecks, 65 automated test files,
+and the production build pass on Node 24.19.0/pnpm 10.15.0.
 
-Production diagnostics proved session creation itself was healthy: the transient scope remained
-active, the pane was alive under zsh, and manual attachment through `/run/termspace/tmux.sock`
-worked. `ViewerAttachmentFactory` now consumes the configured attach command, including the named
-socket; the owner deployed that fix and confirmed a new real session works.
+The audit was rechecked through 2026-08-20. Gateway, web, tmux, Caddy, and the backup timer remain
+active with zero restarts. HTTPS `/api/health` returns 200 through Caddy, the Let's Encrypt
+certificate is valid from 2026-08-19 through 2026-11-17, both live tmux sessions and their 2 GiB
+systemd scopes are active, disk usage is 31%, and 1.4 GiB of 1.9 GiB RAM is available. The daily
+2026-08-20 SQLite backup completed successfully; the preceding backup passes the real verifier.
 
-The creation flow now shows the project path, actual command, worktree mode, optional initial
-prompt, and availability of default agent commands in the gateway runtime PATH. The server also
-checks project overrides before mutation and returns `agent_unavailable`. Lifecycle UI distinguishes
-starting, ready, agent-working, needs-input, reconnecting, viewer failure, and true exit with common
-exit causes. Viewer exit no longer implies tmux death: the gateway verifies liveness, exposes a
-recoverable per-view reattach when tmux remains alive, and only marks a genuinely absent session
-dead. During socket recovery the existing terminal stays painted, input is queued, viewport offset
-is restored, and the focused pane regains focus. Deletion confirmation now states exactly what
-happens to tmux, scrollback, project files, worktrees, uncommitted changes, commits, and branches.
+All audit findings are fixed in the development checkout. Next.js binds to `127.0.0.1` in both the
+package start command and systemd unit, and regression tests lock down both paths. Release metadata,
+health, operations, and fixtures now consistently report `1.0.0`. Fastify uses the supported
+`LogController`; compile caches are ignored and the generated artifact is removed. Viewer teardown
+maps the validated node-pty child PID to one exact tmux client and detaches it normally, with bounded
+fallback cleanup, rather than killing the PTY first and provoking libevent warnings. All package
+typechecks, 66 test files, and the production build pass on the VPS. Production deployment and live
+post-deploy checks remain.
 
-The workspace now has validated, browser-local appearance preferences for UI font, interface
-density, contrast, terminal theme, and terminal font size. Applying terminal preferences updates all
-open xterm panes immediately and preserves the current viewer. Transient toasts are also retained in
-a validated, capped 50-item browser-local notification history with unread count, timestamps,
-mark-read behavior, and clear-all. Only sanitized UI notices are retained; terminal output and raw
-server data are never stored. All package tests and typechecks and the HTTP production build pass.
-The compiled fixture UI was rendered in desktop and 390-pixel mobile Chrome: both dialogs, high
-contrast, large terminal text, history persistence, unread state, and no horizontal overflow were
-personally observed.
+**Next concrete step:** commit and push the audit fixes, update and build `/opt/termspace`, install the
+web unit, daemon-reload, and restart only gateway and web. Confirm both tmux sessions survive, ports
+3001/3002 are loopback-only, direct public port 3002 is unreachable, HTTPS health reports `1.0.0`,
+and a controlled viewer detach adds no tmux/libevent warning.
 
-Production then exposed corruption confined to the focused WebGL pane: glyphs were obscured or
-duplicated and the cursor was painted at a clicked cell even though tmux and input remained healthy.
-xterm 6's WebGL and DOM renderers use different cell-width calculations, while Termspace switched
-between them on every focus change. The WebGL addon and focus-time renderer switching are now
-removed. Every pane remains on xterm's built-in renderer and keeps one stable cell grid; the frozen
-offline install, full typecheck/test suite, production build, and compiled-bundle WebGL absence check
-pass.
+**Landmines:** Never restart `termspace-tmux.service` during a deploy; source `server/tmux.conf`
+instead, because restarting it destroys every running session. Every session operation and viewer
+attachment must use `/run/termspace/tmux.sock`. Keep default Codex alternate-screen mode and the
+stable built-in xterm renderer unless upstream behavior is verified fixed. Initial resize frames may
+arrive before subscription capture and must remain queued. Appearance/notification history is
+browser-local, and notification history must never contain terminal bytes, raw server data, tickets,
+credentials, or push payloads. Claude is not installed on this VPS. Existing project-specific agent
+overrides bypass defaults. The direct-port finding is externally relevant even though secure cookies
+prevent an authenticated session from being sent over plain HTTP.
 
-Further production screenshots exposed a second, independent geometry failure. `sub` starts an
-asynchronous restore before creating the tmux viewer, while xterm measures and sends `resize`
-immediately; the gateway discarded that resize because the subscription did not exist yet. The tmux
-client therefore stayed at node-pty's 80×24 default inside a much larger browser pane, fragmenting
-Codex full-screen redraws and duplicating tmux status rows. Visible/headless rehosting also recreated
-xterm at default dimensions before replaying its serialized screen. The gateway now retains the
-latest resize during subscription, queues that geometry into the headless parser before a pending
-capture is parsed, and applies it to the finished tmux attachment. Browser rehosting carries forward
-the last row/column geometry and flushes its snapshot before fitting. The invisible xterm input
-textarea no longer receives the app-wide visible focus outline. Regression tests cover all three
-paths; the complete typecheck/test/build sequence passes.
-
-The owner then confirmed the browser geometry reaches tmux as `101x41 xterm-256color`, but Codex's
-inline TUI still produced displaced and duplicated screen regions. That remaining symptom matches
-Codex 0.147's inline scroll-region incompatibility with xterm.js rather than another geometry or
-tmux failure. The default Codex command now explicitly sets `tui.alternate_screen="always"`, which
-Codex 0.147 accepts under strict configuration validation. tmux stays in place for persistence but
-its browser-visible status line is disabled. Command-resolution tests cover the new argv, and the
-full typecheck/test/build sequence passes.
-
-**Next concrete step:** on the VPS pull the current `main`, rebuild, restart gateway and web (not the
-tmux service), and source `server/tmux.conf` into the live named tmux server. The owner should create
-a new default Codex session and verify that the green tmux bar is absent and clicking, typing, and
-Codex redraws remain aligned, then verify both new dialogs and exercise the
-remaining Phase 6 real-data desktop/phone exit criterion: Shell and Codex creation, gateway
-restart/reconnect, and standard/worktree deletion copy.
-
-**Landmines:** system Node is 20 and global pnpm is 11 on the development machine, so use the
-explicit Node 24/pnpm 10 toolchain. Appearance and notification history are intentionally local to
-each browser profile and are not account-synced. Notification history must remain limited to
-sanitized UI notices; never persist terminal bytes, raw push payloads, credentials, tickets, or
-server log data. Do not reintroduce focus-time renderer switching: xterm 6 WebGL and DOM cell grids
-can disagree and corrupt cursor/glyph placement. An initial resize can arrive while subscription
-capture is pending and must never be dropped; server and browser headless terminals must parse
-full-screen output at the live tmux geometry. Every session operation and viewer attachment must use the same configured tmux
-socket; falling back to tmux's default socket recreates the production failure. Claude is not
-installed on the VPS, so the default Claude option must remain disabled until its CLI is installed.
-Codex inline mode remains incompatible with xterm.js region scrolling; keep the default
-`tui.alternate_screen="always"` argument unless upstream behavior is verified fixed. Existing
-sessions do not adopt changed launch arguments, and project-specific Codex overrides bypass this
-default. Alternate-screen mode intentionally does not leave the Codex transcript in shell
-scrollback after exit. Apply tmux configuration with `source-file`; restarting
-`termspace-tmux.service` destroys every running session.
-An initial prompt is terminal input: keep it bounded and absent from every log/error surface. Viewer
-attachment failure and tmux process death are different states and must never be collapsed. The
-tmux server must remain independently owned by `termspace-tmux.service`, and transient scopes do not
-inherit service sandbox directives.
-
-**Uncommitted:** none.
+**Uncommitted:** the complete audit-fix implementation and its progress/state documentation; no
+unrelated user changes are present.

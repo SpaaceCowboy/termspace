@@ -237,7 +237,7 @@ export const layoutFixture: Layout = { ...layoutInputFixture, updatedAt: FIXED_N
 
 export const errorCodeFixture: ErrorCode = 'session_not_found'
 
-export const healthDataFixture: HealthData = { version: '0.0.0' }
+export const healthDataFixture: HealthData = { version: '1.0.0' }
 
 export const appConfigFixture: AppConfig = {
   projectRoot: '/srv/projects',
@@ -280,7 +280,7 @@ export const operationalEventLevelFixtures: Readonly<
 
 export const operationalStatusFixture: OperationalStatus = {
   generatedAt: FIXED_NOW,
-  gateway: { health: 'healthy', version: '0.0.0', uptimeMs: 7_200_000 },
+  gateway: { health: 'healthy', version: '1.0.0', uptimeMs: 7_200_000 },
   tmux: { health: 'healthy', liveSessions: 3, persistedSessions: sessionFixtures.length },
   storage: {
     databaseBytes: 196_608,

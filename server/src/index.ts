@@ -1,3 +1,5 @@
+import { LogController } from 'fastify'
+
 import { readEnvironment } from './config/env.js'
 import { openDatabase } from './database/connection.js'
 import { migrateDatabase } from './database/migrations.js'
@@ -11,7 +13,7 @@ async function start(): Promise<void> {
   try {
     migrateDatabase(database)
     const runtime = createServerRuntime(database, environment, {
-      disableRequestLogging: true,
+      logController: new LogController({ disableRequestLogging: true }),
       logger: createLoggerOptions(environment.TERMSPACE_LOG_LEVEL),
     })
 

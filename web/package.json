@@ -1,6 +1,6 @@
 {
   "name": "@termspace/web",
-  "version": "0.0.0",
+  "version": "1.0.0",
   "private": true,
   "type": "module",
   "engines": {
@@ -9,7 +9,7 @@
   "scripts": {
     "build": "next build",
     "dev": "next dev --port ${PORT:-3002}",
-    "start": "next start --port ${PORT:-3002}",
+    "start": "next start --hostname ${HOSTNAME:-127.0.0.1} --port ${PORT:-3002}",
     "test": "node --test --experimental-strip-types \"src/**/*.test.ts\"",
     "typecheck": "tsc --noEmit"
   },

@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, it } from 'node:test'
+import { LogController } from 'fastify'
 
 import { buildApp } from '../app.js'
 import {
@@ -35,7 +36,7 @@ describe('structured request logging', () => {
     const cookie = 'session-cookie-must-not-appear'
     const password = 'password-must-not-appear'
     const app = buildApp({
-      disableRequestLogging: true,
+      logController: new LogController({ disableRequestLogging: true }),
       logger: {
         ...createLoggerOptions('info'),
         stream: { write: (line: string) => { lines.push(line) } },

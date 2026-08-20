@@ -1176,3 +1176,24 @@ tmux remains the required session owner but no longer exposes its duplicate gree
 browser. New default Codex sessions use alternate-screen mode; existing sessions retain their old
 launch command. Regression expectations, all package typechecks and tests, and the production build
 pass on Node 24/pnpm 10.
+
+### 2026-08-20T06:07:00Z · SOLO · 6 · AUDIT
+The deployed VPS passes current service, TLS, proxy, tmux-persistence, resource-headroom, session
+limit, and daily-backup checks. Gateway, web, tmux, Caddy, and the backup timer are active with zero
+restarts; HTTPS health returns 200 and the real SQLite backup verifier passes. The audit confirms two
+release defects remain: Next.js listens publicly on `*:3002`, permitting direct plaintext HTTP
+access outside Caddy, and the live health version remains the placeholder `0.0.0`. No production
+behavior was changed.
+
+### 2026-08-20T06:52:56Z · SOLO · 6 · CONTRACT
+The production release identity changed from the exact old health and operations version `0.0.0`
+to the exact new version `1.0.0`; the HTTP shapes are unchanged. Package metadata and contract
+fixtures now carry the same release value.
+
+Next.js production startup is loopback-only in both the package command and systemd unit, with
+regression tests for both deployment paths. Fastify request suppression now uses its supported
+`LogController`. Node's generated compile-cache directory is ignored and the existing artifact was
+removed. Viewer teardown now resolves the exact tmux client from its validated node-pty PID and asks
+tmux to detach it normally, retaining a bounded forced-cleanup fallback; this avoids the recurring
+libevent warning without detaching another viewer or touching the persistent session. The complete
+66-file test suite, all package typechecks, and the production build pass on the VPS.

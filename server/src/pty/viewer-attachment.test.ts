@@ -74,6 +74,7 @@ const tmux: TmuxAttacher = {
     command: 'tmux',
     arguments_: ['-S', '/run/termspace/tmux.sock', 'attach-session', '-t', `ts_${String(sessionId)}`],
   }),
+  detachClient: async () => true,
 }
 
 describe('ViewerAttachmentFactory', () => {
@@ -109,7 +110,7 @@ describe('ViewerAttachmentFactory', () => {
     ])
   })
 
-  it('forwards data, input, resize, exit, and viewer-only close', () => {
+  it('forwards data, input, resize, exit, and gracefully detaches a viewer on close', () => {
     const spawner = new FakeSpawner()
     const factory = new ViewerAttachmentFactory(spawner, tmux)
     const output: string[] = []
@@ -124,13 +125,13 @@ describe('ViewerAttachmentFactory', () => {
     pty.emitData('ready')
     attachment.write('ls\r')
     attachment.resize(120, 40)
-    pty.emitExit(0)
     attachment.close()
+    pty.emitExit(0)
 
     assert.deepEqual(output, ['ready'])
-    assert.deepEqual(exits, [0])
+    assert.deepEqual(exits, [])
     assert.deepEqual(pty.writes, ['ls\r'])
     assert.deepEqual(pty.resizes, [{ cols: 120, rows: 40 }])
-    assert.equal(pty.killed, true)
+    assert.equal(pty.killed, false)
   })
 })
