@@ -30,7 +30,8 @@ health, operations, and fixtures now consistently report `1.0.0`. Fastify uses t
 maps the validated node-pty child PID to one exact tmux client and detaches it normally, with bounded
 fallback cleanup, rather than killing the PTY first and provoking libevent warnings. All package
 typechecks, 66 test files, and the production build pass on the VPS. Production deployment and live
-post-deploy checks remain.
+post-deploy checks remain. Obsolete, ignored `CPUAccounting=` slice directives found during installed
+unit verification are also removed; memory/tasks accounting and session limits are unchanged.
 
 **Next concrete step:** commit and push the audit fixes, update and build `/opt/termspace`, install the
 web unit, daemon-reload, and restart only gateway and web. Confirm both tmux sessions survive, ports

@@ -1197,3 +1197,7 @@ removed. Viewer teardown now resolves the exact tmux client from its validated n
 tmux to detach it normally, retaining a bounded forced-cleanup fallback; this avoids the recurring
 libevent warning without detaching another viewer or touching the persistent session. The complete
 66-file test suite, all package typechecks, and the production build pass on the VPS.
+
+Installed-unit verification also identified and removed obsolete `CPUAccounting=` directives from
+both Termspace slices; current systemd ignores that removed option, while memory/tasks accounting
+and every per-session resource limit remain active.
