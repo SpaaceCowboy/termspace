@@ -28,4 +28,13 @@ describe('production listener boundaries', () => {
       'next start --hostname ${HOSTNAME:-127.0.0.1} --port ${PORT:-3002}',
     )
   })
+
+  it('keeps tmux session timers attached without enabling practical auto-locking', async () => {
+    const config = await readFile(
+      new URL('server/tmux.conf', repositoryRoot),
+      'utf8',
+    )
+
+    assert.match(config, /^set-option -g lock-after-time 2147483647$/m)
+  })
 })

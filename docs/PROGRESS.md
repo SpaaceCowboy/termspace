@@ -1201,3 +1201,10 @@ libevent warning without detaching another viewer or touching the persistent ses
 Installed-unit verification also identified and removed obsolete `CPUAccounting=` directives from
 both Termspace slices; current systemd ignores that removed option, while memory/tasks accounting
 and every per-session resource limit remain active.
+
+A controlled production attach/detach proved the remaining libevent warning occurs even when the
+gateway uses tmux's exact graceful `detach-client` path. tmux 3.6 initializes its session lock timer
+while `lock-after-time=0` but does not add that timer to an event base, then warns when later deleting
+it. Termspace now uses the maximum 32-bit timeout (about 68 years), which keeps the timer attached
+while preserving effectively-disabled auto-locking; the setting can be sourced into the live server
+without restarting tmux or any session.

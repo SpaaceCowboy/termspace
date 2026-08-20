@@ -33,6 +33,12 @@ typechecks, 66 test files, and the production build pass on the VPS. Production 
 post-deploy checks remain. Obsolete, ignored `CPUAccounting=` slice directives found during installed
 unit verification are also removed; memory/tasks accounting and session limits are unchanged.
 
+A controlled live test proved graceful exact-client detach still triggers tmux 3.6's warning. Its
+zero lock timeout initializes a timer without attaching it to libevent; the next activity deletes
+that unattached timer. `tmux.conf` now uses the maximum 32-bit timeout (about 68 years), preserving
+effectively-disabled locking while keeping the event attached. This can be sourced live without a
+tmux restart; regression coverage fixes the workaround in the deployed configuration.
+
 **Next concrete step:** commit and push the audit fixes, update and build `/opt/termspace`, install the
 web unit, daemon-reload, and restart only gateway and web. Confirm both tmux sessions survive, ports
 3001/3002 are loopback-only, direct public port 3002 is unreachable, HTTPS health reports `1.0.0`,
